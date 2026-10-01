@@ -1,0 +1,22 @@
+Options -Indexes
+DirectoryIndex index.html
+
+RewriteEngine On
+RewriteRule ^api/(.*)$ api/index.php?route=$1 [QSA,END]
+RewriteRule ^login/?$ login.html [END]
+RewriteRule ^admin/?$ admin-gate.php [END]
+RewriteRule ^index\.html$ / [R=301,END]
+RewriteRule ^admin/index\.html$ /admin [R=301,END]
+RewriteRule ^admin\.html$ /admin [R=301,END]
+RewriteRule ^login\.html$ /login [R=301,END]
+RewriteRule ^pages/(over-ons|inschrijven|jins|jongverkenners|kapoenen|tweedehands|uniform|verkenners|welpen)\.html$ /$1 [R=301,END]
+RewriteRule ^(over-ons|inschrijven|jins|jongverkenners|kapoenen|tweedehands|uniform|verkenners|welpen)\.html$ /$1 [R=301,END]
+RewriteRule ^(over-ons|inschrijven|jins|jongverkenners|kapoenen|tweedehands|uniform|verkenners|welpen)/?$ pages/$1.html [END]
+RewriteRule ^data(?:/|$) - [F,END]
+RewriteRule ^(?:\.env|\.git|node_modules)(?:/|$) - [F,END]
+RewriteRule ^(?:config\.php|router\.php|server(?:/|$)) - [F,END]
+RewriteRule ^auth-config\.php$ - [F,END]
+
+<FilesMatch "^(?:config\.php|router\.php|auth-config\.php|Dockerfile|docker-compose\.yml|package(?:-lock)?\.json)$">
+    Require all denied
+</FilesMatch>

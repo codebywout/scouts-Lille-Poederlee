@@ -1,0 +1,1640 @@
+.hero {
+    position: relative;
+    background-color: #f5efe7;
+    min-height: 760px;
+    overflow: hidden;
+    background-image: linear-gradient(
+        90deg,
+        rgba(13, 36, 25, 0.84) 0%,
+        rgba(23, 63, 43, 0.62) 46%,
+        rgba(23, 63, 43, 0.18) 100%
+    ), url("../../assets/images/domein.jpg?v=20260930-3");
+    background-position: center;
+    background-size: cover;
+    background-repeat: no-repeat;
+    color: #fff;
+    transition: min-height 0.8s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.45s ease;
+    --hero-shift-x: 0px;
+    --hero-shift-y: 0px;
+    overflow: hidden;
+    animation: pageGradientIn 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+body.home-page .hero {
+    min-height: 0;
+    aspect-ratio: 3 / 2;
+}
+
+@keyframes pageGradientIn {
+    from {
+        transform: translateY(-12px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.hero::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+
+    background: linear-gradient(
+        to bottom,
+        rgba(245, 239, 231, 0) 42%,
+        rgba(245, 239, 231, 0.02) 48%,
+        rgba(245, 239, 231, 0.07) 55%,
+        rgba(245, 239, 231, 0.30) 69%,
+        rgba(245, 239, 231, 0.48) 76%,
+        rgba(245, 239, 231, 0.66) 83%,
+        rgba(245, 239, 231, 0.84) 91%,
+        #f5efe7 100%
+    );
+}
+
+.hero-content {
+    position: relative;
+    z-index: 2;
+    max-width: var(--max-width);
+    margin: 0 auto;
+    padding: 170px 5% 80px;
+    transform: translate3d(calc(var(--hero-shift-x) * 0.35), calc(var(--hero-shift-y) * 0.35), 0);
+    /* zachtere deceleratie i.p.v. lineaire ease-out */
+    transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.hero-visual {
+    position: absolute;
+    right: clamp(30px, 7vw, 110px);
+    top: 140px;
+    width: min(36vw, 420px);
+    height: 430px;
+    pointer-events: none;
+    z-index: 1;
+    --move-x: 0px;
+    --move-y: 0px;
+    transform: translate3d(calc(var(--move-x) + var(--hero-shift-x) * 0.45), calc(var(--move-y) + var(--hero-shift-y) * 0.45), 0);
+    animation: floatHero 12s cubic-bezier(0.45, 0, 0.55, 1) infinite alternate;
+}
+
+.animate {
+    opacity: 0;
+    transform: translateY(18px);
+    /* iets langer + zachtere curve, minder "snap" bij inkomen */
+    transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1), transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.hero h1 {
+    font-family: "Montserrat", sans-serif;
+    font-size: clamp(42px, 6vw, 82px);
+    line-height: 0.92;
+    letter-spacing: -3px;
+    font-weight: 800;
+    max-width: 760px;
+}
+
+.hero h1 span {
+    color: var(--lime);
+}
+
+.hero-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 30px;
+}
+
+.hero-line {
+    width: 90px;
+    height: 1px;
+    background: rgba(255,255,255,0.3);
+}
+
+.section {
+    max-width: var(--max-width);
+    margin: 0 auto;
+    padding: 50px 5% 80px;
+}
+
+.section-top {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 48px;
+    margin-bottom: 42px;
+}
+
+.section-top > p {
+    max-width: 430px;
+    color: var(--gray);
+}
+
+.branch-list {
+    border-top: 1px solid var(--line);
+}
+
+.branch {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1fr 110px 42px;
+    align-items: center;
+    min-height: 116px;
+    border-bottom: 1px solid var(--line);
+    background: rgba(255,255,255,0.35);
+    transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+    gap: 24px;
+    padding: 8px 10px 8px 8px;
+    color: inherit;
+    overflow: hidden;
+}
+
+.branch::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(211,138,45,0.04), rgba(78,43,26,0));
+    transform: skewX(-18deg) translateX(-120%);
+    transition: transform 0.45s ease;
+    z-index: 0;
+}
+
+.branch:hover,
+.branch:focus-visible {
+    background: #fff;
+    background: linear-gradient(180deg, rgba(255,255,255,0.95), rgba(255,255,255,0.78));
+    transform: translateY(-2px);
+    box-shadow: 0 18px 30px rgba(46, 26, 18, 0.06);
+}
+
+.branch-main h3,
+.branch-main span,
+.branch-arrow {
+    position: relative;
+    z-index: 1;
+}
+
+.branch-main h3 {
+    font-family: "Montserrat", sans-serif;
+    font-size: clamp(24px, 2vw, 34px);
+}
+
+.branch-main span {
+    font-size: 13px;
+    color: var(--gray);
+}
+
+.branch-logo {
+    display: block;
+    width: 85px;
+    height: 85px;
+    min-width: 76px;
+    border-radius: 50%;
+    object-fit: contain;
+}
+
+
+.branch-logo {
+    padding: 0;
+}
+
+.branch-arrow {
+    justify-self: end;
+    margin-right: 10px;
+    text-align: right;
+    font-size: 24px;
+    color: var(--scout-brown);
+    transition: transform 0.2s ease;
+}
+
+.branch:hover .branch-arrow,
+.branch:focus-visible .branch-arrow {
+    transform: translate(5px, -3px);
+}
+
+.agenda {
+    border-top: 1px solid var(--line);
+}
+
+.agenda-item {
+    display: block;
+    padding: 18px 0 18px 8px;
+    border-bottom: 1px solid var(--line);
+    transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+    position: relative;
+}
+
+.agenda-summary {
+    display: grid;
+    grid-template-columns: 140px minmax(0, 1fr);
+    gap: 18px;
+    align-items: center;
+    grid-column: 1 / -1;
+    cursor: pointer;
+    list-style: none;
+}
+
+.agenda-summary::-webkit-details-marker {
+    display: none;
+}
+
+.agenda-summary::after {
+    content: "+";
+    position: absolute;
+    top: 18px;
+    right: 8px;
+    color: var(--scout-orange);
+    font-size: 22px;
+    font-weight: 700;
+    transition: transform 0.2s ease;
+}
+
+.agenda-item.is-open .agenda-summary::after {
+    transform: rotate(45deg);
+}
+
+.agenda-item:hover,
+.agenda-item:focus-within {
+    background: rgba(255,255,255,0.45);
+    transform: translateY(-1px);
+}
+
+.agenda-date {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 14px 16px;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    width: fit-content;
+    min-width: 110px;
+}
+
+.agenda-date strong {
+    display: block;
+    font-family: "Montserrat", sans-serif;
+    font-size: 24px;
+    line-height: 0.9;
+    color: var(--scout-brown);
+}
+
+.agenda-date span {
+    margin-top: 6px;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 2px;
+    color: var(--scout-orange);
+    text-transform: uppercase;
+}
+
+.agenda-item:hover .agenda-date {
+    transform: translateY(-2px);
+    box-shadow: 0 14px 24px rgba(46, 26, 18, 0.08);
+}
+
+.agenda-body {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+    padding-right: 28px;
+}
+
+.agenda-body h3 {
+    font-family: "Montserrat", sans-serif;
+    font-size: clamp(20px, 1.9vw, 28px);
+}
+
+.agenda-body p {
+    color: var(--gray);
+    max-width: 640px;
+    font-size: 15px;
+}
+
+.agenda-expand {
+    color: var(--scout-orange);
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.agenda-item.is-open .agenda-expand {
+    visibility: hidden;
+}
+
+.agenda-details {
+    display: grid;
+    grid-template-rows: 0fr;
+    grid-column: 1 / -1;
+    width: 100%;
+    min-width: 0;
+    justify-self: stretch;
+    align-self: start;
+    box-sizing: border-box;
+    padding: 0 42px 0 158px;
+    overflow: hidden;
+    color: var(--gray);
+    opacity: 0;
+    transition:
+        grid-template-rows 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+        opacity 0.2s ease,
+        padding-bottom 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.agenda-details-inner {
+    display: block;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.agenda-item.is-open .agenda-details {
+    grid-template-rows: 1fr;
+    opacity: 1;
+    padding-bottom: 4px;
+}
+
+.agenda-details-inner p {
+    max-width: none;
+    font-size: 15px;
+    line-height: 1.65;
+}
+
+.agenda-details-inner .agenda-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    width: fit-content;
+    margin-top: 14px;
+    color: var(--scout-orange);
+    font-size: 13px;
+    font-weight: 800;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+.agenda-details-inner img {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-height: 360px;
+    object-fit: contain;
+    border-radius: 14px;
+}
+
+.agenda-item.has-agenda-image .agenda-details {
+    display: grid;
+}
+
+.agenda-item.has-agenda-image .agenda-details-inner {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(240px, 360px);
+    grid-template-rows: auto auto;
+    grid-template-areas:
+        "copy photo"
+        "link photo";
+    column-gap: 28px;
+    align-items: start;
+}
+
+.agenda-item.has-agenda-image .agenda-details-inner p {
+    grid-area: copy;
+}
+
+.agenda-item.has-agenda-image .agenda-details-inner .agenda-link {
+    grid-area: link;
+}
+
+.agenda-item.has-agenda-image .agenda-details-inner img {
+    grid-area: photo;
+}
+
+.practical {
+    padding-top: 60px;
+}
+
+.practical-heading {
+    margin-bottom: 52px;
+}
+
+.faq-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.faq-item {
+    border: 1px solid var(--line);
+    background: rgba(255,255,255,0.4);
+    border-radius: 22px;
+    overflow: hidden;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.faq-item[open] {
+    border-color: rgba(78, 43, 26, 0.22);
+    box-shadow: 0 16px 28px rgba(46, 26, 18, 0.04);
+}
+
+.faq-item summary {
+    list-style: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    cursor: pointer;
+    padding: 20px 22px;
+    font-family: "Montserrat", sans-serif;
+    font-size: clamp(18px, 1.8vw, 22px);
+    font-weight: 700;
+    color: var(--scout-brown);
+}
+
+.faq-content {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.faq-item.open-anim .faq-content {
+    grid-template-rows: 1fr;
+}
+
+.faq-content-inner {
+    overflow: hidden;
+}
+
+.faq-content-inner p {
+    padding: 0 22px 20px;
+    color: var(--gray);
+    max-width: 780px;
+}
+
+.faq-item summary:hover {
+    background: rgba(211,138,45,0.04);
+}
+
+.faq-item summary::-webkit-details-marker {
+    display: none;
+}
+
+.faq-item summary::after {
+    content: "+";
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.faq-item.open-anim summary::after {
+    content: "+";
+    transform: rotate(135deg);
+}
+
+/* driftPattern zelf blijft linear — dat is bewust voor een constante drift, geen bob-gevoel */
+
+/* ============ TABLET (≤1024px) ============ */
+@media (max-width: 1024px) {
+
+    .hero {
+        min-height: 680px;
+    }
+
+    .hero-content {
+        padding: 140px 6% 80px;
+    }
+
+    .hero h1 {
+        max-width: 680px;
+    }
+
+    .hero-visual {
+        width: min(30vw, 320px);
+        height: 340px;
+        top: 110px;
+        right: 4%;
+    }
+
+    .branch {
+        grid-template-columns: 1fr 90px 40px;
+        gap: 16px;
+        min-height: 100px;
+    }
+
+    .branch-logo {
+        width: 68px;
+        height: 68px;
+        min-width: 68px;
+    }
+}
+
+/* ============ MOBIEL (≤768px) ============ */
+@media (max-width: 950px) {
+
+    .nav-inner {
+        padding: 18px 6%;
+        min-height: 70px;
+
+        border-bottom: 1px solid rgba(255,255,255,0.12);
+    }
+
+    .navbar .brand-logo {
+        width: 48px;
+        height: 48px;
+    }
+
+    /* Desktop navigatie verbergen */
+    .desktop-nav,
+    .nav-cta {
+        display: none;
+    }
+
+    /* Hamburger */
+    .mobile-menu-button {
+        display: block;
+
+        width: 42px;
+        height: 42px;
+
+        border: 0;
+        padding: 0;
+
+        background: transparent;
+        color: #fff;
+
+        cursor: pointer;
+    }
+
+    .mobile-menu-button span {
+        display: block;
+
+        width: 24px;
+        height: 2px;
+
+        margin: 6px auto;
+
+        border-radius: 999px;
+        background: #fff;
+    }
+
+    /* Mobiel menu */
+    .mobile-menu {
+        display: none;
+
+        flex-direction: column;
+        gap: 0;
+
+        padding: 8px 6% 20px;
+
+        background: rgba(13, 36, 25, 0.96);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+
+        border-top: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .mobile-menu.open {
+        display: flex;
+    }
+
+    .mobile-menu a {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+
+        min-height: 48px;
+
+        padding: 8px 0;
+
+        color: #fff;
+
+        font-size: 18px;
+        font-weight: 700;
+
+        border-bottom: 1px solid rgba(255,255,255,0.10);
+    }
+
+    .mobile-menu a:last-child {
+        border-bottom: 0;
+    }
+}
+
+@media (max-width: 768px) {
+
+    html {
+        scroll-padding-top: 72px;
+    }
+
+    body {
+        overflow-x: hidden;
+    }
+
+
+    /* ------------------------------------------------------
+       NAVBAR
+       ------------------------------------------------------ */
+
+    .navbar {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+    }
+
+    .nav-inner {
+        min-height: 68px;
+        padding: 10px 5%;
+        border-bottom: 1px solid rgba(255,255,255,0.14);
+    }
+
+    .brand {
+        min-width: 0;
+    }
+
+    .navbar .brand-logo {
+        width: 44px;
+        height: 44px;
+    }
+
+    .mobile-menu-button {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+
+        width: 42px;
+        height: 42px;
+
+        padding: 0;
+
+        border: 1px solid rgba(255,255,255,0.14);
+        border-radius: 12px;
+
+        background: rgba(255,255,255,0.08);
+    }
+
+    .mobile-menu-button:hover,
+    .mobile-menu-button:focus-visible {
+        background: rgba(255,255,255,0.14);
+    }
+
+    .mobile-menu-button:active {
+        transform: scale(0.94);
+    }
+
+    .mobile-menu-button span {
+        width: 20px;
+        height: 2px;
+        margin: 3px 0;
+    }
+
+    /* ------------------------------------------------------
+       MOBIEL MENU
+       ------------------------------------------------------ */
+
+    .mobile-menu {
+        padding: 6px 5% 14px;
+        background: rgba(13,36,25,0.98);
+        border-top: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .mobile-menu.open {
+        display: flex;
+        animation: mobileMenuIn 0.25s ease-out both;
+    }
+
+    .mobile-menu a {
+        min-height: 50px;
+        font-size: 16px;
+        font-weight: 700;
+    }
+
+    .mobile-menu a::after {
+        content: "↗";
+        font-size: 16px;
+        opacity: 0.45;
+        transform: translateX(0);
+        transition: transform 0.2s ease, opacity 0.2s ease;
+    }
+
+    .mobile-menu a:hover::after,
+    .mobile-menu a:focus-visible::after {
+        opacity: 1;
+        transform: translate(3px, -2px);
+    }
+
+    .mobile-menu a:last-child {
+        border-bottom: 0;
+    }
+
+    @keyframes mobileMenuIn {
+        from {
+            opacity: 0;
+            transform: translateY(-8px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+
+    /* ------------------------------------------------------
+       HERO
+       ------------------------------------------------------ */
+
+    .hero {
+        min-height: 620px;
+        background-position: 62% center;
+    }
+
+    .hero::after {
+        background: linear-gradient(
+            to bottom,
+            rgba(245,239,231,0) 42%,
+            rgba(245,239,231,0.03) 50%,
+            rgba(245,239,231,0.12) 60%,
+            rgba(245,239,231,0.32) 72%,
+            rgba(245,239,231,0.62) 86%,
+            #f5efe7 100%
+        );
+    }
+
+    .hero-content {
+        width: 100%;
+        max-width: none;
+        padding: 130px 6% 105px;
+        transform: none;
+    }
+
+    .hero h1 {
+        font-size: clamp(40px, 11vw, 58px);
+        line-height: 0.94;
+        letter-spacing: -2px;
+        max-width: 600px;
+    }
+
+    .hero h1 span {
+        display: inline;
+    }
+
+    .hero-actions {
+        width: 100%;
+        max-width: 340px;
+        flex-direction: column;
+        gap: 10px;
+        margin-top: 28px;
+    }
+
+    .hero-actions .button {
+        width: 100%;
+        min-height: 52px;
+        justify-content: center;
+    }
+
+    .hero-visual {
+        display: none;
+    }
+
+
+    /* ------------------------------------------------------
+       SECTIES
+       ------------------------------------------------------ */
+
+    .section {
+        width: 100%;
+        max-width: none;
+        padding:
+            52px
+            6%
+            68px;
+    }
+
+    .section-top {
+        display: block;
+        margin-bottom: 28px;
+    }
+
+    .section-top h2,
+    .practical-heading h2 {
+        font-size: clamp(30px, 8.5vw, 44px);
+        line-height: 0.98;
+        letter-spacing: -1.2px;
+    }
+
+    .section-top > p {
+        margin-top: 12px;
+        font-size: 14px;
+        line-height: 1.55;
+    }
+
+
+    /* ------------------------------------------------------
+       TAKKEN
+       ------------------------------------------------------ */
+
+    .branch-list {
+        gap: 8px;
+    }
+
+    .branch {
+        grid-template-columns: minmax(0, 1fr) 52px;
+        grid-template-rows: 1fr auto;
+        grid-template-areas:
+            "main logo"
+            "main arrow";
+
+        min-height: 96px;
+
+        padding: 15px 14px;
+
+        border: 1px solid rgba(78,43,26,0.10);
+        border-radius: 16px;
+
+        background: rgba(255,255,255,0.62);
+
+        box-shadow:
+            0 4px 14px rgba(46,26,18,0.035);
+
+        transition:
+            transform 0.18s ease,
+            box-shadow 0.18s ease;
+    }
+
+    .branch:active {
+        transform: scale(0.985);
+    }
+
+    .branch:hover,
+    .branch:focus-visible {
+        transform: translateY(-1px);
+        box-shadow:
+            0 10px 24px rgba(46,26,18,0.07);
+    }
+
+    .branch::before {
+        display: none;
+    }
+
+    .branch-main {
+        grid-area: main;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+
+    .branch-main h3 {
+        font-size: clamp(21px, 6vw, 27px);
+        line-height: 1;
+    }
+
+    .branch-main span {
+        margin-top: 6px;
+        font-size: 11px;
+    }
+
+    .branch-kenteken {
+        grid-area: logo;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .branch-logo {
+        width: 52px;
+        height: 52px;
+        min-width: 52px;
+    }
+
+
+    .branch-arrow {
+        margin: 0;
+        font-size: 17px;
+    }
+
+
+    /* ------------------------------------------------------
+       PLANNING
+       ------------------------------------------------------ */
+
+    .planning {
+        padding-top: 34px;
+    }
+
+    .agenda {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        border-top: 0;
+    }
+
+    .agenda-item {
+        display: block;
+
+        padding: 14px;
+
+        border: 1px solid rgba(78,43,26,0.10);
+        border-radius: 18px;
+
+        background: rgba(255,255,255,0.58);
+
+        box-shadow:
+            0 5px 16px rgba(46,26,18,0.03);
+
+        transition:
+            background 0.2s ease,
+            transform 0.2s ease;
+    }
+
+    .agenda-item:hover,
+    .agenda-item:focus-within {
+        transform: translateY(-1px);
+        background: rgba(255,255,255,0.75);
+    }
+
+    .agenda-date {
+        min-width: 78px;
+        padding: 10px 9px;
+        border-radius: 13px;
+
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+
+        background: #fff;
+        border: 1px solid var(--line);
+
+        box-shadow: 0 3px 10px rgba(46,26,18,0.035);
+    }
+
+    .agenda-date strong {
+        font-size: 21px;
+        line-height: 0.9;
+    }
+
+    .agenda-date span {
+        margin-top: 6px;
+        font-size: 10px;
+        letter-spacing: 1.5px;
+    }
+
+    .agenda-body {
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 5px;
+    }
+
+    .agenda-body h3 {
+        font-size: 18px;
+        line-height: 1.15;
+        overflow-wrap: anywhere;
+    }
+
+    .agenda-body p {
+        font-size: 13px;
+        line-height: 1.45;
+        overflow-wrap: anywhere;
+    }
+
+
+    /* ------------------------------------------------------
+       FAQ
+       ------------------------------------------------------ */
+
+    .practical {
+        padding-top: 36px;
+    }
+
+    .practical-heading {
+        margin-bottom: 26px;
+    }
+
+    .faq-list {
+        display: flex;
+        flex-direction: column;
+        gap: 9px;
+    }
+
+    .faq-item {
+        border-radius: 17px;
+        background: rgba(255,255,255,0.58);
+    }
+
+    .faq-item summary {
+        min-height: 58px;
+        padding: 16px;
+
+        font-size: 16px;
+        line-height: 1.3;
+
+        gap: 14px;
+    }
+
+    .faq-item summary::after {
+        flex-shrink: 0;
+        font-size: 21px;
+    }
+
+    .faq-content-inner p {
+        padding: 0 16px 18px;
+        font-size: 14px;
+        line-height: 1.55;
+    }
+
+
+    /* ------------------------------------------------------
+       OVER ONS
+       ------------------------------------------------------ */
+
+    .page-over-ons {
+        padding: 78px 6% 0;
+    }
+
+    .about-hero {
+        min-height: 270px;
+        border-radius: 20px;
+        margin-bottom: 16px;
+        background-position: center;
+    }
+
+    .about-hero-copy {
+        width: 100%;
+        padding: 28px 22px 26px;
+    }
+
+    .about-hero-copy h2 {
+        font-size: clamp(30px, 8vw, 42px);
+        line-height: 1;
+        letter-spacing: -1px;
+    }
+
+    .about-hero-copy p {
+        font-size: 14px;
+        line-height: 1.5;
+    }
+
+    .story-scroller {
+        display: grid;
+        grid-auto-flow: row;
+        grid-auto-columns: auto;
+        gap: 10px;
+        overflow: visible;
+        padding: 0;
+    }
+
+    .story-card {
+        padding: 20px 18px;
+        border-radius: 18px;
+    }
+
+    .story-card h3 {
+        font-size: 23px;
+        line-height: 1.1;
+    }
+
+    .story-card p {
+        font-size: 14px;
+        line-height: 1.55;
+    }
+
+
+    /* ------------------------------------------------------
+       CTA
+       ------------------------------------------------------ */
+
+    .cta-box {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 16px;
+
+        padding: 20px 18px;
+        border-radius: 18px;
+    }
+
+    .cta-box .button {
+        width: 100%;
+        min-height: 50px;
+    }
+
+
+    /* ------------------------------------------------------
+       SUBPAGINA'S
+       ------------------------------------------------------ */
+
+    .page-hero:empty {
+        display: none;
+    }
+
+    .page-hero .hero-content {
+        padding:
+            100px
+            6%
+            72px;
+    }
+
+    .page-hero .hero-content h1.eyebrow {
+        margin-bottom: 0;
+        font-size: clamp(34px, 10vw, 52px);
+        line-height: 0.98;
+        letter-spacing: -1px;
+    }
+
+    .page-intro,
+    .uniform-grid,
+    .uniform-layout,
+    .new-member-layout,
+    .registration-layout,
+    .branch-detail-layout {
+        display: grid;
+        grid-template-columns: 1fr;
+    }
+
+    .field-row {
+        display: grid;
+        grid-template-columns: 1fr;
+    }
+
+    .registration-form,
+    .contact-card,
+    .registration-layout .page-card,
+    .branch-detail-layout .page-card {
+        padding: 20px 17px;
+        border-radius: 18px;
+    }
+
+    .registration-form .button,
+    .contact-card .button,
+    .registration-hero .hero-actions .button {
+        width: 100%;
+    }
+
+    .checkbox-row {
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    .branch-detail-layout {
+        gap: 14px;
+    }
+
+    .branch-photo {
+        min-height: 220px;
+        max-height: 320px;
+        border-radius: 18px;
+    }
+
+
+    /* ------------------------------------------------------
+       UNIFORM
+       ------------------------------------------------------ */
+
+    .uniform-grid {
+        gap: 10px;
+    }
+
+    .uniform-card {
+        padding: 19px 17px;
+        border-radius: 18px;
+    }
+
+    .uniform-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 13px;
+        margin-bottom: 13px;
+        font-size: 20px;
+    }
+
+    .uniform-rules-card {
+        padding: 21px 18px;
+    }
+
+    .uniform-rules {
+        gap: 15px;
+        padding-left: 19px;
+    }
+
+    .uniform-rules strong {
+        font-size: 15px;
+    }
+
+    .uniform-rules p {
+        font-size: 14px;
+        line-height: 1.55;
+    }
+
+
+    /* ------------------------------------------------------
+       CONTACT / INFO
+       ------------------------------------------------------ */
+
+    .contact-list,
+    .meta-list {
+        gap: 8px;
+        margin-top: 14px;
+    }
+
+    .contact-list li,
+    .meta-list li {
+        padding: 10px;
+        gap: 8px;
+        font-size: 14px;
+        line-height: 1.45;
+        border-radius: 10px;
+    }
+
+    .info-item {
+        padding: 19px 17px;
+    }
+
+    .info-item strong {
+        font-size: 19px;
+    }
+
+
+    /* ------------------------------------------------------
+       FOOTER
+       ------------------------------------------------------ */
+
+    .footer {
+        padding: 46px 6% 20px;
+    }
+
+    .footer-main {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 28px;
+    }
+
+    .footer-brand p {
+        max-width: 400px;
+        margin-top: 12px;
+        font-size: 14px;
+        line-height: 1.55;
+    }
+
+    .footer-column {
+        gap: 7px;
+    }
+
+    .footer-column > span {
+        margin-bottom: 5px;
+    }
+
+    .footer-column a,
+    .footer-column p {
+        font-size: 14px;
+        line-height: 1.5;
+        overflow-wrap: anywhere;
+    }
+
+    .footer-bottom {
+        margin-top: 30px;
+        padding-top: 16px;
+
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 5px;
+
+        font-size: 11px;
+        line-height: 1.4;
+    }
+}
+
+/* ============ KLEIN MOBIEL (≤480px) ============ */
+/* ==========================================================
+   KLEINE TELEFOONS
+   ========================================================== */
+
+@media (max-width: 480px) {
+
+    .nav-inner {
+        padding-left: 5%;
+        padding-right: 5%;
+    }
+
+    .navbar .brand-logo {
+        width: 42px;
+        height: 42px;
+    }
+
+    .mobile-menu-button {
+        width: 42px;
+        height: 42px;
+    }
+
+    .hero-content {
+        padding:
+            125px
+            6%
+            105px;
+    }
+
+    .hero h1 {
+        font-size: clamp(38px, 11.5vw, 52px);
+        letter-spacing: -1.7px;
+    }
+
+    .hero-actions {
+        max-width: none;
+        margin-top: 26px;
+    }
+
+    .hero-actions .button {
+        min-height: 52px;
+    }
+
+    .section {
+        padding:
+            44px
+            6%
+            58px;
+    }
+
+    .section-top {
+        margin-bottom: 23px;
+    }
+
+    .section-top h2,
+    .practical-heading h2 {
+        font-size: clamp(29px, 8.8vw, 39px);
+    }
+
+    .branch {
+        grid-template-columns: minmax(0, 1fr) 48px;
+        min-height: 94px;
+        padding: 14px;
+        border-radius: 16px;
+        gap: 3px 8px;
+    }
+
+    .branch-logo {
+        width: 48px;
+        height: 48px;
+        min-width: 48px;
+    }
+
+    .branch-main h3 {
+        font-size: 21px;
+    }
+
+    .branch-main span {
+        font-size: 11px;
+    }
+
+    .branch-arrow {
+        font-size: 17px;
+    }
+
+    .agenda-item {
+        grid-template-columns: 66px minmax(0, 1fr);
+        gap: 10px;
+        padding: 12px;
+    }
+
+    .agenda-summary {
+        grid-template-columns: 66px minmax(0, 1fr);
+        gap: 10px;
+    }
+
+    .agenda-summary::after {
+        top: 12px;
+        right: 12px;
+    }
+
+    .agenda-date {
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        width: 66px;
+        min-width: 66px;
+        gap: 0;
+        padding: 9px 11px;
+    }
+
+    .agenda-details {
+        display: grid;
+        grid-column: 1 / -1;
+        padding: 0 6px;
+    }
+
+    .agenda-details-inner img {
+        width: 100%;
+        max-height: 280px;
+        margin-top: 16px;
+    }
+
+    .agenda-item.has-agenda-image .agenda-details {
+        display: grid;
+    }
+
+    .agenda-date strong {
+        font-size: 19px;
+    }
+
+    .agenda-date span {
+        margin-top: 0;
+    }
+
+    .agenda-body h3 {
+        font-size: 18px;
+    }
+
+    .agenda-body p {
+        font-size: 13px;
+    }
+
+    .faq-item summary {
+        min-height: 54px;
+        padding: 15px;
+        font-size: 15px;
+    }
+
+    .faq-content-inner p {
+        padding: 0 15px 16px;
+        font-size: 13px;
+    }
+
+    .about-hero {
+        min-height: 235px;
+    }
+
+    .about-hero-copy {
+        padding: 22px 18px;
+    }
+
+    .about-hero-copy h2 {
+        font-size: 30px;
+    }
+
+    .about-hero-copy p {
+        font-size: 13px;
+    }
+
+    .story-card {
+        padding: 18px 16px;
+        border-radius: 17px;
+    }
+
+    .story-card h3 {
+        font-size: 21px;
+    }
+
+    .story-card p {
+        font-size: 13px;
+    }
+
+    .footer {
+        padding-left: 6%;
+        padding-right: 6%;
+    }
+}
+
+/* ==========================================================
+   ZEER KLEINE TELEFOONS
+   ========================================================== */
+
+@media (max-width: 360px) {
+
+    .hero-content {
+        padding-top: 115px;
+        padding-bottom: 95px;
+    }
+
+    .hero h1 {
+        font-size: 35px;
+        letter-spacing: -1.4px;
+    }
+
+    .section {
+        padding-left: 5%;
+        padding-right: 5%;
+    }
+
+    .branch {
+        grid-template-columns: minmax(0, 1fr) 44px;
+        padding: 13px;
+    }
+
+    .branch-logo {
+        width: 44px;
+        height: 44px;
+        min-width: 44px;
+    }
+
+    .branch-main h3 {
+        font-size: 19px;
+    }
+
+    .branch-main span {
+        font-size: 10px;
+    }
+
+    .agenda-item {
+        padding: 11px;
+    }
+
+    .agenda-date {
+        padding: 8px 10px;
+    }
+
+    .faq-item summary {
+        font-size: 14px;
+        padding: 14px;
+    }
+}
+
+@media (hover: none) and (pointer: coarse) {
+
+    .branch:hover,
+    .agenda-item:hover {
+        transform: none;
+    }
+
+    .branch:active {
+        transform: scale(0.985);
+    }
+
+    .mobile-menu a,
+    .button,
+    .branch,
+    .faq-item summary {
+        -webkit-tap-highlight-color: transparent;
+    }
+}
+
+/* ============ TOEGANKELIJKHEID ============ */
+@media (prefers-reduced-motion: reduce) {
+    .hero-pattern,
+    .hero-visual,
+    .badge-mid,
+    .badge-bottom {
+        animation: none !important;
+    }
+
+    .animate,
+    .hero-content,
+    .branch,
+    .agenda-item {
+        transition: none !important;
+    }
+}
+
+/* 1. smooth scrollen naar #takken, #planning, #praktisch i.p.v. instant jump */
+html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 90px; /* houd rekening met sticky navbar-hoogte */
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+    .mobile-menu.open {
+        animation: none;
+    }
+
+    .mobile-menu-button,
+    .branch,
+    .agenda-item {
+        transition: none;
+    }
+}
+
+/* 2. subtiele underline-animatie op nav-links i.p.v. statische hover */
+.desktop-nav a {
+    position: relative;
+}
+
+.desktop-nav a::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: -4px;
+    width: 0;
+    height: 2px;
+    background: currentColor;
+    transition: width 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.desktop-nav a:hover::after {
+    width: 100%;
+}
+
+/* 3. agenda-datum krijgt lichte "tik"-animatie i.p.v. platte hover-shadow */
+.agenda-date {
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease;
+}

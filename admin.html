@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="assets/images/scouts.png">
+    <link rel="apple-touch-icon" href="assets/images/scouts.png">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Beheer | Scouts Lille-Poederlee</title>
+    <meta name="description" content="Beheerpagina voor de Scouts Lille-Poederlee website.">
+    <link rel="stylesheet" href="assets/css/style.css?v=20260930-5">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Montserrat:wght@600;700;800;900&display=swap" rel="stylesheet">
+</head>
+<body class="admin-page">
+    <header class="navbar admin-navbar">
+        <div class="nav-inner admin-nav-inner">
+            <a href="/" class="brand" aria-label="Scouts Lille-Poederlee home">
+                <img class="brand-logo" src="assets/images/scouts.png" alt="Scouts Lille-Poederlee logo">
+            </a>
+
+            <div class="admin-toolbar">
+                <a href="/" class="nav-cta">Terug naar site</a>
+                <button type="button" id="logoutBtn" class="nav-cta nav-cta--danger">Uitloggen</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="admin-shell">
+        <form id="adminForm" class="admin-form">
+            <div class="page-picker">
+                <div class="page-picker-grid" id="pageSelector" role="radiogroup" aria-labelledby="pagePickerLabel">
+                    <button type="button" class="page-picker-tile is-active" data-page-option="home" role="radio" aria-checked="true">Home</button>
+                    <button type="button" class="page-picker-tile" data-page-option="over-ons" role="radio" aria-checked="false">Over ons</button>
+                    <button type="button" class="page-picker-tile" data-page-option="inschrijven" role="radio" aria-checked="false">Inschrijven</button>
+                    <button type="button" class="page-picker-tile" data-page-option="photos" role="radio" aria-checked="false">Foto's</button>
+                    <button type="button" class="page-picker-tile" data-page-option="kapoenen" role="radio" aria-checked="false">Kapoenen</button>
+                    <button type="button" class="page-picker-tile" data-page-option="welpen" role="radio" aria-checked="false">Welpen</button>
+                    <button type="button" class="page-picker-tile" data-page-option="jongverkenners" role="radio" aria-checked="false">Jongverkenners</button>
+                    <button type="button" class="page-picker-tile" data-page-option="verkenners" role="radio" aria-checked="false">Verkenners</button>
+                    <button type="button" class="page-picker-tile" data-page-option="jins" role="radio" aria-checked="false">Jins</button>
+                    <button type="button" class="page-picker-tile" data-page-option="secondhand" role="radio" aria-checked="false">Tweedehands</button>
+                    <button type="button" class="page-picker-tile" data-page-option="settings" role="radio" aria-checked="false">Instellingen</button>
+                </div>
+            </div>
+
+            <div id="pageEditor" class="admin-grid" aria-live="polite"></div>
+
+            <div class="save-row">
+                <button type="submit" class="button button-primary">Wijzigingen opslaan</button>
+                <span id="saveStatus" aria-live="polite"></span>
+            </div>
+        </form>
+    </main>
+
+    <footer class="footer admin-footer">
+        <div class="footer-main">
+            <div class="footer-brand">
+                <div class="brand" aria-label="Scouts Lille-Poederlee">
+                    <img class="brand-logo" src="assets/images/scouts.png" alt="Scouts Lille-Poederlee logo">
+                </div>
+                <p>Scouts Lille-Poederlee is een jeugdbeweging voor kinderen en jongeren in de regio.</p>
+            </div>
+
+            <div class="footer-column">
+                <span>NAVIGATIE</span>
+                <a href="/">Home</a>
+                <a href="/over-ons">Over ons</a>
+                <a href="/uniform">Uniform</a>
+            </div>
+
+            <div class="footer-column">
+            <span>CONTACT</span>
+            <a data-footer-email href="mailto:groepsleidingscoutslille@gmail.com">groepsleidingscoutslille@gmail.com</a>
+            <p data-footer-address>Zagerijstraat 29<br>2275 Lille</p>
+        </div>
+
+            <div class="footer-column">
+                <span>SOCIALS</span>
+                <a href="https://www.facebook.com/scoutslille" target="_blank" rel="noopener noreferrer">Facebook ↗</a>
+                <a href="https://www.instagram.com/scoutslille/" target="_blank" rel="noopener noreferrer">Instagram ↗</a>
+            </div>
+        </div>
+
+        <div class="footer-bottom">
+            <span>© 2026 Scouts Lille-Poederlee</span>
+            <span>Wout Pluym</span>
+        </div>
+    </footer>
+
+    <script src="assets/js/script.js?v=20260930-3"></script>
+</body>
+</html>

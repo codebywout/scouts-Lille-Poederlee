@@ -1,0 +1,12 @@
+.env
+auth-config.php
+.google-service-account.json
+data/.google-oauth.json
+data/google-drive.json
+.sessions/
+uploads/*
+!uploads/.htaccess
+npm-debug.log*
+.DS_Store
+*.bak
+*.tmp

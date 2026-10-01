@@ -1,0 +1,143 @@
+{
+    "activePage": "photos",
+    "pageContent": {
+        "over-ons": {
+            "intro": "Met 20 leiders, een hoop energie en net genoeg gezond verstand zorgen wij er elke week voor dat de scouts gevuld zijn met actie, plezier en verhalen die thuis niet altijd volledig worden verteld.\n\nWij geloven dat kinderen en jongeren het best groeien in een omgeving waar ze kunnen bewegen, experimenteren, samenwerken en zichzelf ontdekken."
+        },
+        "inschrijven": {
+            "lidgeld": "60",
+            "rekeningnummer": "BE42 9734 8157 7954"
+        },
+        "photos": [],
+        "settings": []
+    },
+    "agenda": [
+        {
+            "day": "27",
+            "month": "JAN",
+            "title": "Start van de vergaderingen!",
+            "text": "Vandaag beginnen de activiteiten. Iedereen is welkom.",
+            "link": "",
+            "image": "",
+            "linkText": ""
+        },
+        {
+            "day": "18",
+            "month": "OKT",
+            "title": "Geen vergadering!!!",
+            "text": "De leiding is op planningsweekend, het is vandaag dus geen scouts!",
+            "link": "",
+            "linkText": "Meer informatie"
+        },
+        {
+            "day": "25",
+            "month": "OKT",
+            "title": "Jeugdverenigingendag",
+            "text": "Zoals elk jaar organiseert de Jeugdraad, in samenwerking met de jeugddienst, opnieuw de Jeugdverenigingendag! Een namiddag om samen te komen, goe te ravotten en ons gewoon kei hard te amuseren!",
+            "link": "https:\/\/forms.gle\/gyRRbgwhc8rx5kiq5",
+            "linkText": "Inschrijvingsformulier",
+            "image": ""
+        }
+    ],
+    "faq": [
+        {
+            "question": "Wanneer zijn de activiteiten?",
+            "answer": "Onze scoutsgroep komt meestal elke zondag samen van 13u30 tot 16u30. De exacte uren kunnen per activiteit verschillen."
+        },
+        {
+            "question": "Waar vinden de activiteiten plaats?",
+            "answer": "De activiteiten vinden meestal plaats op ons scoutsdomein. Afhankelijk van de geplande activiteit kan de locatie echter verschillen. Wanneer een activiteit op een andere locatie doorgaat, wordt dit altijd vooraf gecommuniceerd."
+        },
+        {
+            "question": "Voor welke leeftijden kan ik inschrijven?",
+            "answer": "We werken met verschillende leeftijdsgroepen, van 6 tot 18 jaar. Op basis van de leeftijd wordt je kind ingedeeld bij de juiste tak."
+        },
+        {
+            "question": "Hoe schrijf ik mijn kind in?",
+            "answer": "Meer informatie over het inschrijven van je kind vind je op het tabblad ‘Inschrijven’."
+        },
+        {
+            "question": "Wat moet mijn kind meenemen?",
+            "answer": "Als scouts dragen we steeds een uniform. Bij kapoenen is dit een kapoenentrui tijdens de scoutsvergaderingen. Vanaf de welpen wordt dit een scoutshemd, korte broek en das!"
+        },
+        {
+            "question": "Kan ik eerst een keer komen proberen?",
+            "answer": "Zeker! Je kind mag twee keer komen proberen bij Scouts Lille. Tijdens deze activiteiten is je kind volledig verzekerd, ook als het nog niet is ingeschreven. Vanaf de derde activiteit moet het lidgeld betaald zijn."
+        }
+    ],
+    "contact": {
+        "email": "groepsleidingscoutslille@gmail.com",
+        "address": "Zagerijstraat 29, 2275 Lille"
+    },
+    "groupLeadership": [
+        {
+            "name": "Wout Pluym",
+            "phone": "0492 76 39 91"
+        },
+        {
+            "name": "Thiebe Mertens",
+            "phone": "0491 98 26 13"
+        },
+        {
+            "name": "Maarten Van den Langenbergh",
+            "phone": "0456 11 26 79"
+        }
+    ],
+    "branchLeadership": {
+        "kapoenen": [],
+        "welpen": [],
+        "jongverkenners": [],
+        "verkenners": [],
+        "jins": []
+    },
+    "secondhand": [],
+    "photos": {
+        "logo": "\/assets\/images\/scouts.png",
+        "homeHero": "\/assets\/images\/domein.jpg",
+        "aboutHero": "\/uploads\/over-ons.jpg?v=1790779869",
+        "uniform": [
+            "https:\/\/images.unsplash.com\/photo-1472162072942-cd5147eb3902?auto=format&fit=crop&w=900&q=80",
+            "https:\/\/images.unsplash.com\/photo-1504150558240-0b4fd8946624?auto=format&fit=crop&w=900&q=80",
+            "https:\/\/images.unsplash.com\/photo-1504150558240-0b4fd8946624?auto=format&fit=crop&w=900&q=80"
+        ],
+        "branches": {
+            "kapoenen": "\/uploads\/kapoenenleiding.jpg?v=1789208791",
+            "welpen": "\/uploads\/welpenleiding.jpg?v=1789208788",
+            "jongverkenners": "\/uploads\/jongverkennersleiding.jpg?v=1789208801",
+            "verkenners": "\/uploads\/verkennersleiding.jpg?v=1789208798",
+            "jins": "\/uploads\/jinsleiding.jpg?v=1789208795"
+        },
+        "monthlyPlanning": {
+            "kapoenen": "\/uploads\/maandplanning-kapoenen.pdf?v=1790775346",
+            "welpen": "",
+            "jongverkenners": "",
+            "verkenners": "",
+            "jins": ""
+        },
+        "monthlyPlanningTitle": {
+            "kapoenen": "januari_maart",
+            "welpen": "",
+            "jongverkenners": "",
+            "verkenners": "",
+            "jins": ""
+        },
+        "letters": {
+            "kapoenen": [],
+            "welpen": [],
+            "jongverkenners": [],
+            "verkenners": [],
+            "jins": []
+        },
+        "branchLogos": {
+            "kapoenen": "\/assets\/images\/branches\/kapoenen.png",
+            "welpen": "\/assets\/images\/branches\/welpen.png",
+            "jongverkenners": "\/assets\/images\/branches\/jong-verkenners.png",
+            "verkenners": "\/assets\/images\/branches\/verkenners.png",
+            "jins": "\/assets\/images\/branches\/jins.png"
+        }
+    },
+    "letters": {
+        "welpen": [],
+        "kapoenen": []
+    }
+}

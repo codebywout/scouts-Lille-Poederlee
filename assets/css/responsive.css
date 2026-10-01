@@ -1,0 +1,688 @@
+/* Mobiele navigatie */
+@media (max-width: 950px) {
+    body.page-leaving > * {
+        transform: translateY(-3px);
+    }
+
+    .navbar {
+        animation: none;
+    }
+
+    .navbar .brand-logo {
+        width: 48px;
+        height: 48px;
+    }
+
+    .desktop-nav,
+    .nav-cta {
+        display: none;
+    }
+
+    .mobile-menu {
+        display: none;
+        flex-direction: column;
+        gap: 18px;
+        padding: 20px 6% 26px;
+        background: var(--green);
+    }
+
+    .mobile-menu.open {
+        display: flex;
+    }
+
+    .mobile-menu a {
+        font-size: 22px;
+        font-weight: 700;
+    }
+}
+
+/* Subpagina's (uniform, over-ons, inschrijven, ...) */
+@media (max-width: 760px) {
+    .page-hero:empty {
+        display: none;
+    }
+
+    .page-hero .hero-content {
+        padding-top: 120px;
+    }
+
+    body.home-page .hero {
+        min-height: 0;
+    }
+
+    .page-hero .hero-content h1.eyebrow {
+        margin-bottom: 0;
+        font-family: "Montserrat", sans-serif;
+        font-size: clamp(34px, 10vw, 52px);
+        line-height: 0.98;
+        letter-spacing: -1px;
+    }
+
+    .page-intro,
+    .uniform-grid,
+    .uniform-layout {
+        grid-template-columns: 1fr;
+        display: grid;
+    }
+
+    .uniform-photo-stack {
+        position: static;
+    }
+
+    .new-member-layout,
+    .registration-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .field-row {
+        grid-template-columns: 1fr;
+    }
+
+    .registration-form,
+    .contact-card {
+        padding: 22px 18px;
+    }
+
+    .registration-form .button,
+    .contact-card .button,
+    .registration-hero .hero-actions .button {
+        width: 100%;
+    }
+
+    .checkbox-row {
+        align-items: flex-start;
+    }
+
+    .branch-detail-layout {
+        grid-template-columns: 1fr;
+        gap: 18px;
+    }
+
+    .branch-detail-layout .page-card {
+        padding: 22px 18px;
+    }
+
+    .branch-photo {
+        min-height: 240px;
+        max-height: 360px;
+    }
+
+    .page-over-ons {
+        padding: 90px 6% 0;
+    }
+
+    .about-hero {
+        min-height: 260px;
+        border-radius: 20px;
+        margin-bottom: 18px;
+    }
+
+    .story-scroller {
+        grid-auto-flow: row;
+        grid-auto-columns: auto;
+        overflow: visible;
+        padding: 0;
+        gap: 16px;
+    }
+
+    .story-card {
+        padding: 20px 18px;
+        border-radius: 20px;
+    }
+
+    .cta-box {
+        display: grid;
+        grid-template-columns: 1fr;
+        text-align: left;
+    }
+
+    .footer {
+        padding: 48px 6% 22px;
+    }
+
+    .footer-main {
+        grid-template-columns: 1fr;
+        gap: 30px;
+    }
+
+    .footer-brand p {
+        margin-top: 14px;
+    }
+
+    .footer-column a,
+    .footer-column p {
+        overflow-wrap: anywhere;
+    }
+
+    .footer-bottom {
+        margin-top: 32px;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .admin-photo-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+    }
+}
+
+/* ==========================================================
+   Responsive finishing pass
+   Keeps the desktop composition intact while tightening the
+   existing mobile cascade for narrow phones and tablets.
+   ========================================================== */
+
+@media (max-width: 1024px) {
+    .section,
+    .page-main,
+    .page-over-ons,
+    .secondhand-intro,
+    .secondhand-process {
+        padding-inline: clamp(20px, 5vw, 6%);
+    }
+
+    .section {
+        padding-block: clamp(42px, 6vw, 64px);
+    }
+
+    .page-main {
+        width: 100%;
+    }
+
+    .story-scroller,
+    .secondhand-scroll {
+        min-width: 0;
+    }
+}
+
+@media (max-width: 768px) {
+    html,
+    body {
+        max-width: 100%;
+        overflow-x: clip;
+    }
+
+    body {
+        overflow-wrap: anywhere;
+    }
+
+    .nav-inner {
+        width: 100%;
+        padding-inline: max(16px, env(safe-area-inset-left), 5%);
+        padding-right: max(16px, env(safe-area-inset-right), 5%);
+    }
+
+    .mobile-menu-button,
+    .mobile-menu a,
+    .button,
+    .nav-cta {
+        min-height: 44px;
+    }
+
+    .mobile-menu {
+        padding-left: max(16px, env(safe-area-inset-left), 5%);
+        padding-right: max(16px, env(safe-area-inset-right), 5%);
+    }
+
+    .hero,
+    body.home-page .hero {
+        min-height: clamp(440px, 78svh, 620px);
+        width: 100%;
+        aspect-ratio: auto;
+    }
+
+    .hero-content {
+        padding: clamp(112px, 18vw, 138px) max(20px, 6%) clamp(56px, 12vw, 92px);
+    }
+
+    .hero h1 {
+        max-width: 100%;
+        font-size: clamp(36px, 10vw, 58px);
+        overflow-wrap: normal;
+    }
+
+    .hero-actions,
+    .cta-box,
+    .submit-row {
+        max-width: 100%;
+    }
+
+    .section,
+    .page-main,
+    .page-over-ons,
+    .secondhand-intro,
+    .secondhand-process {
+        padding-left: max(20px, 6%);
+        padding-right: max(20px, 6%);
+    }
+
+    .section {
+        padding-block: clamp(38px, 9vw, 56px);
+    }
+
+    .section-top,
+    .section-top > div,
+    .agenda-body,
+    .branch-main,
+    .page-card,
+    .story-card,
+    .admin-card,
+    .admin-item {
+        min-width: 0;
+    }
+
+    .branch-main h3,
+    .agenda-body h3,
+    .story-card h3,
+    .page-card h2,
+    .page-card h3 {
+        overflow-wrap: anywhere;
+    }
+
+    .branch {
+        grid-template-rows: 1fr;
+        grid-template-areas: "main logo";
+    }
+
+    .branch-arrow {
+        display: none;
+    }
+
+    .page-hero,
+    .registration-hero,
+    .secondhand-hero {
+        min-height: 0;
+    }
+
+    .page-hero .hero-content,
+    .secondhand-hero .page-hero-content {
+        padding: clamp(92px, 16vw, 124px) max(20px, 6%) clamp(42px, 9vw, 68px);
+    }
+
+    .page-hero .hero-content h1,
+    .secondhand-hero h1 {
+        max-width: 100%;
+        font-size: clamp(34px, 10vw, 58px);
+        line-height: 0.98;
+        letter-spacing: -1.5px;
+    }
+
+    .page-hero .hero-content p,
+    .secondhand-hero p,
+    .about-hero-copy p,
+    .section-heading p {
+        max-width: 100%;
+        font-size: clamp(15px, 3.8vw, 18px);
+    }
+
+    .document-resource-grid {
+        grid-template-columns: 1fr;
+        gap: 18px;
+    }
+
+    .document-resource-grid .planning-download-card {
+        padding: 18px 16px;
+    }
+
+    .document-resource-grid .planning-download-header {
+        margin-bottom: 8px;
+    }
+
+    .agenda-summary {
+        grid-template-columns: 78px minmax(0, 1fr);
+        gap: 14px;
+    }
+
+    .agenda-details {
+        padding: 0;
+    }
+
+    .agenda-item.has-agenda-image .agenda-details {
+        display: grid;
+    }
+
+    .agenda-item.has-agenda-image .agenda-details-inner {
+        display: block;
+    }
+
+    .agenda-item.has-agenda-image .agenda-details-inner img {
+        width: min(100%, 360px);
+        margin-top: 16px;
+    }
+
+    .document-resource-grid .document-action-button {
+        margin-top: 12px;
+        justify-content: flex-start;
+    }
+
+    .about-hero {
+        min-height: clamp(250px, 66vw, 360px);
+        margin-top: 0;
+    }
+
+    .page-over-ons {
+        padding-top: clamp(88px, 20vw, 112px);
+    }
+
+    .about-hero-copy {
+        padding: 24px max(18px, 5vw) 24px;
+    }
+
+    .secondhand-intro,
+    .secondhand-process {
+        padding-top: clamp(48px, 10vw, 84px);
+    }
+
+    .secondhand-scroll {
+        margin-inline: 0;
+    }
+
+    .secondhand-item {
+        flex-basis: min(82vw, 340px);
+    }
+
+    .footer {
+        padding-left: max(20px, 6%);
+        padding-right: max(20px, 6%);
+        padding-bottom: max(22px, env(safe-area-inset-bottom));
+    }
+
+    .admin-page .admin-nav-inner {
+        padding-block: 10px;
+    }
+
+    .admin-page .admin-toolbar .nav-cta {
+        display: inline-flex;
+    }
+
+    .admin-shell {
+        width: min(100% - 32px, 1240px);
+        padding-block: 24px 28px;
+    }
+
+    .page-picker-grid,
+    .admin-photo-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .document-action-button {
+        width: 100%;
+    }
+
+    .admin-page .admin-grid,
+    .admin-page .admin-grid:has(> .admin-card:only-child),
+    .admin-page .admin-grid:has(.admin-photos-card) {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-grid {
+        gap: 14px;
+    }
+
+    .admin-card-head,
+    .admin-item-head,
+    .admin-secondhand-row {
+        min-width: 0;
+    }
+
+    .admin-card-head {
+        align-items: flex-start;
+    }
+
+    .admin-fields textarea,
+    .admin-fields textarea[data-page-field="intro"],
+    .admin-fields textarea[data-page-field="history"] {
+        min-height: 150px;
+    }
+
+    .admin-page .admin-card {
+        padding: 14px;
+        border-radius: 13px;
+    }
+
+    .admin-page .admin-fields input,
+    .admin-page .admin-fields textarea,
+    .admin-page .admin-item input,
+    .admin-page .admin-item textarea,
+    .admin-page .admin-item select {
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+
+    .admin-page .admin-toolbar .nav-cta {
+        flex: 1 1 0;
+        min-width: 0;
+        padding-inline: 10px;
+        text-align: center;
+    }
+
+    .admin-photo-card-content,
+    .admin-secondhand-content {
+        padding: 14px;
+    }
+
+    .save-row {
+        bottom: max(12px, env(safe-area-inset-bottom));
+    }
+}
+
+@media (max-width: 480px) {
+    .nav-inner {
+        padding-block: 8px;
+    }
+
+    .hero,
+    body.home-page .hero {
+        min-height: clamp(420px, 76svh, 540px);
+    }
+
+    .hero-content {
+        width: calc(100% - 48px);
+        max-width: 360px;
+        margin-inline: auto;
+        padding-left: 0;
+        padding-right: 0;
+        padding-top: 104px;
+        padding-bottom: 52px;
+    }
+
+    .hero h1 {
+        font-size: clamp(34px, 10.5vw, 48px);
+        letter-spacing: -1.5px;
+    }
+
+    .hero-actions .button,
+    .cta-box .button,
+    .registration-form .button,
+    .contact-card .button {
+        width: 100%;
+    }
+
+    .agenda-item {
+        grid-template-columns: 66px minmax(0, 1fr);
+        gap: 10px;
+        padding: 11px;
+    }
+
+    .agenda-summary {
+        grid-template-columns: 66px minmax(0, 1fr);
+        gap: 10px;
+    }
+
+    .agenda-details {
+        grid-column: 1 / -1;
+        padding: 0 6px;
+    }
+
+    .agenda-date {
+        min-width: 0;
+        width: 66px;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0;
+        padding-inline: 6px;
+    }
+
+    .agenda-date strong {
+        white-space: nowrap;
+    }
+
+    .agenda-date span {
+        margin-top: 6px;
+        font-size: 10px;
+        white-space: nowrap;
+    }
+
+    .branch {
+        grid-template-columns: minmax(0, 1fr) 46px;
+        padding-inline: 12px;
+    }
+
+    .branch-logo {
+        width: 46px;
+        height: 46px;
+        min-width: 46px;
+    }
+
+    .page-card,
+    .registration-form,
+    .contact-card,
+    .uniform-card,
+    .uniform-rules-card {
+        padding-inline: 16px;
+    }
+
+    .uniform-prices {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+    }
+
+    .uniform-price {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 4px;
+        padding: 10px 11px;
+    }
+
+    .uniform-price span,
+    .uniform-price strong {
+        overflow-wrap: anywhere;
+    }
+
+    .page-picker-grid,
+    .admin-photo-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-toolbar {
+        gap: 8px;
+    }
+
+    .admin-toolbar .nav-cta {
+        padding-inline: 10px;
+        font-size: 12px;
+    }
+
+    .admin-card-head {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .admin-card-head .mini-button {
+        align-self: flex-start;
+        min-height: 40px;
+    }
+
+    .secondhand-empty {
+        width: min(100%, 520px);
+        min-height: 180px;
+        margin-inline: auto;
+        align-items: flex-start;
+        justify-content: flex-start;
+        padding: 24px 18px;
+        text-align: left;
+    }
+
+    .secondhand-empty p {
+        max-width: none;
+    }
+
+    .secondhand-scroll:has(.secondhand-empty) {
+        justify-content: center;
+        gap: 0;
+        overflow: hidden;
+        margin-inline: 0;
+        padding-inline: 0;
+    }
+
+    .secondhand-scroll:has(.secondhand-empty) .secondhand-empty {
+        width: min(calc(100% - 20px), 520px);
+        flex: 0 1 auto;
+        margin-inline: auto;
+    }
+
+    .secondhand-scroll-button[hidden] {
+        display: none !important;
+    }
+}
+
+@media (max-width: 360px) {
+    .admin-shell {
+        width: min(100% - 24px, 1240px);
+    }
+
+    .mobile-menu a {
+        font-size: 15px;
+    }
+
+    .hero h1 {
+        font-size: 33px;
+    }
+
+    .section-top h2,
+    .practical-heading h2 {
+        font-size: 30px;
+    }
+
+    .agenda-item {
+        grid-template-columns: 58px minmax(0, 1fr);
+    }
+
+    .agenda-summary {
+        grid-template-columns: 58px minmax(0, 1fr);
+    }
+
+    .agenda-details {
+        padding: 0 6px;
+    }
+
+    .agenda-date {
+        width: 58px;
+    }
+}
+
+@media (min-width: 1025px) {
+    body.home-page .hero {
+        background-position: center, center bottom;
+        background-size: cover, 125% auto;
+    }
+
+    body.home-page .branches {
+        position: relative;
+        z-index: 3;
+        margin-top: -80px;
+        padding-top: 0;
+    }
+
+    body.home-page .branches .section-top {
+        position: relative;
+        top: -80px;
+        margin-bottom: 10px;
+    }
+
+    body.home-page .branches .branch-list {
+        position: relative;
+        top: -48px;
+    }
+}

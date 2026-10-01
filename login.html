@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="assets/images/scouts.png">
+    <link rel="apple-touch-icon" href="assets/images/scouts.png">
+    <title>Inloggen | Scouts Lille-Poederlee</title>
+    <meta name="description" content="Beheerders inloggen voor Scouts Lille-Poederlee.">
+    <link rel="stylesheet" href="assets/css/style.css?v=20260930-5">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Montserrat:wght@600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --scout-brown: #4e2b1a;
+            --scout-brown-deep: #2c180f;
+            --scout-orange: #d38a2d;
+            --scout-forest: #173f2b;
+            --scout-cream: #f7f1e8;
+            --line: rgba(78, 43, 26, 0.14);
+            --gray: #5f5349;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: "DM Sans", sans-serif;
+            background: linear-gradient(180deg, #f7f1e8 0%, #f5efe7 100%);
+            color: var(--scout-brown);
+        }
+
+        .login-page {
+            min-height: 100vh;
+            display: grid;
+            place-items: center;
+            padding: 28px 18px;
+            background: radial-gradient(circle at top, rgba(211, 138, 45, 0.12), transparent 30%), linear-gradient(180deg, #f7f1e8 0%, #f5efe7 100%);
+        }
+
+        .login-container {
+            width: min(100%, 440px);
+            background: rgba(255, 255, 255, 0.96);
+            border: 1px solid var(--line);
+            border-radius: 26px;
+            padding: 36px 30px 28px;
+            box-shadow: 0 24px 52px rgba(46, 26, 18, 0.09);
+            backdrop-filter: blur(8px);
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 28px;
+        }
+
+        .login-brand {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+
+        .login-brand .brand-logo {
+            width: 100px;
+            height: 100px;
+            object-fit: contain;
+            display: block;
+            padding: 6px;
+            border-radius: 10%;
+            background: var(--scout-orange);
+        }
+
+        .brand-name {
+            display: flex;
+            flex-direction: column;
+            line-height: 0.9;
+            text-align: left;
+        }
+
+        .brand-name strong {
+            font-family: "Montserrat", sans-serif;
+            font-size: 15px;
+            letter-spacing: 1.2px;
+            color: var(--scout-brown);
+        }
+
+        .brand-name span {
+            margin-top: 5px;
+            font-size: 7px;
+            letter-spacing: 2.2px;
+            color: var(--gray);
+        }
+
+        .login-form {
+            display: grid;
+            gap: 20px;
+        }
+
+        .login-error {
+            display: none;
+            padding: 12px 14px;
+            border-radius: 12px;
+            background: rgba(197, 48, 48, 0.08);
+            border: 1px solid rgba(197, 48, 48, 0.2);
+            color: #9e2f2f;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .login-error.show {
+            display: block;
+        }
+
+        .login-field {
+            display: grid;
+            gap: 8px;
+        }
+
+        .login-field label {
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--scout-brown);
+        }
+
+        .login-field input {
+            width: 100%;
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            background: #fff;
+            padding: 14px 16px;
+            font: inherit;
+            color: var(--scout-brown);
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .login-field input:focus {
+            outline: none;
+            border-color: var(--scout-orange);
+            box-shadow: 0 0 0 4px rgba(211, 138, 45, 0.12);
+        }
+
+        .login-submit {
+            appearance: none;
+            border: none;
+            border-radius: 999px;
+            background: linear-gradient(135deg, var(--scout-orange), #c1791a);
+            color: #fff;
+            font: inherit;
+            font-weight: 800;
+            letter-spacing: 0.02em;
+            padding: 15px 20px;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            box-shadow: 0 12px 30px rgba(211, 138, 45, 0.18);
+        }
+
+        .login-submit:hover,
+        .login-submit:focus-visible {
+            transform: translateY(-2px);
+        }
+
+        .login-submit:disabled {
+            opacity: 0.7;
+            cursor: wait;
+            transform: none;
+        }
+
+        .login-loading {
+            display: none;
+            text-align: center;
+        }
+
+        .login-spinner {
+            display: inline-block;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            border: 2px solid rgba(78, 43, 26, 0.2);
+            border-top-color: var(--scout-orange);
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .login-attempt-limit {
+            display: none;
+            border-radius: 14px;
+            border: 1px solid rgba(197, 48, 48, 0.25);
+            background: rgba(197, 48, 48, 0.06);
+            padding: 18px 16px;
+            text-align: center;
+            color: #8f2b2b;
+        }
+
+        .login-attempt-limit p {
+            margin: 0;
+            font-size: 13px;
+        }
+
+        .login-attempt-limit strong {
+            display: block;
+            margin: 14px 0 8px;
+            font-size: 26px;
+            letter-spacing: -0.06em;
+        }
+
+        @media (max-width: 480px) {
+            .login-page {
+                align-items: start;
+                padding: max(18px, env(safe-area-inset-top)) 12px max(18px, env(safe-area-inset-bottom));
+            }
+
+            .login-container {
+                width: 100%;
+                padding: 26px 18px 22px;
+                border-radius: 20px;
+            }
+
+            .login-header {
+                margin-bottom: 22px;
+            }
+
+            .login-brand .brand-logo {
+                width: 82px;
+                height: 82px;
+            }
+
+            .login-submit,
+            .login-field input {
+                min-height: 48px;
+            }
+        }
+    </style>
+</head>
+<body class="login-page">
+    <div class="login-container">
+        <div class="login-header">
+            <div class="login-brand" aria-label="Scouts Lille-Poederlee">
+                <img class="brand-logo" src="assets/images/scouts.png" alt="Scouts Lille-Poederlee logo">
+            </div>
+        </div>
+
+        <div id="loginContent" class="login-content">
+            <form id="loginForm" class="login-form" novalidate>
+                <div id="loginError" class="login-error" role="alert" aria-live="polite"></div>
+
+                <div class="login-field">
+                    <label for="username">Gebruikersnaam</label>
+                    <input type="text" id="username" name="username" placeholder="Voer gebruikersnaam in" autocomplete="username" required>
+                </div>
+
+                <div class="login-field">
+                    <label for="password">Wachtwoord</label>
+                    <input type="password" id="password" name="password" placeholder="Voer wachtwoord in" autocomplete="current-password" required>
+                </div>
+
+                <button type="submit" class="login-submit" id="submitBtn">Inloggen</button>
+
+                <div id="loadingSpinner" class="login-loading">
+                    <div class="login-spinner"></div>
+                </div>
+            </form>
+        </div>
+
+        <div id="attemptLimitContent" class="login-attempt-limit">
+            <p>Teveel mislukte inlogpogingen</p>
+            <strong id="remainingTime">5:00</strong>
+            <p>Probeer later opnieuw.</p>
+        </div>
+    </div>
+
+    <script>
+        const loginForm = document.getElementById('loginForm');
+        const usernameInput = document.getElementById('username');
+        const passwordInput = document.getElementById('password');
+        const submitBtn = document.getElementById('submitBtn');
+        const errorDiv = document.getElementById('loginError');
+        const loadingSpinner = document.getElementById('loadingSpinner');
+
+        function showError(message) {
+            errorDiv.textContent = message;
+            errorDiv.classList.add('show');
+        }
+
+        function hideError() {
+            errorDiv.textContent = '';
+            errorDiv.classList.remove('show');
+        }
+
+        function setLoading(isLoading) {
+            submitBtn.disabled = isLoading;
+            loadingSpinner.style.display = isLoading ? 'block' : 'none';
+        }
+
+        async function readJsonResponse(response) {
+            const text = await response.text();
+            if (!text) {
+                throw new Error(`De server gaf geen antwoord (${response.status}).`);
+            }
+
+            try {
+                return JSON.parse(text);
+            } catch (error) {
+                throw new Error(`Ongeldige serverrespons (${response.status}).`);
+            }
+        }
+
+        async function checkSessionAndRedirect() {
+            try {
+                const response = await fetch('/api/session');
+                const data = await readJsonResponse(response);
+                if (data.authenticated) {
+                    window.location.href = '/admin';
+                }
+            } catch (error) {
+                // Geen actieve sessie, blijf op de inlogpagina.
+            }
+        }
+
+        loginForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            hideError();
+
+            const username = usernameInput.value.trim();
+            const password = passwordInput.value;
+            if (!username || !password) {
+                showError('Vul zowel gebruikersnaam en wachtwoord in.');
+                return;
+            }
+
+            setLoading(true);
+
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await readJsonResponse(response);
+                if (!response.ok) {
+                    throw new Error(data.message || 'Inloggen mislukt');
+                }
+
+                if (data.redirectTo) {
+                    window.location.href = data.redirectTo;
+                }
+            } catch (error) {
+                showError(error.message || 'Inloggen mislukt');
+            } finally {
+                setLoading(false);
+            }
+        });
+
+        setTimeout(() => usernameInput.focus(), 100);
+        checkSessionAndRedirect();
+    </script>
+</body>
+</html>
