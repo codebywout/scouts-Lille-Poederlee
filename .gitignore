@@ -1,9 +1,10 @@
 .env
 auth-config.php
-.google-service-account.json
+data/.google-service-account.json
 data/.google-oauth.json
 data/google-drive.json
 .sessions/
+.vscode/
 uploads/*
 !uploads/.htaccess
 npm-debug.log*
