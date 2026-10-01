@@ -30,6 +30,16 @@
     return [...root.querySelectorAll(selector)];
   }
 
+  function setMultilineText(element, value, separator = "\n") {
+    element.replaceChildren();
+    String(value ?? "")
+      .split(separator)
+      .forEach((line, index) => {
+        if (index > 0) element.append(document.createElement("br"));
+        element.append(document.createTextNode(line));
+      });
+  }
+
   const IMAGE_ASSET_VERSION = "20260930-3";
 
   function versionStaticImage(src) {
@@ -1305,18 +1315,21 @@
     email = "",
   ) {
     if (!container) return;
+    container.replaceChildren();
 
-    const emailItem = includeEmail
-      ? `<li><strong>Email</strong> <span class="phone-number">${escapeHtml(email)}</span></li>`
-      : "";
-    container.innerHTML =
-      emailItem +
-      items
-        .map(
-          (item) =>
-            `<li><strong>${escapeHtml(item.name)}</strong> <span class="phone-number">${escapeHtml(item.phone)}</span></li>`,
-        )
-        .join("");
+    const appendItem = (label, value) => {
+      const item = document.createElement("li");
+      const strong = document.createElement("strong");
+      const phone = document.createElement("span");
+      strong.textContent = label;
+      phone.className = "phone-number";
+      phone.textContent = value ?? "";
+      item.append(strong, document.createTextNode(" "), phone);
+      container.append(item);
+    };
+
+    if (includeEmail) appendItem("Email", email);
+    items.forEach((item) => appendItem(item.name, item.phone));
   }
 
   function renderLeadershipEditor(items, containerId, type) {
@@ -2490,7 +2503,7 @@
           if (element.tagName === "INPUT" || element.tagName === "TEXTAREA") {
             element.value = value;
           } else {
-            element.innerHTML = escapeHtml(value).replace(/\n/g, "<br>");
+            setMultilineText(element, value);
           }
         });
       }
@@ -2617,7 +2630,10 @@
 
       const footerAddress = qs(".footer-column p");
       if (footerAddress && data.contact.address) {
-        footerAddress.innerHTML = data.contact.address.replace(/,/g, ",<br>");
+        setMultilineText(
+          footerAddress,
+          data.contact.address.replace(/,/g, ",\n"),
+        );
       }
 
       const aboutHero = qs(".about-hero");
