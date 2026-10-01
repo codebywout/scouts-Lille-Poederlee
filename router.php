@@ -26,6 +26,7 @@ $cleanRoutes = [
     '/uniform' => 'pages/uniform.html',
     '/verkenners' => 'pages/verkenners.html',
     '/welpen' => 'pages/welpen.html',
+    '/privacybeleid' => 'pages/privacyverklaring.html',
 ];
 
 if ($requestPath === '/index.html') {
