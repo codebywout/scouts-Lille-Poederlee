@@ -100,6 +100,115 @@
     margin-bottom: 14px;
 }
 
+.privacy-card {
+    max-width: 900px;
+    justify-self: center;
+    width: 100%;
+    background: #fff;
+    padding: clamp(28px, 4.5vw, 56px);
+    border-color: var(--line);
+    box-shadow: 0 12px 32px rgba(43, 24, 14, 0.08);
+}
+
+.privacy-card h2 {
+    margin-top: 42px;
+    padding-top: 26px;
+    border-top: 1px solid rgba(78, 43, 26, 0.12);
+    color: var(--scout-brown);
+    font-size: clamp(26px, 3vw, 36px);
+    line-height: 1.1;
+    letter-spacing: -1px;
+}
+
+.privacy-card h3 {
+    margin-top: 26px;
+    color: var(--scout-brown);
+    font-family: "Montserrat", sans-serif;
+    font-size: clamp(19px, 2vw, 23px);
+    line-height: 1.2;
+}
+
+.privacy-card h2:first-of-type {
+    margin-top: 30px;
+    padding-top: 0;
+    border-top: 0;
+}
+
+.privacy-card p,
+.privacy-card li {
+    max-width: 74ch;
+    color: var(--gray);
+}
+
+.privacy-card p {
+    margin-bottom: 16px;
+}
+
+.privacy-card .privacy-lead {
+    margin-bottom: 26px;
+    padding: 0;
+    color: var(--gray);
+    font-size: 1.08rem;
+    line-height: 1.75;
+}
+
+.privacy-card ul {
+    max-width: 74ch;
+    margin: 10px 0 20px;
+    padding-left: 1.35rem;
+}
+
+.privacy-card li {
+    margin-bottom: 8px;
+    padding-left: 4px;
+}
+
+.privacy-card a:not(.button) {
+    color: var(--green);
+    font-weight: 700;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+.privacy-download {
+    margin-top: 34px;
+    margin-bottom: 0;
+    padding-top: 28px;
+    border-top: 1px solid rgba(78, 43, 26, 0.12);
+}
+
+.privacy-download .button {
+    min-height: 48px;
+}
+
+.privacy-page .page-hero {
+    min-height: 330px;
+    background:
+        linear-gradient(90deg, rgba(13, 36, 25, 0.86), rgba(23, 63, 43, 0.42)),
+        url("/assets/images/domein2.jpg?v=20260930-3") center / cover;
+}
+
+.privacy-page .page-hero .hero-content {
+    padding-top: 166px;
+}
+
+.privacy-page .page-hero .hero-content h1 {
+    max-width: 780px;
+}
+
+.privacy-page .page-hero .hero-content p {
+    margin-bottom: 0;
+}
+
+.privacy-page .page-main {
+    margin-top: -34px;
+    padding-bottom: 86px;
+}
+
+.privacy-page .footer {
+    position: relative;
+}
+
 .page-intro {
     display: grid;
     grid-template-columns: 1.1fr 0.9fr;
@@ -884,6 +993,85 @@
     .uniform-price {
         padding: 12px 14px;
     }
+}
+
+@media (max-width: 760px) {
+    .privacy-page .page-hero {
+        min-height: 286px;
+    }
+
+    .privacy-page .page-hero .hero-content {
+        padding: 126px max(20px, 6%) 42px;
+    }
+
+    .privacy-page .page-hero .hero-content h1 {
+        font-size: clamp(36px, 10.5vw, 52px);
+        letter-spacing: -2px;
+    }
+
+    .privacy-page .page-hero .hero-content p {
+        max-width: 34ch;
+        font-size: 16px;
+    }
+
+    .privacy-page .page-main {
+        margin-top: -20px;
+        padding-bottom: 56px;
+    }
+
+    .privacy-card {
+        border-radius: 20px;
+        padding: 28px max(20px, 6%) 32px;
+    }
+
+    .privacy-card h2 {
+        margin-top: 34px;
+        padding-top: 22px;
+        font-size: clamp(24px, 7vw, 31px);
+    }
+
+    .privacy-card h2:first-of-type {
+        margin-top: 24px;
+    }
+
+    .privacy-card h3 {
+        margin-top: 24px;
+        font-size: 18px;
+    }
+
+    .privacy-card p,
+    .privacy-card li {
+        font-size: 15px;
+        line-height: 1.72;
+    }
+
+    .privacy-card .privacy-lead {
+        margin-bottom: 22px;
+        padding: 0;
+        font-size: 16px;
+        line-height: 1.65;
+    }
+
+    .privacy-card ul {
+        padding-left: 1.15rem;
+    }
+
+    .privacy-download .button {
+        width: 100%;
+        text-align: center;
+    }
+}
+
+@media (max-width: 380px) {
+    .privacy-page .page-hero .hero-content {
+        padding-top: 118px;
+    }
+
+    .privacy-card {
+        padding-right: 18px;
+        padding-left: 18px;
+    }
+
 }
 
 .secondhand-page .page-shell {
