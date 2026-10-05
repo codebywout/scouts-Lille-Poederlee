@@ -2423,7 +2423,12 @@
                 pendingUpload.file,
                 title,
               );
-              if (result.driveError) driveErrors.push(branch);
+              if (result.driveError) {
+                driveErrors.push(
+                  result.driveErrorMessage ||
+                    "De Google Drive-upload is mislukt.",
+                );
+              }
               pendingPlanningUploads.delete(branch);
             } finally {
               if (uploadButton?.isConnected) {
@@ -2440,7 +2445,7 @@
           renderAdminPanel();
           if (driveErrors.length) {
             setSaveStatus(
-              "Maandplanning staat op de website, maar kon niet naar Google Drive worden geüpload.",
+              `Maandplanning staat op de website, maar Google Drive gaf deze fout: ${driveErrors[0]}`,
               "error",
             );
           } else {

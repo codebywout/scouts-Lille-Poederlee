@@ -399,6 +399,7 @@ try {
         $planningTitle = trim((string) ($_POST['title'] ?? ''));
         $driveUploaded = false;
         $driveError = false;
+        $driveErrorMessage = '';
         if (scouts_google_drive_is_configured()) {
             $titlePart = preg_replace('/\.pdf$/i', '', $planningTitle);
             $titlePart = preg_replace('/[^a-zA-Z0-9]+/', '_', (string) $titlePart);
@@ -410,6 +411,8 @@ try {
                 $driveUploaded = true;
             } catch (Throwable $error) {
                 $driveError = true;
+                $driveErrorMessage = $error->getMessage();
+                error_log('Google Drive maandplanning upload mislukt: ' . $driveErrorMessage);
             }
         }
 
@@ -417,6 +420,7 @@ try {
             'success' => true,
             'driveUploaded' => $driveUploaded,
             'driveError' => $driveError,
+            'driveErrorMessage' => $driveErrorMessage,
             'path' => '/uploads/' . $filename . '?v=' . time(),
         ]);
     }
