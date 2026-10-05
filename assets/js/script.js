@@ -2443,13 +2443,14 @@
 
           await persist(data);
           renderAdminPanel();
+          PageRenderer.updatePageFromData();
           if (driveErrors.length) {
             setSaveStatus(
               `Maandplanning staat op de website, maar Google Drive gaf deze fout: ${driveErrors[0]}`,
               "error",
             );
           } else {
-            PageRenderer.updatePageFromData();
+            setSaveStatus("Maandplanning opgeslagen.", "saved");
           }
         } catch (error) {
           console.error(error);
