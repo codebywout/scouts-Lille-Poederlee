@@ -1457,7 +1457,10 @@
               </label>
             </div>
             <p class="form-help">OAuth: ${googleDriveSettings.oauthConfigured ? "verbonden" : "nog niet verbonden"}</p>
-            <button type="button" class="button button-secondary" data-google-connect ${googleDriveSettings.oauthConfigured ? "disabled" : ""}>Google-account verbinden</button>
+            <div class="admin-actions">
+              <button type="button" class="button button-secondary" data-google-connect>${googleDriveSettings.oauthConfigured ? "Google-account opnieuw verbinden" : "Google-account verbinden"}</button>
+              <button type="button" class="button button-ghost-dark" data-google-oauth-reset>OAuth-client resetten</button>
+            </div>
           </section>
         `;
       return;
@@ -2125,6 +2128,30 @@
           window.location.href = result.url;
         } catch (error) {
           setSaveStatus(error.message || "Google verbinden mislukt", "error");
+        }
+        return;
+      }
+
+      const googleOAuthReset = event.target.closest("[data-google-oauth-reset]");
+      if (googleOAuthReset) {
+        if (!window.confirm("Wil je de Google OAuth-client en koppeling resetten? Daarna moet je een nieuw clientbestand uploaden en opnieuw verbinden.")) {
+          return;
+        }
+        try {
+          const response = await fetch("/api/google-drive/oauth-reset", {
+            method: "POST",
+          });
+          const result = await response.json().catch(() => ({}));
+          if (!response.ok) {
+            throw new Error(result.message || "OAuth-client resetten mislukt.");
+          }
+          googleDriveSettings.oauthConfigured = false;
+          googleDriveSettings.oauthEmail = "";
+          renderAdminPanel();
+          setSaveStatus("OAuth-client gereset. Upload nu een nieuw clientbestand.", "saved");
+        } catch (error) {
+          console.error(error);
+          setSaveStatus(error.message || "OAuth-client resetten mislukt.", "error");
         }
         return;
       }

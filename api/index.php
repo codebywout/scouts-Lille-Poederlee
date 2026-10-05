@@ -111,6 +111,13 @@ try {
         scouts_json_response(['success' => true, 'email' => $credentials['client_email']]);
     }
 
+    if ($route === 'google-drive/oauth-reset' && $method === 'POST') {
+        scouts_require_google_settings_access();
+        scouts_require_same_origin();
+        scouts_write_google_oauth([]);
+        scouts_json_response(['success' => true]);
+    }
+
     if ($route === 'google-drive/oauth-client' && $method === 'POST') {
         scouts_require_google_settings_access();
         scouts_require_same_origin();
@@ -126,13 +133,10 @@ try {
             || !is_string(($client['redirect_uris'][0] ?? null))) {
             scouts_json_response(['message' => 'Dit is geen geldig Google OAuth-clientbestand.'], 400);
         }
-        $existing = scouts_google_oauth_data() ?? [];
         scouts_write_google_oauth([
             'client_id' => $client['client_id'],
             'client_secret' => $client['client_secret'],
             'redirect_uri' => $client['redirect_uris'][0],
-            'refresh_token' => $existing['refresh_token'] ?? null,
-            'email' => $existing['email'] ?? '',
         ]);
         scouts_json_response(['success' => true]);
     }
