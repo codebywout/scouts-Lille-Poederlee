@@ -44,6 +44,16 @@ if ($requestPath === '/admin.html' || $requestPath === '/admin/index.html') {
     exit;
 }
 
+if (in_array($requestPath, [
+    '/privacybeleid.html',
+    '/privacyverklaring',
+    '/privacyverklaring.html',
+    '/pages/privacyverklaring.html',
+], true)) {
+    header('Location: /privacybeleid', true, 301);
+    exit;
+}
+
 $legacyPageNames = [
     'over-ons', 'inschrijven', 'jins', 'jongverkenners', 'kapoenen',
     'tweedehands', 'uniform', 'verkenners', 'welpen',

@@ -1,0 +1,7 @@
+User-agent: *
+Disallow: /admin
+Disallow: /login
+Disallow: /api/
+Disallow: /data/
+
+Sitemap: https://scoutslille.be/sitemap.xml
