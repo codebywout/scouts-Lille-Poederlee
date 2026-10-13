@@ -284,10 +284,6 @@
         grid-template-areas: "main logo";
     }
 
-    .branch-arrow {
-        display: none;
-    }
-
     .page-hero,
     .registration-hero,
     .secondhand-hero {
@@ -673,6 +669,7 @@
         z-index: 3;
         margin-top: -80px;
         padding-top: 0;
+        padding-bottom: 64px;
     }
 
     body.home-page .branches .section-top {
@@ -684,5 +681,11 @@
     body.home-page .branches .branch-list {
         position: relative;
         top: -48px;
+    }
+}
+
+@media (max-width: 1024px) {
+    body.home-page .branches {
+        padding-bottom: 32px;
     }
 }

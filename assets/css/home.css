@@ -134,25 +134,30 @@ body.home-page .hero {
 }
 
 .section-top > p {
-    max-width: 430px;
+    max-width: 460px;
     color: var(--gray);
+    font-size: 16px;
+    line-height: 1.55;
 }
 
 .branch-list {
-    border-top: 1px solid var(--line);
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
 }
 
 .branch {
     position: relative;
-    display: grid;
-    grid-template-columns: 1fr 110px 42px;
-    align-items: center;
-    min-height: 116px;
-    border-bottom: 1px solid var(--line);
-    background: rgba(255,255,255,0.35);
-    transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
-    gap: 24px;
-    padding: 8px 10px 8px 8px;
+    display: flex;
+    min-height: 238px;
+    flex-direction: column;
+    justify-content: flex-end;
+    border: 1px solid rgba(78, 43, 26, 0.12);
+    border-radius: 24px;
+    background: linear-gradient(150deg, rgba(255,255,255,0.82), rgba(255,248,238,0.58));
+    box-shadow: 0 12px 24px rgba(46, 26, 18, 0.04);
+    transition: background 0.25s ease, transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+    padding: 24px;
     color: inherit;
     overflow: hidden;
 }
@@ -167,57 +172,99 @@ body.home-page .hero {
     z-index: 0;
 }
 
+.branch::after {
+    content: "";
+    position: absolute;
+    right: -34px;
+    top: -42px;
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    background: rgba(211, 138, 45, 0.1);
+    pointer-events: none;
+}
+
 .branch:hover,
 .branch:focus-visible {
     background: #fff;
     background: linear-gradient(180deg, rgba(255,255,255,0.95), rgba(255,255,255,0.78));
-    transform: translateY(-2px);
-    box-shadow: 0 18px 30px rgba(46, 26, 18, 0.06);
+    border-color: rgba(211, 138, 45, 0.42);
+    transform: translateY(-5px);
+    box-shadow: 0 20px 34px rgba(46, 26, 18, 0.1);
 }
 
+.branch-main,
 .branch-main h3,
-.branch-main span,
-.branch-arrow {
+.branch-main span {
     position: relative;
     z-index: 1;
 }
 
-.branch-main h3 {
-    font-family: "Montserrat", sans-serif;
-    font-size: clamp(24px, 2vw, 34px);
+.branch-main {
+    width: 100%;
 }
 
-.branch-main span {
+.branch-main h3 {
+    font-family: "Montserrat", sans-serif;
+    font-size: clamp(22px, 2vw, 30px);
+    line-height: 1.05;
+}
+
+.branch-age {
+    display: block;
+    margin-top: 10px;
     font-size: 13px;
     color: var(--gray);
 }
 
+.branch-kenteken {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    z-index: 1;
+    display: grid;
+    width: 92px;
+    height: 92px;
+    place-items: center;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--branch-accent) 10%, white);
+    box-shadow: 0 10px 22px rgba(46, 26, 18, 0.08), inset 0 0 0 1px color-mix(in srgb, var(--branch-accent) 22%, transparent);
+}
+
 .branch-logo {
     display: block;
-    width: 85px;
-    height: 85px;
-    min-width: 76px;
+    width: 76px;
+    height: 76px;
     border-radius: 50%;
     object-fit: contain;
 }
 
-
-.branch-logo {
-    padding: 0;
+@media (max-width: 980px) {
+    .branch-list {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
 }
 
-.branch-arrow {
-    justify-self: end;
-    margin-right: 10px;
-    text-align: right;
-    font-size: 24px;
-    color: var(--scout-brown);
-    transition: transform 0.2s ease;
-}
+@media (max-width: 640px) {
+    .section-top {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 16px;
+    }
 
-.branch:hover .branch-arrow,
-.branch:focus-visible .branch-arrow {
-    transform: translate(5px, -3px);
+    .section-top > p {
+        max-width: 100%;
+    }
+
+    .branch-list {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .branch {
+        min-height: 210px;
+        padding: 22px;
+    }
 }
 
 .agenda {
@@ -917,12 +964,6 @@ body.home-page .hero {
     }
 
 
-    .branch-arrow {
-        margin: 0;
-        font-size: 17px;
-    }
-
-
     /* ------------------------------------------------------
        PLANNING
        ------------------------------------------------------ */
@@ -1397,10 +1438,6 @@ body.home-page .hero {
         font-size: 11px;
     }
 
-    .branch-arrow {
-        font-size: 17px;
-    }
-
     .agenda-item {
         grid-template-columns: 66px minmax(0, 1fr);
         gap: 10px;
@@ -1637,4 +1674,208 @@ html {
 /* 3. agenda-datum krijgt lichte "tik"-animatie i.p.v. platte hover-shadow */
 .agenda-date {
     transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease;
+}
+
+/* Final branch-card layout */
+.branch-list {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 16px;
+    border-top: 0;
+}
+
+.branches h2 {
+    position: relative;
+    width: fit-content;
+}
+
+.branch {
+    display: flex;
+    flex: 0 1 calc((100% - 32px) / 3);
+    min-height: 252px;
+    flex-direction: column;
+    justify-content: flex-end;
+    gap: 0;
+    padding: 24px;
+    border: 1px solid rgba(78, 43, 26, 0.12);
+    border-radius: 24px;
+    background: linear-gradient(150deg, rgba(255,255,255,0.82), rgba(255,248,238,0.58));
+    box-shadow: 0 12px 24px rgba(46, 26, 18, 0.04);
+    transition: background 0.25s ease, transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+}
+
+.branch-kapoenen {
+    --branch-accent: #b6ce36;
+}
+
+.branch-welpen {
+    --branch-accent: #4f9b70;
+}
+
+.branch-jongverkenners {
+    --branch-accent: #d9953d;
+}
+
+.branch-verkenners {
+    --branch-accent: #3f68ad;
+}
+
+.branch-jins {
+    --branch-accent: #bd314d;
+}
+
+.branch::before {
+    display: block;
+}
+
+.branch:focus-visible {
+    outline: 3px solid rgba(211, 138, 45, 0.55);
+    outline-offset: 4px;
+}
+
+.branch-main {
+    display: block;
+    width: 100%;
+}
+
+.branch-main h3 {
+    font-size: clamp(22px, 2vw, 30px);
+    line-height: 1.05;
+}
+
+.branch-age {
+    display: block;
+    margin-top: 10px !important;
+    font-size: 13px !important;
+    line-height: 1.4;
+}
+
+.branch-kenteken {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    z-index: 1;
+    display: grid;
+    width: 92px;
+    height: 92px;
+    place-items: center;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--branch-accent) 10%, white);
+    box-shadow: 0 10px 22px rgba(46, 26, 18, 0.08), inset 0 0 0 1px color-mix(in srgb, var(--branch-accent) 22%, transparent);
+    transition: transform 0.25s ease, background 0.25s ease;
+}
+
+.branch-logo {
+    width: 76px;
+    height: 76px;
+    min-width: 0;
+}
+
+.branch:hover .branch-kenteken,
+.branch:focus-visible .branch-kenteken {
+    background: #fff;
+    transform: translateY(-4px) rotate(4deg);
+}
+
+.branch:hover,
+.branch:focus-visible {
+    border-color: color-mix(in srgb, var(--branch-accent) 55%, white);
+}
+
+.branch-age {
+    color: color-mix(in srgb, var(--branch-accent) 45%, var(--gray)) !important;
+}
+
+.planning {
+    padding-top: 28px;
+}
+
+.branches {
+    padding-bottom: 64px;
+}
+
+@media (max-width: 1100px) {
+    .branches {
+        padding-bottom: 32px;
+    }
+
+    .branch-list {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 760px) {
+    .branch-list {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 640px) {
+    .branch-list {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .branch {
+        min-height: 132px;
+        justify-content: center;
+        padding: 18px 58px 18px 18px;
+        border-radius: 20px;
+    }
+
+    .branch-main {
+        padding-right: 82px;
+    }
+
+    .branch-main h3 {
+        font-size: clamp(20px, 6vw, 25px);
+    }
+
+    .branch-age {
+        margin-top: 7px !important;
+        font-size: 12px !important;
+    }
+
+    .branch-kenteken {
+        top: 50%;
+        right: 18px;
+        width: 64px;
+        height: 64px;
+        transform: translateY(-50%);
+    }
+
+    .branch-logo {
+        width: 53px;
+        height: 53px;
+    }
+
+    .branch:hover .branch-kenteken,
+    .branch:focus-visible .branch-kenteken {
+        transform: translateY(-50%) rotate(4deg);
+    }
+}
+
+@media (max-width: 360px) {
+    .branch {
+        min-height: 118px;
+        padding: 16px 52px 16px 16px;
+    }
+
+    .branch-main {
+        padding-right: 74px;
+    }
+
+    .branch-kenteken {
+        right: 14px;
+        width: 58px;
+        height: 58px;
+    }
+
+    .branch-logo {
+        width: 48px;
+        height: 48px;
+    }
 }
