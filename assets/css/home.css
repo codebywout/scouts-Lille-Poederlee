@@ -1195,8 +1195,6 @@ body.home-page .hero {
     }
 
     .page-intro,
-    .uniform-grid,
-    .uniform-layout,
     .new-member-layout,
     .registration-layout,
     .branch-detail-layout {
@@ -1236,46 +1234,6 @@ body.home-page .hero {
         min-height: 220px;
         max-height: 320px;
         border-radius: 18px;
-    }
-
-
-    /* ------------------------------------------------------
-       UNIFORM
-       ------------------------------------------------------ */
-
-    .uniform-grid {
-        gap: 10px;
-    }
-
-    .uniform-card {
-        padding: 19px 17px;
-        border-radius: 18px;
-    }
-
-    .uniform-icon {
-        width: 44px;
-        height: 44px;
-        border-radius: 13px;
-        margin-bottom: 13px;
-        font-size: 20px;
-    }
-
-    .uniform-rules-card {
-        padding: 21px 18px;
-    }
-
-    .uniform-rules {
-        gap: 15px;
-        padding-left: 19px;
-    }
-
-    .uniform-rules strong {
-        font-size: 15px;
-    }
-
-    .uniform-rules p {
-        font-size: 14px;
-        line-height: 1.55;
     }
 
 

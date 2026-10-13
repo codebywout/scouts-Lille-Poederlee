@@ -6,12 +6,12 @@
     <title>Inschrijven | Scouts Lille-Poederlee</title>
     <meta name="description" content="Inschrijven bij Scouts Lille-Poederlee.">
     <link rel="canonical" href="https://scoutslille.be/inschrijven">
-    <link rel="stylesheet" href="../assets/css/style.css?v=20260930-5">
+    <link rel="stylesheet" href="../assets/css/style.css?v=20261013-41">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Montserrat:wght@600;700;800;900&display=swap" rel="stylesheet">
 </head>
-<body>
+<body class="registration-page">
 
 <header class="navbar">
     <div class="nav-inner">
@@ -55,22 +55,101 @@
 
         <div class="hero-content">
             <h1>INSCHRIJVEN</h1>
-            <p>Word jij ons nieuwste lid? Klik dan op de knop 'Lid worden' voordat je de form invult. 
-                Uw kind mag wettelijk twee keer komen proberen bij Scouts Lille. Tijdens deze activiteiten is uw kind officieel verzekerd. Vanaf de derde keer dient het lidgeld betaald te worden.
-                Bestaande leden vragen we om ervoor te zorgen dat hun <a href="https://groepsadmin.scoutsengidsenvlaanderen.be/" target="_blank" rel="noopener noreferrer" style="color: #e85d04; text-decoration: underline;">individuele steekkaart</a> steeds volledig en up-to-date is.</p>
-
-            <div class="hero-actions">
-                <a href="https://groepsadmin.scoutsengidsenvlaanderen.be/groepsadmin/frontend/formulier/lidworden/A4306S" class="button button-primary" target="_blank" rel="noopener noreferrer">Lid worden <span>→</span></a>
-                <a href="/#takken" class="button button-ghost">Bekijk takken</a>
-            </div>
         </div>
     </section>
 
     <section class="page-main">
-        <section class="new-member-section">
+        <section class="registration-choice" aria-label="Type inschrijving">
+            <div class="registration-flow">
+                <div class="registration-choice-buttons" role="tablist" aria-label="Kies nieuw lid of huidig lid">
+                    <svg class="registration-liquid" aria-hidden="true" focusable="false">
+                        <defs>
+                            <filter id="registration-liquid-shadow" x="-20%" y="-40%" width="140%" height="190%" color-interpolation-filters="sRGB">
+                                <feDropShadow dx="0" dy="6" stdDeviation="3" flood-color="#3a2414" flood-opacity="0.16"></feDropShadow>
+                            </filter>
+                        </defs>
+                        <path filter="url(#registration-liquid-shadow)"></path>
+                    </svg>
+                    <button class="registration-choice-button is-active" id="new-member-tab" type="button" role="tab" aria-selected="true" aria-controls="new-member-info" data-registration-choice="new">
+                        <span>Nieuw lid</span>
+                    </button>
+                    <button class="registration-choice-button" id="current-member-tab" type="button" role="tab" aria-selected="false" aria-controls="current-member-info" data-registration-choice="current">
+                        <span>Huidig lid</span>
+                    </button>
+                </div>
+
+                <div class="registration-panels">
+                    <section class="registration-info registration-info-new is-visible" id="new-member-info" role="tabpanel" aria-labelledby="new-member-tab" data-registration-panel="new">
+                        <div class="registration-info-content">
+                            <ol class="registration-steps">
+                                <li>
+                                    <span>1</span>
+                                    <strong>Word lid bij Scouts en Gidsen Vlaanderen</strong>
+                                </li>
+                                <li>
+                                    <span>2</span>
+                                    <strong>Vul het formulier op deze pagina in</strong>
+                                </li>
+                                <li>
+                                    <span>3</span>
+                                    <strong>Betaal het lidgeld</strong>
+                                </li>
+                            </ol>
+                            <div class="registration-actions">
+                                <a href="https://groepsadmin.scoutsengidsenvlaanderen.be/groepsadmin/frontend/formulier/lidworden/A4306S" class="button button-primary registration-main-cta" target="_blank" rel="noopener noreferrer">Lid worden <span>↗</span></a>
+                                <a href="#inschrijving" class="button button-ghost-dark registration-secondary-cta" data-show-registration>Naar formulier <span>↓</span></a>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="registration-info registration-info-current" id="current-member-info" role="tabpanel" aria-labelledby="current-member-tab" data-registration-panel="current" aria-hidden="true" inert>
+                        <div class="registration-info-content">
+                            <ol class="registration-steps">
+                                <li>
+                                    <span>1</span>
+                                    <strong>Controleer je individuele steekkaart</strong>
+                                </li>
+                                <li>
+                                    <span>2</span>
+                                    <strong>Vul het formulier op deze pagina in</strong>
+                                </li>
+                                <li>
+                                    <span>3</span>
+                                    <strong>Betaal het lidgeld</strong>
+                                </li>
+                            </ol>
+                            <div class="registration-actions">
+                                <div class="registration-steekkaart-row">
+                                    <a href="https://groepsadmin.scoutsengidsenvlaanderen.be/groepsadmin/frontend/" class="button button-primary registration-main-cta registration-button-current" target="_blank" rel="noopener noreferrer">Individuele steekkaart <span>↗</span></a>
+                                    <button
+                                        type="button"
+                                        class="registration-help-toggle"
+                                        data-registration-help
+                                        aria-expanded="false"
+                                        aria-controls="steekkaart-help"
+                                    >
+                                        ?
+                                        <span class="visually-hidden">Meer info over de individuele steekkaart</span>
+                                    </button>
+                                </div>
+                                <div class="registration-help" id="steekkaart-help" hidden>
+                                    <p>Log in bij Scouts en Gidsen Vlaanderen met je lidnummer. Weet je je lidnummer niet meer? Stuur dan een mail naar de groepsleiding. Controleer of je gegevens nog kloppen en pas ze aan indien nodig.</p>
+                                </div>
+                                <a href="#inschrijving" class="button button-ghost-dark registration-secondary-cta" data-show-registration>Naar formulier <span>↓</span></a>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+            </div>
+        </section>
+
+        <section class="new-member-section" id="inschrijving" hidden>
             <div class="new-member-layout">
                 <div class="registration-form-slot">
                     <form id="registrationForm" class="registration-form">
+                    <div class="registration-section-heading">
+                        <h2>Vul je gegevens in</h2>
+                    </div>
                     <div class="field-row">
                         <label class="field-group">
                             <span>Voornaam</span>
@@ -85,14 +164,16 @@
 
                     <label class="field-group">
                         <span>Tak</span>
-                        <select name="tak" required>
-                            <option value="">Kies een tak</option>
-                            <option value="kapoenen">Kapoenen</option>
-                            <option value="welpen">Welpen</option>
-                            <option value="jongverkenners">Jongverkenners</option>
-                            <option value="verkenners">Verkenners</option>
-                            <option value="jins">Jins</option>
-                        </select>
+                        <span class="field-select">
+                            <select name="tak" required>
+                                <option value="" disabled selected>Kies een tak</option>
+                                <option value="kapoenen">Kapoenen</option>
+                                <option value="welpen">Welpen</option>
+                                <option value="jongverkenners">Jongverkenners</option>
+                                <option value="verkenners">Verkenners</option>
+                                <option value="jins">Jins</option>
+                            </select>
+                        </span>
                     </label>
 
                     <label class="field-group">
@@ -100,36 +181,36 @@
                         <textarea name="opmerkingen" rows="1" placeholder="Bijkomende informatie..."></textarea>
                     </label>
 
-                    <label class="checkbox-row">
-                        <input type="checkbox" name="kennismaking" required>
-                        <span>Mijn <a href="https://groepsadmin.scoutsengidsenvlaanderen.be/" target="_blank" rel="noopener noreferrer" style="color: #e85d04; text-decoration: underline;">individuele steekkaart</a> is up to date.</span>
-                    </label>
-
                     <div class="submit-row">
-                        <button type="submit" class="button button-primary">Verstuur inschrijving</button>
+                        <button type="submit" class="button button-primary">Verstuur en ga naar betaling</button>
                     </div>
                     <p id="registrationStatus" class="form-note registration-status" role="status" aria-live="polite"></p>
                     </form>
                 </div>
-
-                <aside class="registration-form registration-payment-card">
-                    <span class="payment-kicker">Voltooi inschrijving</span>
-                    <dl class="payment-details">
-                        <div>
-                            <dt>Lidgeld</dt>
-                            <dd>€<span data-page-content="lidgeld"></span> per kind</dd>
-                        </div>
-                        <div>
-                            <dt>Rekeningnummer</dt>
-                            <dd><span data-page-content="rekeningnummer"></span></dd>
-                        </div>
-                        <div>
-                            <dt>Mededeling</dt>
-                            <dd>Naam van het kind - tak</dd>
-                        </div>
-                    </dl>
-                </aside>
             </div>
+
+            <aside class="registration-form registration-payment-card" id="registrationPayment" hidden>
+                <div class="registration-section-heading">
+                    <h2>Betaal het lidgeld</h2>
+                </div>
+                <div class="registration-payment-layout">
+                    <div class="registration-payment-action">
+                        <a
+                            id="registrationPaymentLink"
+                            class="button button-primary registration-button-current registration-payment-link"
+                            href="#"
+                        >
+                            Betaal in bankapp <span>↗</span>
+                        </a>
+                        <span hidden data-page-content="lidgeld"></span>
+                        <span hidden data-page-content="rekeningnummer"></span>
+                    </div>
+                    <div class="registration-payment-qr">
+                        <div id="registrationPaymentQr" class="registration-payment-qr-code" role="img" aria-label="Betaal-QR-code"></div>
+                        <p>Of scan de QR-code</p>
+                    </div>
+                </div>
+            </aside>
         </section>
     </section>
 </main>
@@ -171,7 +252,8 @@
     </div>
 </footer>
 
-<script src="../assets/js/script.js?v=20261013-3"></script>
+<script src="../assets/js/qrcode.min.js"></script>
+<script src="../assets/js/script.js?v=20261013-16"></script>
 
 </body>
 </html>

@@ -58,20 +58,24 @@
         letter-spacing: -1px;
     }
 
-    .page-intro,
-    .uniform-grid,
-    .uniform-layout {
+    .page-intro {
         grid-template-columns: 1fr;
         display: grid;
     }
 
-    .uniform-photo-stack {
-        position: static;
+    .new-member-layout,
+    .registration-layout,
+    .registration-payment-layout {
+        grid-template-columns: 1fr;
     }
 
-    .new-member-layout,
-    .registration-layout {
-        grid-template-columns: 1fr;
+    .registration-choice-buttons {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .registration-payment-qr {
+        justify-self: center;
+        width: min(100%, 280px);
     }
 
     .field-row {
@@ -81,6 +85,10 @@
     .registration-form,
     .contact-card {
         padding: 22px 18px;
+    }
+
+    .registration-info-content {
+        padding: 20px 18px;
     }
 
     .registration-form .button,
@@ -543,27 +551,12 @@
 
     .page-card,
     .registration-form,
-    .contact-card,
-    .uniform-card,
-    .uniform-rules-card {
+    .contact-card {
         padding-inline: 16px;
     }
 
-    .uniform-prices {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 8px;
-    }
-
-    .uniform-price {
-        align-items: flex-start;
-        flex-direction: column;
-        gap: 4px;
-        padding: 10px 11px;
-    }
-
-    .uniform-price span,
-    .uniform-price strong {
-        overflow-wrap: anywhere;
+    .tak-list li > span:not([class]) {
+        min-width: 0;
     }
 
     .page-picker-grid,

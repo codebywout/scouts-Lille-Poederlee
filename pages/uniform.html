@@ -8,7 +8,7 @@
     <title>Uniform | Scouts Lille-Poederlee</title>
     <meta name="description" content="Meer informatie over het uniform van Scouts Lille-Poederlee.">
     <link rel="canonical" href="https://scoutslille.be/uniform">
-    <link rel="stylesheet" href="../assets/css/style.css?v=20260930-9">
+    <link rel="stylesheet" href="../assets/css/style.css?v=20261013-49">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Montserrat:wght@600;700;800;900&display=swap" rel="stylesheet">
@@ -54,113 +54,150 @@
 
 <main class="page-shell">
     <section class="page-hero uniform-hero">
-
-        <div class="hero-content">
-            <h1>Het perfecte scoutsuniform</h1>
-            <p>Als scouts dragen we steeds een uniform. Bij kapoenen is dit een kapoenentrui tijdens de scoutsvergaderingen. 
-                Vanaf de welpen wordt dit een scoutshemd, korte broek en das!</p>
-            <p>Voor en na de vergaderingen kunnen er steeds dassen, truien en kentekens gekocht worden bij de leiding.</p>
-            <div class="uniform-prices">
-                <div class="uniform-price">
-                    <span>Kentekens</span>
-                    <strong>Gratis</strong>
-                </div>
-
-                <div class="uniform-price">
-                    <span>Scoutsdas Lille</span>
-                    <strong>€10</strong>
-                </div>
-
-                <div class="uniform-price">
-                    <span>Kapoenentrui Scouts Lille</span>
-                    <strong>€20</strong>
-                </div>
-
-                <div class="uniform-price">
-                    <span>Trui Scouts Lille</span>
-                    <strong>€25</strong>
-                </div>
-            </div>
+        <div class="page-hero-content">
+            <h1>Uniform</h1>
+            <p>Als scouts dragen we steeds een uniform. Bij kapoenen is dit een kapoenentrui tijdens de scoutsvergaderingen. Vanaf de welpen wordt dit een scoutshemd, korte broek en das!</p>
         </div>
     </section>
 
-    <section class="page-main uniform-page">
-        <div class="uniform-layout">
-            <div class="uniform-photo-stack">
-                <figure class="uniform-photo">
-                    <img src="/assets/images/hemd_voorkant.jpg" alt="Scouts tijdens een activiteit in de natuur">
-                </figure>
+    <section class="uniform-section uniform-overview">
+        <p class="uniform-lead">Voor en na de vergaderingen kunnen er steeds dassen, truien en kentekens gekocht worden bij de leiding.</p>
 
-                <figure class="uniform-photo">
-                    <img src="/assets/images/hemd_achterkant.jpg" style="transform: rotate(180deg);" alt="Scouts tijdens een activiteit in de natuur">
-                </figure>
+        <div class="uniform-shop-row">
+            <ul class="uniform-price-list">
+                <li>
+                    <span>Kentekens</span>
+                    <strong>Gratis</strong>
+                </li>
+                <li>
+                    <span>Scoutsdas Lille</span>
+                    <strong>€10</strong>
+                </li>
+                <li>
+                    <span>Kapoenentrui</span>
+                    <strong>€20</strong>
+                </li>
+                <li>
+                    <span>Trui Scouts Lille</span>
+                    <strong>€25</strong>
+                </li>
+            </ul>
 
-                <figure class="uniform-photo">
-                    <img src="https://images.unsplash.com/photo-1504150558240-0b4fd8946624?auto=format&amp;fit=crop&amp;w=900&amp;q=80" alt="Scouts tijdens een activiteit in de natuur">
+            <p class="uniform-shop-note">
+                Liever tweedehands?
+                <a href="/tweedehands">Bekijk het aanbod</a>
+            </p>
+        </div>
+    </section>
+
+    <section class="uniform-section uniform-guide" data-uniform-guide>
+        <div class="uniform-section-copy">
+            <h2>Waar hangt wat?</h2>
+            <p>Tik of hover op een nummer op het hemd voor meer info.</p>
+        </div>
+
+        <div class="uniform-guide-layout">
+            <div class="uniform-map-stack">
+                <div class="uniform-map" aria-label="Scoutshemd met aanduidingen">
+                    <img src="/assets/images/hemd_voorkant.jpg" alt="Scoutshemd vooraanzicht met genummerde kentekens">
+
+                    <button type="button" class="uniform-marker" style="--x: 89%; --y: 24%;" data-uniform-marker="1" aria-label="1. Groepslint" aria-describedby="uniform-rule-1">
+                        <span>1</span>
+                        <em>Groepslint</em>
+                    </button>
+                    <button type="button" class="uniform-marker" style="--x: 70%; --y: 18%;" data-uniform-marker="2" aria-label="2. Takteken" aria-describedby="uniform-rule-2">
+                        <span>2</span>
+                        <em>Takteken</em>
+                    </button>
+                    <button type="button" class="uniform-marker" style="--x: 70%; --y: 33%;" data-uniform-marker="3" aria-label="3. Jaarteken" aria-describedby="uniform-rule-3">
+                        <span>3</span>
+                        <em>Jaarteken</em>
+                    </button>
+                    <button type="button" class="uniform-marker" style="--x: 50%; --y: 35%;" data-uniform-marker="4" aria-label="4. Schildje van Lille" aria-describedby="uniform-rule-4">
+                        <span>4</span>
+                        <em>Schildje Lille</em>
+                    </button>
+                    <button type="button" class="uniform-marker" style="--x: 84%; --y: 85%;" data-uniform-marker="5" aria-label="5. Purperen schildje" aria-describedby="uniform-rule-5">
+                        <span>5</span>
+                        <em>Purperen schildje</em>
+                    </button>
+                    <button type="button" class="uniform-marker" style="--x: 52%; --y: 64%;" data-uniform-marker="6" aria-label="6. Belofteteken" aria-describedby="uniform-rule-6">
+                        <span>6</span>
+                        <em>Belofteteken</em>
+                    </button>
+                    <button type="button" class="uniform-marker" style="--x: 66%; --y: 58%;" data-uniform-marker="7" aria-label="7. Lintje van België" aria-describedby="uniform-rule-7">
+                        <span>7</span>
+                        <em>Lintje België</em>
+                    </button>
+                    <button type="button" class="uniform-marker" style="--x: 84%; --y: 72%;" data-uniform-marker="8" aria-label="8. Schildje van Vlaanderen" aria-describedby="uniform-rule-8">
+                        <span>8</span>
+                        <em>Vlaanderen</em>
+                    </button>
+                    <button type="button" class="uniform-marker" style="--x: 92%; --y: 50%;" data-uniform-marker="9" aria-label="9. Das" aria-describedby="uniform-rule-9">
+                        <span>9</span>
+                        <em>Das</em>
+                    </button>
+                    <button type="button" class="uniform-marker" style="--x: 18%; --y: 34%;" data-uniform-marker="10" aria-label="10. Jaarkentekens" aria-describedby="uniform-rule-10">
+                        <span>10</span>
+                        <em>Jaarkentekens</em>
+                    </button>
+                </div>
+
+                <figure class="uniform-photo uniform-photo-back-only">
+                    <img class="uniform-photo-back" src="/assets/images/hemd_achterkant.jpg" alt="Scoutshemd achteraanzicht">
                 </figure>
             </div>
-            
-            <div class="page-card uniform-rules-card">
-                <ol class="uniform-rules">
-                <li>
-                    <strong>Het groepslint</strong>
+
+            <ol class="uniform-rules">
+                <li id="uniform-rule-1" data-uniform-rule="1" tabindex="-1">
+                    <strong>Groepslint</strong>
                     <p>“St. Pieters – Lille, Scouts en gidsen Vlaanderen”.</p>
                 </li>
-
-                <li>
-                    <strong>Het takteken</strong>
-                    <p>De taktekens worden op de rechter mouw, onder het groepslintje, geplaatst. Het takteken van je huidige tak komt bovenaan. Je vorige taktekens schuiven telkens één plaats naar beneden.</p>
+                <li id="uniform-rule-2" data-uniform-rule="2" tabindex="-1">
+                    <strong>Takteken</strong>
+                    <p>Op de rechtermouw, onder het groepslint. Je huidige tak bovenaan; vorige takken schuiven naar beneden.</p>
                     <ul class="tak-list">
-                        <li><span>Kapoenen:</span> Gele Nar</li>
-                        <li><span>Welpen:</span> Groene Vlieger</li>
-                        <li><span>Jong-Verkenners:</span> Oranje Rugzak</li>
-                        <li><span>Verkenners:</span> Blauwe Fiets</li>
-                        <li><span>Jins:</span> Rode Voeten</li>
-                        <li><span>Leiding:</span> Paarse Boom</li>
+                        <li><span class="tak-dot tak-dot-kapoenen" aria-hidden="true"></span><span>Kapoenen</span> Gele Nar</li>
+                        <li><span class="tak-dot tak-dot-welpen" aria-hidden="true"></span><span>Welpen</span> Groene Vlieger</li>
+                        <li><span class="tak-dot tak-dot-jv" aria-hidden="true"></span><span>Jong-Verkenners</span> Oranje Rugzak</li>
+                        <li><span class="tak-dot tak-dot-vk" aria-hidden="true"></span><span>Verkenners</span> Blauwe Fiets</li>
+                        <li><span class="tak-dot tak-dot-jins" aria-hidden="true"></span><span>Jins</span> Rode Voeten</li>
+                        <li><span class="tak-dot tak-dot-leiding" aria-hidden="true"></span><span>Leiding</span> Paarse Boom</li>
                     </ul>
                 </li>
-
-                <li>
-                    <strong>Het jaarteken</strong>
-                    <p>Het jaarteken komt boven de rechterborstzak. Het jaarteken van het vorige jaar wordt verplaatst naar de onderkant van het hemd.</p>
+                <li id="uniform-rule-3" data-uniform-rule="3" tabindex="-1">
+                    <strong>Jaarteken</strong>
+                    <p>Boven de rechterborstzak. Het vorige jaarteken gaat naar de onderkant van het hemd.</p>
                 </li>
-
-                <li>
-                    <strong>Het schildje van Lille</strong>
-                    <p>Het schildje van “Scouts Lille” komt in het midden op de rechterborstzak.</p>
+                <li id="uniform-rule-4" data-uniform-rule="4" tabindex="-1">
+                    <strong>Schildje van Lille</strong>
+                    <p>In het midden op de rechterborstzak.</p>
                 </li>
-
-                <li>
-                    <strong>Het purperen schildje</strong>
-                    <p>Het purperen schildje komt op de linkermouw onder het schildje van Vlaanderen. Dit kenteken kan je enkel verkrijgen als je een internationaal kamp hebt meegedaan. Om de 5 jaar gaan de JV’s en de VK’s naar het buitenland. De Jins gaan om de 2 jaar op buitenlands kamp.</p>
+                <li id="uniform-rule-5" data-uniform-rule="5" tabindex="-1">
+                    <strong>Purperen schildje</strong>
+                    <p>Op de linkermouw, onder het schildje van Vlaanderen. Enkel na een internationaal kamp (JV’s en VK’s om de 5 jaar, Jins om de 2 jaar).</p>
                 </li>
-
-                <li>
-                    <strong>Het belofteteken</strong>
-                    <p>Als scout neem je een belofte af bij de Welpen of JV’s. Het schildje dat je hiervoor krijgt (de welp of de Franse lotus) komt hier te hangen. Dit krijg je van je leiding bij het afnemen van de belofte.</p>
+                <li id="uniform-rule-6" data-uniform-rule="6" tabindex="-1">
+                    <strong>Belofteteken</strong>
+                    <p>Na je belofte bij de Welpen of JV’s (welp of Franse lotus). Krijg je van je leiding.</p>
                 </li>
-
-                <li>
-                    <strong>Het lintje van België</strong>
-                    <p>Het lintje van België komt op de linker borstzakklep.</p>
+                <li id="uniform-rule-7" data-uniform-rule="7" tabindex="-1">
+                    <strong>Lintje van België</strong>
+                    <p>Op de linkerborstzakklep.</p>
                 </li>
-
-                <li>
-                    <strong>Het schildje van Vlaanderen</strong>
-                    <p>Het schildje van Vlaanderen komt bovenaan de linkermouw.</p>
+                <li id="uniform-rule-8" data-uniform-rule="8" tabindex="-1">
+                    <strong>Schildje van Vlaanderen</strong>
+                    <p>Bovenaan de linkermouw.</p>
                 </li>
-
-                <li>
-                    <strong>De das</strong>
-                    <p>De das van Scouts Lille is verplicht aan te kopen. Deze kan je kopen bij de leiding, zolang de voorraad strekt.</p>
+                <li id="uniform-rule-9" data-uniform-rule="9" tabindex="-1">
+                    <strong>Das</strong>
+                    <p>De das van Scouts Lille is verplicht. Te koop bij de leiding, zolang de voorraad strekt.</p>
                 </li>
-
-                <li>
+                <li id="uniform-rule-10" data-uniform-rule="10" tabindex="-1">
                     <strong>Jaarkentekens</strong>
-                    <p>De jaarkentekens van de voorbije jaren mogen vanonder op het hemd worden gehangen.</p>
+                    <p>Kentekens van vorige jaren mogen onderaan op het hemd.</p>
                 </li>
-                </ol>
-            </div>
+            </ol>
         </div>
     </section>
 </main>
@@ -202,7 +239,7 @@
     </div>
 </footer>
 
-<script src="../assets/js/script.js?v=20261013-3"></script>
+<script src="../assets/js/script.js?v=20261013-17"></script>
 
 </body>
 </html>

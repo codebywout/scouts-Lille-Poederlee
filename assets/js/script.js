@@ -208,20 +208,459 @@
     googleForm.remove();
   }
 
+  function getRegistrationPaymentInfo() {
+    let pageContent = {};
+    try {
+      pageContent = DataStore.get()?.pageContent?.inschrijven || {};
+    } catch {
+      pageContent = {};
+    }
+    const lidgeldText =
+      pageContent.lidgeld ||
+      document.querySelector('[data-page-content="lidgeld"]')?.textContent ||
+      "";
+    const rekeningnummer =
+      pageContent.rekeningnummer ||
+      document.querySelector('[data-page-content="rekeningnummer"]')?.textContent ||
+      "";
+    return { lidgeldText, rekeningnummer };
+  }
+
+  function normalizePaymentAmount(amount) {
+    const amountNumber = Number(String(amount || "").replace(",", ".").replace(/[^\d.]/g, ""));
+    return Number.isFinite(amountNumber) && amountNumber > 0 ? amountNumber : null;
+  }
+
+  function buildEpcPaymentPayload({ beneficiary, iban, amount, remittance }) {
+    const cleanIban = String(iban || "").replace(/\s+/g, "").toUpperCase();
+    const amountNumber = normalizePaymentAmount(amount);
+    const amountLine = amountNumber ? `EUR${amountNumber.toFixed(2)}` : "";
+    const remittanceText = String(remittance || "").trim().slice(0, 140);
+    const beneficiaryName = String(beneficiary || "Scouts Lille-Poederlee").trim().slice(0, 70);
+
+    return [
+      "BCD",
+      "002",
+      "1",
+      "SCT",
+      "",
+      beneficiaryName,
+      cleanIban,
+      amountLine,
+      "",
+      remittanceText,
+      "",
+    ].join("\n");
+  }
+
+  function buildPaytoPaymentHref({ beneficiary, iban, amount, remittance }) {
+    const cleanIban = String(iban || "").replace(/\s+/g, "").toUpperCase();
+    if (!cleanIban) return "#";
+
+    const amountNumber = normalizePaymentAmount(amount);
+    const params = new URLSearchParams();
+    if (amountNumber) params.set("amount", `EUR:${amountNumber.toFixed(2)}`);
+    if (beneficiary) params.set("receiver-name", String(beneficiary).trim().slice(0, 70));
+    if (remittance) params.set("message", String(remittance).trim().slice(0, 140));
+
+    const query = params.toString();
+    return `payto://iban/${cleanIban}${query ? `?${query}` : ""}`;
+  }
+
+  function renderRegistrationPaymentQr({ amount, iban, remittance }) {
+    const container = document.getElementById("registrationPaymentQr");
+    if (!container || typeof QRCode === "undefined") {
+      console.error("QR-bibliotheek of container ontbreekt.");
+      return;
+    }
+
+    const payload = buildEpcPaymentPayload({
+      beneficiary: "Scouts Lille-Poederlee",
+      iban,
+      amount,
+      remittance,
+    });
+
+    if (!iban) {
+      console.error("Geen rekeningnummer beschikbaar voor de betaal-QR.");
+      return;
+    }
+
+    container.replaceChildren();
+    // qrcodejs tekent in een lege container.
+    new QRCode(container, {
+      text: payload,
+      width: 180,
+      height: 180,
+      colorDark: "#2c180f",
+      colorLight: "#ffffff",
+      correctLevel: QRCode.CorrectLevel.M,
+    });
+  }
+
+  function clearRegistrationPaymentQr() {
+    const container = document.getElementById("registrationPaymentQr");
+    if (container) container.replaceChildren();
+  }
+
   function initRegistrationForm() {
     const registrationForm = document.getElementById("registrationForm");
+    const paymentCard = document.getElementById("registrationPayment");
+    const paymentReference = document.getElementById("registrationPaymentReference");
     if (!registrationForm) return;
+
+    const hidePaymentStep = () => {
+      if (!paymentCard) return;
+      paymentCard.hidden = true;
+      paymentCard.classList.remove("is-visible");
+      clearRegistrationPaymentQr();
+    };
+
+    const showPaymentStep = (voornaam, achternaam, takLabel) => {
+      if (!paymentCard) return;
+      const name = [voornaam, achternaam].filter(Boolean).join(" ").trim();
+      const remittance = [name, takLabel].filter(Boolean).join(" - ") || "Naam van het kind - tak";
+      const beneficiary = "Scouts Lille-Poederlee";
+      const { lidgeldText, rekeningnummer } = getRegistrationPaymentInfo();
+      const paymentLink = document.getElementById("registrationPaymentLink");
+
+      if (paymentLink) {
+        paymentLink.href = buildPaytoPaymentHref({
+          beneficiary,
+          iban: rekeningnummer,
+          amount: lidgeldText,
+          remittance,
+        });
+      }
+
+      if (paymentReference) paymentReference.textContent = remittance;
+
+      paymentCard.hidden = false;
+      paymentCard.classList.add("is-visible");
+
+      try {
+        renderRegistrationPaymentQr({
+          amount: lidgeldText,
+          iban: rekeningnummer,
+          remittance,
+        });
+      } catch (error) {
+        console.error("Betaal-QR aanmaken mislukt:", error);
+      }
+
+      paymentCard.scrollIntoView({ behavior: "smooth", block: "start" });
+    };
 
     registrationForm.addEventListener("submit", (event) => {
       event.preventDefault();
       if (!registrationForm.reportValidity()) return;
 
-      submitToGoogleForm(new FormData(registrationForm));
+      const formData = new FormData(registrationForm);
+      const voornaam = String(formData.get("voornaam") || "").trim();
+      const achternaam = String(formData.get("achternaam") || "").trim();
+      const takSelect = registrationForm.querySelector('select[name="tak"]');
+      const takLabel = takSelect?.selectedOptions?.[0]?.textContent?.trim() || "";
+
+      submitToGoogleForm(formData);
+      showPaymentStep(voornaam, achternaam, takLabel);
 
       registrationForm.reset();
       const status = document.getElementById("registrationStatus");
-      if (status) status.textContent = "Succesvol verzonden.";
+      if (status) status.textContent = "Formulier verzonden. Betaal hieronder om af te ronden.";
     });
+
+    registrationForm._hidePaymentStep = hidePaymentStep;
+  }
+
+  function initRegistrationChoice() {
+    const buttons = qsa("[data-registration-choice]");
+    const panels = qsa("[data-registration-panel]");
+    const registrationSection = document.getElementById("inschrijving");
+    const choiceContainer = document.querySelector(".registration-choice");
+    const panelStage = document.querySelector(".registration-panels");
+    const buttonGroup = document.querySelector(".registration-choice-buttons");
+    const liquid = buttonGroup?.querySelector(".registration-liquid");
+    if (!buttons.length || !panels.length) return;
+
+    const liquidPath = liquid?.querySelector("path");
+    const liquidOrange = [211, 138, 45];
+    const liquidGreen = [47, 107, 77];
+    let liquidFrame;
+    let liquidMotion = null;
+    let panelToken = 0;
+
+    const clampUnit = (value, min = 0, max = 1) => Math.min(max, Math.max(min, value));
+    const lerp = (from, to, progress) => from + (to - from) * progress;
+    const easeOutQuint = (value) => 1 - Math.pow(1 - value, 5);
+    const easeInOutCubic = (value) =>
+      value < 0.5 ? 4 * value * value * value : 1 - Math.pow(-2 * value + 2, 3) / 2;
+
+    const liquidColor = (progress, towardCurrent) => {
+      const mix = towardCurrent ? progress : 1 - progress;
+      const channels = liquidOrange.map((channel, index) => Math.round(channel + (liquidGreen[index] - channel) * mix));
+      return `rgb(${channels.join(", ")})`;
+    };
+
+    const buttonBox = (button, groupRect) => {
+      const rect = button.getBoundingClientRect();
+      return {
+        x: rect.left - groupRect.left,
+        y: rect.top - groupRect.top,
+        w: rect.width,
+        h: rect.height,
+      };
+    };
+
+    const roundedRectPath = (x, y, width, height, radius) => {
+      const r = Math.min(radius, width / 2, height / 2);
+      return [
+        `M ${(x + r).toFixed(2)} ${y.toFixed(2)}`,
+        `H ${(x + width - r).toFixed(2)}`,
+        `Q ${(x + width).toFixed(2)} ${y.toFixed(2)} ${(x + width).toFixed(2)} ${(y + r).toFixed(2)}`,
+        `V ${(y + height - r).toFixed(2)}`,
+        `Q ${(x + width).toFixed(2)} ${(y + height).toFixed(2)} ${(x + width - r).toFixed(2)} ${(y + height).toFixed(2)}`,
+        `H ${(x + r).toFixed(2)}`,
+        `Q ${x.toFixed(2)} ${(y + height).toFixed(2)} ${x.toFixed(2)} ${(y + height - r).toFixed(2)}`,
+        `V ${(y + r).toFixed(2)}`,
+        `Q ${x.toFixed(2)} ${y.toFixed(2)} ${(x + r).toFixed(2)} ${y.toFixed(2)}`,
+        "Z",
+      ].join(" ");
+    };
+
+    const paintLiquid = (progress, start, end, towardCurrent) => {
+      const travel = easeOutQuint(progress);
+      const stretch = Math.sin(Math.PI * progress) * 0.22;
+      const centerX = lerp(start.x + start.w / 2, end.x + end.w / 2, travel);
+      const centerY = lerp(start.y + start.h / 2, end.y + end.h / 2, travel);
+      const width = lerp(start.w, end.w, travel) * (1 + stretch);
+      const height = lerp(start.h, end.h, travel) * (1 - stretch * 0.28);
+      const x = centerX - width / 2;
+      const y = centerY - height / 2;
+      liquidPath?.setAttribute("d", roundedRectPath(x, y, width, height, Math.min(16, height / 2)));
+      if (liquidPath) liquidPath.style.fill = liquidColor(easeInOutCubic(progress), towardCurrent);
+
+      const activeChoice = progress < 0.42
+        ? (towardCurrent ? "new" : "current")
+        : (towardCurrent ? "current" : "new");
+      buttons.forEach((button) => {
+        button.classList.toggle("is-active", button.dataset.registrationChoice === activeChoice);
+      });
+    };
+
+    const showRegistrationPanel = (selectedChoice, direction = 0) => {
+      const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const next = panels.find((panel) => panel.dataset.registrationPanel === selectedChoice);
+      const current = panels.find((panel) => panel !== next && panel.classList.contains("is-visible"));
+      const token = ++panelToken;
+      panelStage?.classList.toggle("is-current", selectedChoice === "current");
+      choiceContainer?.classList.toggle("is-current", selectedChoice === "current");
+
+      panels.forEach((panel) => {
+        panel.classList.remove("is-enter-left", "is-enter-right", "is-leave-left", "is-leave-right");
+      });
+
+      const reveal = (panel) => {
+        if (!panel || token !== panelToken) return;
+        panels.forEach((item) => {
+          const isVisible = item === panel;
+          item.classList.toggle("is-visible", isVisible);
+          item.setAttribute("aria-hidden", String(!isVisible));
+          item.toggleAttribute("inert", !isVisible);
+          if (!isVisible) {
+            item.classList.remove("is-enter-left", "is-enter-right", "is-leave-left", "is-leave-right");
+          }
+        });
+      };
+
+      if (!current || current === next || reduceMotion || !direction) {
+        reveal(next);
+        return;
+      }
+
+      current.classList.add(direction > 0 ? "is-leave-left" : "is-leave-right");
+      current.classList.remove("is-visible");
+      if (next) {
+        next.classList.add(direction > 0 ? "is-enter-right" : "is-enter-left");
+        next.classList.add("is-visible");
+        next.setAttribute("aria-hidden", "false");
+        next.toggleAttribute("inert", false);
+        current.setAttribute("aria-hidden", "true");
+        current.toggleAttribute("inert", true);
+        window.setTimeout(() => {
+          if (token !== panelToken) return;
+          next.classList.remove("is-enter-left", "is-enter-right");
+          current.classList.remove("is-leave-left", "is-leave-right");
+        }, 420);
+      }
+    };
+
+    const markChoice = (button) => {
+      buttons.forEach((item) => {
+        const isActive = item === button;
+        item.classList.toggle("is-active", isActive);
+        item.setAttribute("aria-selected", String(isActive));
+      });
+      choiceContainer?.classList.toggle("is-current", button?.dataset.registrationChoice === "current");
+    };
+
+    const updateChoiceBlob = (fromButton, toButton, animate = true) => {
+      if (!buttonGroup || !toButton || !liquid || !liquidPath) return;
+      animate = animate && !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+      const groupRect = buttonGroup.getBoundingClientRect();
+      liquid.setAttribute("viewBox", `0 0 ${groupRect.width} ${groupRect.height}`);
+      const end = buttonBox(toButton, groupRect);
+      const start = buttonBox(fromButton || toButton, groupRect);
+      const towardCurrent = toButton.dataset.registrationChoice === "current";
+
+      if (liquidFrame) cancelAnimationFrame(liquidFrame);
+      if (!animate) {
+        liquidMotion = null;
+        paintLiquid(1, start, end, towardCurrent);
+        markChoice(toButton);
+        return;
+      }
+
+      const startedAt = performance.now();
+      const duration = 620;
+      liquidMotion = { fromChoice: fromButton?.dataset.registrationChoice, toChoice: toButton.dataset.registrationChoice, startedAt, duration };
+
+      const animateLiquid = (now) => {
+        const progress = Math.min(1, (now - startedAt) / duration);
+        paintLiquid(progress, start, end, towardCurrent);
+        if (progress < 1) {
+          liquidFrame = requestAnimationFrame(animateLiquid);
+          return;
+        }
+        paintLiquid(1, start, end, towardCurrent);
+        markChoice(toButton);
+        liquidMotion = null;
+      };
+      liquidFrame = requestAnimationFrame(animateLiquid);
+    };
+
+    buttons.forEach((button) => {
+      button.addEventListener("click", () => {
+        const selectedChoice = button.dataset.registrationChoice;
+        const progress = liquidMotion
+          ? clampUnit((performance.now() - liquidMotion.startedAt) / liquidMotion.duration)
+          : 1;
+        const originChoice = liquidMotion && progress < 0.45
+          ? liquidMotion.fromChoice
+          : (liquidMotion?.toChoice || buttons.find((item) => item.classList.contains("is-active"))?.dataset.registrationChoice);
+
+        if (selectedChoice === originChoice) {
+          const originButton = buttons.find((item) => item.dataset.registrationChoice === originChoice);
+          updateChoiceBlob(originButton, originButton, false);
+          showRegistrationPanel(selectedChoice, 0);
+          return;
+        }
+        if (liquidMotion?.toChoice === selectedChoice) return;
+
+        buttons.forEach((item) => {
+          item.setAttribute("aria-selected", String(item === button));
+        });
+
+        const fromButton = buttons.find((item) => item.dataset.registrationChoice === originChoice) || button;
+        const direction = selectedChoice === "current" ? 1 : -1;
+        updateChoiceBlob(fromButton, button, true);
+        showRegistrationPanel(selectedChoice, direction);
+
+        if (registrationSection) {
+          registrationSection.hidden = true;
+          registrationSection.classList.remove("is-visible");
+          document.getElementById("registrationForm")?._hidePaymentStep?.();
+          const status = document.getElementById("registrationStatus");
+          if (status) status.textContent = "";
+        }
+      });
+    });
+
+    const initialChoice = buttons.find((button) => button.classList.contains("is-active")) || buttons[0];
+    updateChoiceBlob(initialChoice, initialChoice, false);
+    window.addEventListener("resize", () => {
+      const activeButton = buttons.find((button) => button.classList.contains("is-active")) || initialChoice;
+      updateChoiceBlob(activeButton, activeButton, false);
+    });
+
+    qsa("[data-show-registration]").forEach((link) => {
+      link.addEventListener("click", (event) => {
+        if (!registrationSection) return;
+        event.preventDefault();
+        document.getElementById("registrationForm")?._hidePaymentStep?.();
+        const status = document.getElementById("registrationStatus");
+        if (status) status.textContent = "";
+        registrationSection.hidden = false;
+        registrationSection.classList.add("is-visible");
+        registrationSection.scrollIntoView({ behavior: "smooth", block: "start" });
+        const firstField = registrationSection.querySelector("input");
+        if (firstField) window.setTimeout(() => firstField.focus(), 350);
+      });
+    });
+
+    qsa("[data-registration-help]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const panel = document.getElementById(button.getAttribute("aria-controls"));
+        if (!panel) return;
+        const isOpen = panel.hidden === false;
+        panel.hidden = isOpen;
+        button.setAttribute("aria-expanded", String(!isOpen));
+        button.classList.toggle("is-open", !isOpen);
+      });
+    });
+  }
+
+  /* ==========================================================
+       Uniform shirt map markers
+       ========================================================== */
+
+  function initUniformGuide() {
+    const guide = qs("[data-uniform-guide]");
+    if (!guide) return;
+
+    const markers = qsa("[data-uniform-marker]", guide);
+    const rules = qsa("[data-uniform-rule]", guide);
+    let activeId = null;
+
+    function setActive(id, { scroll = false } = {}) {
+      activeId = id;
+
+      markers.forEach((marker) => {
+        marker.classList.toggle("is-active", marker.dataset.uniformMarker === id);
+      });
+
+      rules.forEach((rule) => {
+        const isActive = rule.dataset.uniformRule === id;
+        rule.classList.toggle("is-active", isActive);
+        if (isActive && scroll) {
+          rule.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        }
+      });
+    }
+
+    markers.forEach((marker) => {
+      const id = marker.dataset.uniformMarker;
+
+      marker.addEventListener("mouseenter", () => setActive(id, { scroll: true }));
+      marker.addEventListener("focus", () => setActive(id, { scroll: true }));
+      marker.addEventListener("click", () => setActive(id, { scroll: true }));
+    });
+
+    rules.forEach((rule) => {
+      const id = rule.dataset.uniformRule;
+
+      rule.addEventListener("mouseenter", () => setActive(id));
+      rule.addEventListener("focus", () => setActive(id));
+      rule.addEventListener("click", () => setActive(id));
+      rule.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          setActive(id);
+        }
+      });
+    });
+
+    setActive("1");
   }
 
   /* ==========================================================
@@ -2715,6 +3154,8 @@
     refreshStaticImages();
     updateBirthRanges();
     initRegistrationForm();
+    initRegistrationChoice();
+    initUniformGuide();
     initPageTransitions();
     setupFaqAccordion(document);
     initRevealAnimations();
