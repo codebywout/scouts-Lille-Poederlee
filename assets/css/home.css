@@ -180,8 +180,10 @@ body.home-page .hero {
     width: 150px;
     height: 150px;
     border-radius: 50%;
-    background: rgba(211, 138, 45, 0.1);
+    background: color-mix(in srgb, var(--branch-accent, var(--scout-orange)) 16%, transparent);
+    box-shadow: -168px 214px 0 -46px color-mix(in srgb, var(--branch-accent, var(--scout-orange)) 14%, transparent);
     pointer-events: none;
+    transition: background 0.25s ease, box-shadow 0.25s ease;
 }
 
 .branch:hover,
@@ -1578,7 +1580,8 @@ body.home-page .hero {
     .hero-pattern,
     .hero-visual,
     .badge-mid,
-    .badge-bottom {
+    .badge-bottom,
+    .branch-logo {
         animation: none !important;
     }
 
@@ -1728,6 +1731,67 @@ html {
     width: 76px;
     height: 76px;
     min-width: 0;
+    transform-origin: center;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+}
+
+.branch-kapoenen .branch-logo {
+    animation-name: branch-nar;
+    animation-duration: 2.8s;
+}
+
+.branch-welpen .branch-logo {
+    animation-name: branch-vlieger;
+    animation-duration: 3.6s;
+}
+
+.branch-jongverkenners .branch-logo {
+    animation-name: branch-rugzak;
+    animation-duration: 1.9s;
+}
+
+.branch-verkenners .branch-logo {
+    animation-name: branch-fiets;
+    animation-duration: 1.5s;
+}
+
+.branch-jins .branch-logo {
+    animation-name: branch-voeten;
+    animation-duration: 1.7s;
+}
+
+@keyframes branch-nar {
+    0%,
+    100% { transform: rotate(-8deg); }
+    50% { transform: rotate(8deg); }
+}
+
+@keyframes branch-vlieger {
+    0%,
+    100% { transform: translate(0, 0) rotate(-5deg); }
+    50% { transform: translate(4px, -6px) rotate(6deg); }
+}
+
+@keyframes branch-rugzak {
+    0%,
+    100% { transform: translateY(0); }
+    35% { transform: translateY(-5px); }
+    55% { transform: translateY(-1px); }
+}
+
+@keyframes branch-fiets {
+    0%,
+    100% { transform: rotate(-4deg) translateY(0); }
+    50% { transform: rotate(4deg) translateY(-2px); }
+}
+
+@keyframes branch-voeten {
+    0%,
+    100% { transform: translate(0, 0); }
+    25% { transform: translate(-3px, -4px); }
+    50% { transform: translate(0, 0); }
+    75% { transform: translate(3px, -4px); }
 }
 
 .branch:hover .branch-kenteken,
@@ -1739,6 +1803,12 @@ html {
 .branch:hover,
 .branch:focus-visible {
     border-color: color-mix(in srgb, var(--branch-accent) 55%, white);
+}
+
+.branch:hover::after,
+.branch:focus-visible::after {
+    background: color-mix(in srgb, var(--branch-accent) 26%, transparent);
+    box-shadow: -168px 214px 0 -46px color-mix(in srgb, var(--branch-accent) 22%, transparent);
 }
 
 .branch-age {
