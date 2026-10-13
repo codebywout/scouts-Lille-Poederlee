@@ -13,15 +13,6 @@
     },
     "agenda": [
         {
-            "day": "27",
-            "month": "JAN",
-            "title": "Start van de vergaderingen!",
-            "text": "Vandaag beginnen de activiteiten. Iedereen is welkom.",
-            "link": "",
-            "image": "",
-            "linkText": ""
-        },
-        {
             "day": "18",
             "month": "OKT",
             "title": "Geen vergadering!!!",
@@ -37,6 +28,15 @@
             "link": "https:\/\/forms.gle\/gyRRbgwhc8rx5kiq5",
             "linkText": "Inschrijvingsformulier",
             "image": ""
+        },
+        {
+            "day": "27",
+            "month": "JAN",
+            "title": "Start van de vergaderingen!",
+            "text": "Vandaag beginnen de activiteiten. Iedereen is welkom.",
+            "link": "",
+            "image": "",
+            "linkText": ""
         }
     ],
     "faq": [

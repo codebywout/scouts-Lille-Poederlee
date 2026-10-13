@@ -124,19 +124,18 @@
   }
 
   const AGENDA_MONTH_ORDER = {
-    JAN: 1,
-    FEB: 2,
-    MAA: 3,
-    MRT: 3,
-    APR: 4,
-    MEI: 5,
-    JUN: 6,
-    JUL: 7,
-    AUG: 8,
-    SEP: 9,
-    OKT: 10,
-    NOV: 11,
-    DEC: 12,
+    SEP: 1,
+    OKT: 2,
+    NOV: 3,
+    DEC: 4,
+    JAN: 5,
+    FEB: 6,
+    MAA: 7,
+    APR: 8,
+    MEI: 9,
+    JUN: 10,
+    JUL: 11,
+    AUG: 12,
   };
 
   function sortAgendaItems(items) {
@@ -876,7 +875,7 @@
       itemLabel: "Event",
       newItem: {
         day: "1",
-        month: "JAN",
+        month: "SEP",
         title: "Nieuwe activiteit",
         text: "Beschrijving...",
         link: "",
@@ -900,8 +899,12 @@
           label: "Maand",
           tag: "select",
           row: true,
-          default: "JAN",
+          default: "SEP",
           options: [
+            "SEP",
+            "OKT",
+            "NOV",
+            "DEC",
             "JAN",
             "FEB",
             "MAA",
@@ -910,10 +913,6 @@
             "JUN",
             "JUL",
             "AUG",
-            "SEP",
-            "OKT",
-            "NOV",
-            "DEC",
           ],
         },
         {
