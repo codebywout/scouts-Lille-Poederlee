@@ -328,7 +328,7 @@
     position: relative;
     display: grid;
     overflow: hidden;
-    gap: 14px;
+    gap: 20px;
     align-content: start;
     scroll-margin-top: 24px;
     border-color: rgba(47, 107, 77, 0.18);
@@ -339,59 +339,87 @@
 
 .registration-payment-layout {
     display: grid;
-    grid-template-columns: minmax(0, 1.2fr) minmax(180px, 0.8fr);
-    gap: 18px;
-    align-items: center;
+    grid-template-columns: minmax(0, 1.15fr) minmax(220px, 0.85fr);
+    gap: 22px;
+    align-items: start;
 }
 
 .registration-payment-action {
     display: grid;
-    gap: 12px;
-    align-content: center;
+    gap: 0;
+    align-content: start;
+    min-width: 0;
 }
-
-.registration-payment-link {
-    width: 100%;
-    justify-content: center;
-    min-height: 54px;
-}
-
 
 .registration-payment-qr {
-    display: grid;
-    justify-items: center;
-    gap: 10px;
-    padding: 14px 12px;
-    border: 1px solid rgba(47, 107, 77, 0.14);
-    border-radius: 16px;
-    background: rgba(255, 255, 255, 0.82);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 12px;
+    padding: 18px 16px 16px;
+    border: 1px solid rgba(47, 107, 77, 0.16);
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.9);
+    box-shadow: 0 8px 20px rgba(13, 36, 25, 0.06);
     text-align: center;
 }
 
+.registration-payment-qr-label {
+    margin: 0;
+    width: 100%;
+    color: rgba(78, 43, 26, 0.58);
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-align: center;
+    text-transform: uppercase;
+}
+
 .registration-payment-qr-code {
-    display: grid;
-    place-items: center;
-    width: 180px;
-    height: 180px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    width: 228px;
+    height: 228px;
+    max-width: 100%;
+    margin-inline: auto;
+    padding: 18px;
     overflow: hidden;
-    border-radius: 12px;
+    border-radius: 14px;
+    border: 1px solid rgba(47, 107, 77, 0.1);
     background: #fff;
 }
 
 .registration-payment-qr-code img,
-.registration-payment-qr-code canvas {
+.registration-payment-qr-code canvas,
+.registration-payment-qr-code table {
     display: block;
-    width: 180px !important;
-    height: 180px !important;
+    margin-inline: auto;
+    width: 192px !important;
+    height: 192px !important;
+    max-width: 100%;
+}
+
+.registration-payment-qr-code table {
+    border: 0;
+    border-collapse: collapse;
 }
 
 .registration-payment-qr p {
-    margin: 0;
-    max-width: 22ch;
+    margin: 0 auto;
+    max-width: 28ch;
     color: var(--scout-brown);
     font-size: 13px;
-    line-height: 1.4;
+    line-height: 1.45;
     font-weight: 600;
+    text-align: center;
+}
+
+.registration-payment-qr #registrationPaymentQrCaption {
+    color: rgba(78, 43, 26, 0.78);
+    font-weight: 500;
 }
 
 .payment-kicker {

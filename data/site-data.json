@@ -1,5 +1,5 @@
 {
-    "activePage": "home",
+    "activePage": "news",
     "pageContent": {
         "over-ons": {
             "intro": "Met 20 leiders, een hoop energie en net genoeg gezond verstand zorgen wij er elke week voor dat de scouts gevuld zijn met actie, plezier en verhalen die thuis niet altijd volledig worden verteld.\n\nWij geloven dat kinderen en jongeren het best groeien in een omgeving waar ze kunnen bewegen, experimenteren, samenwerken en zichzelf ontdekken."
@@ -17,26 +17,64 @@
             "month": "OKT",
             "title": "Geen vergadering!!!",
             "text": "De leiding is op planningsweekend, het is vandaag dus geen scouts!",
-            "link": "",
-            "linkText": "Meer informatie"
+            "linkText": "",
+            "link": ""
         },
         {
             "day": "25",
             "month": "OKT",
             "title": "Jeugdverenigingendag",
             "text": "Zoals elk jaar organiseert de Jeugdraad, in samenwerking met de jeugddienst, opnieuw de Jeugdverenigingendag! Een namiddag om samen te komen, goe te ravotten en ons gewoon kei hard te amuseren!",
-            "link": "https:\/\/forms.gle\/gyRRbgwhc8rx5kiq5",
             "linkText": "Inschrijvingsformulier",
-            "image": ""
+            "link": "https:\/\/forms.gle\/gyRRbgwhc8rx5kiq5",
+            "image": "\/uploads\/agenda-1790777268432-3ee66cfe.jpg?v=1790777279"
         },
         {
-            "day": "27",
-            "month": "JAN",
-            "title": "Start van de vergaderingen!",
-            "text": "Vandaag beginnen de activiteiten. Iedereen is welkom.",
+            "day": "19",
+            "month": "FEB",
+            "title": "Groepsweekend",
+            "text": "Meer informatie volgt",
             "link": "",
+            "linkText": "",
+            "image": ""
+        }
+    ],
+    "news": [
+        {
+            "title": "Welkom op onze nieuwe site!",
+            "date": "September 2026",
+            "text": "Je hebt het vast al gemerkt. Dit is onze nieuwe website, wat een upgrade.",
+            "image": "\/uploads\/news-1791911687331-359a4430.jpg?v=1791911687",
+            "link": "",
+            "linkText": "",
+            "summary": "Wat is er allemaal verandert op onze website?"
+        },
+        {
+            "title": "Een nieuw dak op ons scoutslokaal",
+            "date": "Najaar 2026",
+            "text": "Je hebt waarschijnlijk de zandzakken al zien liggen op ons dak.",
             "image": "",
-            "linkText": ""
+            "link": "",
+            "linkText": "",
+            "summary": "Yesssss, eindelijk een nieuw dak. Na een heleboel gedoe met de verzekering."
+        },
+        {
+            "title": "Sfeerfoto's oktober",
+            "date": "Oktober 2026",
+            "text": "Schrijf hier het nieuws...",
+            "image": "",
+            "link": "",
+            "linkText": "",
+            "summary": "Kijk wat jullie kinderen allemaal hebben uitgestoken deze maand"
+        },
+        {
+            "title": "Test bericht 2",
+            "date": "",
+            "text": "Schrijf hier het nieuws...",
+            "image": "",
+            "link": "",
+            "linkText": "",
+            "summary": "dit is een testbericht"
         }
     ],
     "faq": [
@@ -84,42 +122,140 @@
         }
     ],
     "branchLeadership": {
-        "kapoenen": [],
-        "welpen": [],
-        "jongverkenners": [],
-        "verkenners": [],
-        "jins": []
+        "kapoenen": [
+            {
+                "name": "Lander Duerinck",
+                "phone": "0468 45 94 68",
+                "takleider": false
+            },
+            {
+                "name": "Flor Tops",
+                "phone": "0479 54 17 93",
+                "takleider": false
+            },
+            {
+                "name": "Lender De Ceuster",
+                "phone": "0473 90 74 10",
+                "takleider": true
+            },
+            {
+                "name": "Per Gevers",
+                "phone": "0468 02 09 68",
+                "takleider": false
+            }
+        ],
+        "welpen": [
+            {
+                "name": "Daan Wynants",
+                "phone": "0498 04 44 65",
+                "takleider": false
+            },
+            {
+                "name": "Wies Langmans",
+                "phone": "0467 02 94 62",
+                "takleider": false
+            },
+            {
+                "name": "Jens Pelkmans",
+                "phone": "0467 00 56 42",
+                "takleider": true
+            },
+            {
+                "name": "Flor Cuylaerts",
+                "phone": "0471 25 41 14",
+                "takleider": false
+            }
+        ],
+        "jongverkenners": [
+            {
+                "name": "Maarten Van den Langenbergh",
+                "phone": "0456 11 26 79",
+                "takleider": false
+            },
+            {
+                "name": "Roel Pluym",
+                "phone": "0468 04 84 73",
+                "takleider": true
+            },
+            {
+                "name": "Ward Vissers",
+                "phone": "0467 01 39 90",
+                "takleider": false
+            },
+            {
+                "name": "Vince Meeuws",
+                "phone": "0477 06 41 42",
+                "takleider": false
+            }
+        ],
+        "verkenners": [
+            {
+                "name": "Wout Pluym",
+                "phone": "0492 76 39 91",
+                "takleider": false
+            },
+            {
+                "name": "Fre Peeters",
+                "phone": "0471 84 89 07",
+                "takleider": false
+            },
+            {
+                "name": "Stan Nuyts",
+                "phone": "0468 00 85 31",
+                "takleider": true
+            }
+        ],
+        "jins": [
+            {
+                "name": "Wout Willemsen",
+                "phone": "0468 21 91 54",
+                "takleider": false
+            },
+            {
+                "name": "Door Weyers",
+                "phone": "0456 13 01 65",
+                "takleider": false
+            },
+            {
+                "name": "Daan Pluym",
+                "phone": "0493 75 53 18",
+                "takleider": false
+            },
+            {
+                "name": "Thiebe Mertens",
+                "phone": "0491 98 26 13",
+                "takleider": false
+            },
+            {
+                "name": "Ruben Van den Broeck",
+                "phone": "0468 43 75 59",
+                "takleider": false
+            }
+        ]
     },
     "secondhand": [],
     "photos": {
         "logo": "\/assets\/images\/scouts.png",
         "homeHero": "\/assets\/images\/domein.jpg",
-        "aboutHero": "\/uploads\/over-ons.jpg?v=1790779869",
+        "aboutHero": "\/uploads\/over-ons.jpg?v=1790525257",
         "uniform": [
             "https:\/\/images.unsplash.com\/photo-1472162072942-cd5147eb3902?auto=format&fit=crop&w=900&q=80",
             "https:\/\/images.unsplash.com\/photo-1504150558240-0b4fd8946624?auto=format&fit=crop&w=900&q=80",
             "https:\/\/images.unsplash.com\/photo-1504150558240-0b4fd8946624?auto=format&fit=crop&w=900&q=80"
         ],
         "branches": {
-            "kapoenen": "\/uploads\/kapoenenleiding.jpg?v=1789208791",
-            "welpen": "\/uploads\/welpenleiding.jpg?v=1789208788",
-            "jongverkenners": "\/uploads\/jongverkennersleiding.jpg?v=1789208801",
-            "verkenners": "\/uploads\/verkennersleiding.jpg?v=1789208798",
-            "jins": "\/uploads\/jinsleiding.jpg?v=1789208795"
+            "kapoenen": "\/uploads\/kapoenenleiding.jpg?v=1790525084",
+            "welpen": "\/uploads\/welpenleiding.jpg?v=1790524454",
+            "jongverkenners": "\/uploads\/jongverkennersleiding.jpg?v=1790524491",
+            "verkenners": "\/uploads\/verkennersleiding.jpg?v=1790524498",
+            "jins": "\/uploads\/jinsleiding.jpg?v=1790612719"
         },
         "monthlyPlanning": {
-            "kapoenen": "\/uploads\/maandplanning-kapoenen.pdf?v=1790775346",
-            "welpen": "",
-            "jongverkenners": "",
-            "verkenners": "",
-            "jins": ""
-        },
-        "monthlyPlanningTitle": {
-            "kapoenen": "januari_maart",
-            "welpen": "",
-            "jongverkenners": "",
-            "verkenners": "",
-            "jins": ""
+            "kapoenen": "\/uploads\/maandplanning-kapoenen.pdf?v=1791245038",
+            "welpen": "\/uploads\/maandplanning-welpen.pdf?v=1790684427",
+            "jongverkenners": "\/uploads\/maandplanning-jongverkenners.pdf?v=1791909047",
+            "verkenners": "\/uploads\/maandplanning-verkenners.pdf?v=1791035014",
+            "jins": "\/uploads\/maandplanning-jins.pdf?v=1790851940"
         },
         "letters": {
             "kapoenen": [],
@@ -134,10 +270,18 @@
             "jongverkenners": "\/assets\/images\/branches\/jong-verkenners.png",
             "verkenners": "\/assets\/images\/branches\/verkenners.png",
             "jins": "\/assets\/images\/branches\/jins.png"
+        },
+        "monthlyPlanningTitle": {
+            "kapoenen": "oktober",
+            "verkenners": "oktober",
+            "welpen": "september_oktober",
+            "jongverkenners": "oktober",
+            "jins": "oktober"
         }
     },
     "letters": {
         "welpen": [],
-        "kapoenen": []
+        "kapoenen": [],
+        "jongverkenners": []
     }
 }

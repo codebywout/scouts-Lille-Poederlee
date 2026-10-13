@@ -93,12 +93,29 @@
     const mobileMenu = document.getElementById("mobileMenu");
     if (!menuButton || !mobileMenu) return;
 
-    menuButton.addEventListener("click", () =>
-      mobileMenu.classList.toggle("open"),
-    );
+    const setMenuOpen = (isOpen) => {
+      mobileMenu.classList.toggle("open", isOpen);
+      menuButton.classList.toggle("is-open", isOpen);
+      menuButton.setAttribute("aria-expanded", isOpen ? "true" : "false");
+      menuButton.setAttribute("aria-label", isOpen ? "Menu sluiten" : "Menu openen");
+    };
+
+    menuButton.addEventListener("click", () => {
+      setMenuOpen(!mobileMenu.classList.contains("open"));
+    });
 
     qsa("a", mobileMenu).forEach((link) => {
-      link.addEventListener("click", () => mobileMenu.classList.remove("open"));
+      link.addEventListener("click", () => setMenuOpen(false));
+    });
+
+    document.addEventListener("click", (event) => {
+      if (!mobileMenu.classList.contains("open")) return;
+      if (menuButton.contains(event.target) || mobileMenu.contains(event.target)) return;
+      setMenuOpen(false);
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") setMenuOpen(false);
     });
   }
 
@@ -238,6 +255,8 @@
     const remittanceText = String(remittance || "").trim().slice(0, 140);
     const beneficiaryName = String(beneficiary || "Scouts Lille-Poederlee").trim().slice(0, 70);
 
+    // EPC069-12 veldvolgorde: gestructureerde mededeling blijft leeg.
+    // Vrije tekst hoort in de ongestructureerde mededeling, anders weigert de bankapp de code.
     return [
       "BCD",
       "002",
@@ -248,23 +267,23 @@
       cleanIban,
       amountLine,
       "",
-      remittanceText,
       "",
+      remittanceText,
     ].join("\n");
   }
 
-  function buildPaytoPaymentHref({ beneficiary, iban, amount, remittance }) {
-    const cleanIban = String(iban || "").replace(/\s+/g, "").toUpperCase();
-    if (!cleanIban) return "#";
+  function formatIban(iban) {
+    return String(iban || "")
+      .replace(/\s+/g, "")
+      .toUpperCase()
+      .replace(/(.{4})/g, "$1 ")
+      .trim();
+  }
 
+  function formatPaymentAmount(amount) {
     const amountNumber = normalizePaymentAmount(amount);
-    const params = new URLSearchParams();
-    if (amountNumber) params.set("amount", `EUR:${amountNumber.toFixed(2)}`);
-    if (beneficiary) params.set("receiver-name", String(beneficiary).trim().slice(0, 70));
-    if (remittance) params.set("message", String(remittance).trim().slice(0, 140));
-
-    const query = params.toString();
-    return `payto://iban/${cleanIban}${query ? `?${query}` : ""}`;
+    if (!amountNumber) return String(amount || "").trim();
+    return amountNumber.toLocaleString("nl-BE", { style: "currency", currency: "EUR" });
   }
 
   function renderRegistrationPaymentQr({ amount, iban, remittance }) {
@@ -320,19 +339,16 @@
       if (!paymentCard) return;
       const name = [voornaam, achternaam].filter(Boolean).join(" ").trim();
       const remittance = [name, takLabel].filter(Boolean).join(" - ") || "Naam van het kind - tak";
-      const beneficiary = "Scouts Lille-Poederlee";
       const { lidgeldText, rekeningnummer } = getRegistrationPaymentInfo();
-      const paymentLink = document.getElementById("registrationPaymentLink");
+      const paymentDetails = document.getElementById("registrationPaymentDetails");
+      const paymentAmount = document.getElementById("registrationPaymentAmount");
+      const paymentIban = document.getElementById("registrationPaymentIban");
+      const paymentMessage = document.getElementById("registrationPaymentMessage");
 
-      if (paymentLink) {
-        paymentLink.href = buildPaytoPaymentHref({
-          beneficiary,
-          iban: rekeningnummer,
-          amount: lidgeldText,
-          remittance,
-        });
-      }
-
+      if (paymentAmount) paymentAmount.textContent = formatPaymentAmount(lidgeldText);
+      if (paymentIban) paymentIban.textContent = formatIban(rekeningnummer);
+      if (paymentMessage) paymentMessage.textContent = remittance;
+      if (paymentDetails) paymentDetails.hidden = false;
       if (paymentReference) paymentReference.textContent = remittance;
 
       paymentCard.hidden = false;
@@ -672,7 +688,15 @@
       const link = event.target.closest("a");
       if (!link || event.defaultPrevented || link.target === "_blank") return;
 
-      const url = new URL(link.href, window.location.href);
+      let url;
+      try {
+        url = new URL(link.href, window.location.href);
+      } catch {
+        return;
+      }
+
+      if (url.protocol !== "http:" && url.protocol !== "https:") return;
+
       const isInternalPage =
         url.origin === window.location.origin &&
         url.pathname !== window.location.pathname &&
@@ -773,35 +797,146 @@
     });
   }
 
+  function closeNewsItem(item) {
+    if (item._newsCloseTimer) {
+      clearTimeout(item._newsCloseTimer);
+      item._newsCloseTimer = null;
+    }
+
+    item.classList.remove("is-open");
+    item._newsCloseTimer = window.setTimeout(() => {
+      item.removeAttribute("open");
+      item._newsCloseTimer = null;
+    }, 320);
+  }
+
+  function setupNewsAccordion(container) {
+    const newsItems = qsa(".news-item", container);
+
+    newsItems.forEach((item) => {
+      const summary = item.querySelector(".news-summary");
+      if (!summary || !item.querySelector(".news-details")) return;
+
+      summary.addEventListener("click", (event) => {
+        event.preventDefault();
+
+        if (item.classList.contains("is-open")) {
+          closeNewsItem(item);
+          return;
+        }
+
+        newsItems
+          .filter(
+            (other) => other !== item && other.classList.contains("is-open"),
+          )
+          .forEach(closeNewsItem);
+
+        item.setAttribute("open", "");
+        requestAnimationFrame(() => item.classList.add("is-open"));
+      });
+    });
+  }
+
+  const NEWS_HOME_LIMIT = 3;
+
+  function buildNewsItemHtml(item) {
+    const image = typeof item.image === "string" ? item.image.trim() : "";
+    const date = typeof item.date === "string" ? item.date.trim() : "";
+    const title = typeof item.title === "string" ? item.title.trim() : "";
+    const summary =
+      typeof item.summary === "string" ? item.summary.trim() : "";
+    const text = typeof item.text === "string" ? item.text.trim() : "";
+    const link =
+      typeof item.link === "string" &&
+      /^(https?:\/\/|mailto:)/i.test(item.link.trim())
+        ? item.link.trim()
+        : "";
+    const linkText =
+      typeof item.linkText === "string" ? item.linkText.trim() : "";
+    const hasDetails = Boolean(text || image || (link && linkText));
+    const teaser = summary || (!hasDetails && text ? text : "");
+    const detailsHtml = hasDetails
+      ? `
+                  <div class="news-details">
+                    <div class="news-details-inner">
+                      ${text ? `<p>${escapeHtml(text)}</p>` : ""}
+                      ${
+                        link && linkText
+                          ? `<a class="news-link" href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer">${escapeHtml(linkText)} <span aria-hidden="true">↗</span></a>`
+                          : ""
+                      }
+                      ${
+                        image
+                          ? `<figure class="news-media"><img src="${escapeHtml(image)}" alt="${escapeHtml(title || "Nieuwsfoto")}" loading="lazy"></figure>`
+                          : ""
+                      }
+                    </div>
+                  </div>
+                `
+      : "";
+
+    return `
+                <details class="news-item${image ? " has-news-image" : ""}${hasDetails ? "" : " is-static"}">
+                  <summary class="news-summary">
+                    <div class="news-copy">
+                      ${date ? `<span class="news-date">${escapeHtml(date)}</span>` : ""}
+                      <h3>${escapeHtml(title || "Nieuws")}</h3>
+                      ${teaser ? `<p class="news-teaser">${escapeHtml(teaser)}</p>` : ""}
+                      ${
+                        hasDetails
+                          ? `<span class="news-expand">Meer lezen <span aria-hidden="true">+</span></span>`
+                          : ""
+                      }
+                    </div>
+                  </summary>
+                  ${detailsHtml}
+                </details>
+              `;
+  }
+
   /* ==========================================================
        Scroll-reveal animations
        ========================================================== */
 
-  function initRevealAnimations() {
-    const animatedElements = qsa(".branch, .agenda-item, .faq-item");
-    if (animatedElements.length === 0) return;
+  const revealSelector = ".section-top, .practical-heading, .branch, .news-item, .agenda-item, .faq-item, .footer-brand, .footer-column, .footer-bottom";
+  let revealObserver = null;
 
-    if (!("IntersectionObserver" in window)) {
-      animatedElements.forEach((el) => el.classList.add("visible"));
+  function initRevealAnimations() {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    const homePage = document.body.classList.contains("home-page");
+    const elements = qsa(homePage ? revealSelector : ".footer-brand, .footer-column, .footer-bottom")
+      .filter((element) => !element.dataset.revealReady);
+    if (elements.length === 0) return;
+
+    const supportsViewTimeline = window.CSS && CSS.supports("animation-timeline", "view()");
+
+    elements.forEach((element) => {
+      element.dataset.revealReady = "true";
+      if (supportsViewTimeline) element.classList.add("reveal-in");
+    });
+
+    if (supportsViewTimeline || !("IntersectionObserver" in window)) {
+      if (!supportsViewTimeline) {
+        elements.forEach((element) => element.classList.add("reveal-fallback"));
+      }
       return;
     }
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add("visible");
-            observer.unobserve(entry.target);
-          }
-        });
-      },
-      { threshold: 0.12 },
-    );
+    if (!revealObserver) {
+      revealObserver = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (!entry.isIntersecting) return;
+            entry.target.classList.add("reveal-fallback");
+            revealObserver.unobserve(entry.target);
+          });
+        },
+        { threshold: 0, rootMargin: "0px 0px 40% 0px" },
+      );
+    }
 
-    animatedElements.forEach((el) => {
-      el.classList.add("animate");
-      observer.observe(el);
-    });
+    elements.forEach((element) => revealObserver.observe(element));
   }
 
   /* ==========================================================
@@ -920,6 +1055,12 @@
       }
 
       this._cache = await response.json();
+      if (!Array.isArray(this._cache.news)) this._cache.news = [];
+      this._cache.news.forEach((item) => {
+        if (!item || typeof item !== "object") return;
+        if (typeof item.summary !== "string") item.summary = "";
+      });
+      normalizeBranchLeadership(this._cache);
       return this._cache;
     },
 
@@ -960,35 +1101,133 @@
 
   let adminHasUnsavedChanges = false;
   const pendingPlanningUploads = new Map();
+  const pendingUploadDeletes = [];
+  let saveStatusTimer = 0;
+  let saveButtonTimer = 0;
   let googleDriveSettings = {
     folderId: "",
     oauthConfigured: false,
     oauthEmail: "",
   };
 
+  function setSaveButtonPhase(phase) {
+    const button = document.getElementById("saveChanges");
+    if (!button) return;
+    button.classList.toggle("is-saving", phase === "saving");
+    button.classList.toggle("is-saved", phase === "saved");
+    if (phase === "saving") button.setAttribute("aria-busy", "true");
+    else button.removeAttribute("aria-busy");
+    button.querySelector(".save-button-label-idle")?.toggleAttribute("aria-hidden", phase !== "idle");
+    button.querySelector(".save-button-label-saving")?.toggleAttribute("aria-hidden", phase !== "saving");
+    button.querySelector(".save-button-label-done")?.toggleAttribute("aria-hidden", phase !== "saved");
+  }
+
+  function flashSaveButton() {
+    const button = document.getElementById("saveChanges");
+    if (!button) return;
+    window.clearTimeout(saveButtonTimer);
+    setSaveButtonPhase("saved");
+    saveButtonTimer = window.setTimeout(() => {
+      setSaveButtonPhase("idle");
+    }, 1800);
+  }
+
+  function showSaveButtonSaving() {
+    window.clearTimeout(saveButtonTimer);
+    setSaveButtonPhase("saving");
+  }
+
+  function clearSaveButton() {
+    window.clearTimeout(saveButtonTimer);
+    setSaveButtonPhase("idle");
+  }
+
   function setSaveStatus(message, state = "saved") {
     const status = document.getElementById("saveStatus");
     if (!status) return;
+    window.clearTimeout(saveStatusTimer);
+    const confirmOnButton = state === "saved" && message === "Opgeslagen";
+    const savingOnButton = state === "saving" && message === "Opslaan...";
+    if (confirmOnButton || savingOnButton) {
+      status.textContent = message;
+      status.dataset.state = confirmOnButton ? "saved" : "saving";
+      status.dataset.buttonConfirm = "true";
+      if (confirmOnButton) {
+        flashSaveButton();
+        saveStatusTimer = window.setTimeout(() => {
+          if (status.dataset.buttonConfirm !== "true") return;
+          status.textContent = "";
+          status.dataset.state = "idle";
+          delete status.dataset.buttonConfirm;
+        }, 2300);
+      } else {
+        showSaveButtonSaving();
+      }
+      return;
+    }
+    clearSaveButton();
+    delete status.dataset.buttonConfirm;
     status.textContent = message;
     status.dataset.state = state;
+    if (state === "saved") {
+      saveStatusTimer = window.setTimeout(() => {
+        if (status.dataset.state !== "saved") return;
+        status.textContent = "";
+        status.dataset.state = "idle";
+      }, 2500);
+    }
   }
 
-  function markDirtyState(isDirty) {
+  function markDirtyState(isDirty, { announce = true } = {}) {
     adminHasUnsavedChanges = isDirty;
+    if (!announce) {
+      setSaveStatus("", "idle");
+      return;
+    }
     setSaveStatus(
       isDirty ? "Onopgeslagen wijzigingen" : "Opgeslagen",
       isDirty ? "dirty" : "saved",
     );
   }
 
+  function queueUploadDelete(imagePath) {
+    const filename = imagePath
+      ?.split("/")
+      .pop()
+      ?.split("?")[0]
+      ?.replace(/\.[^/.]+$/, "");
+    if (filename) pendingUploadDeletes.push(filename);
+  }
+
+  async function flushUploadDeletes() {
+    const filenames = pendingUploadDeletes.splice(0);
+    await Promise.all(
+      filenames.map(async (filename) => {
+        try {
+          const response = await fetch(
+            `/api/uploads/photo/${encodeURIComponent(filename)}`,
+            { method: "DELETE" },
+          );
+          if (!response.ok) {
+            console.warn("Tweedehandsfoto kon niet verwijderd worden.");
+          }
+        } catch (error) {
+          console.warn("Foto verwijderen mislukt:", error);
+        }
+      }),
+    );
+  }
+
   // Wraps a DataStore.save() call with consistent status messaging and
   // error handling, so every mutation (add/remove/photo/form submit) does
   // the same thing on failure: keep the change locally, tell the user.
-  async function persist(data) {
-    setSaveStatus("Opslaan...", "saving");
+  async function persist(data, { quiet = false } = {}) {
+    normalizeBranchLeadership(data);
+    if (!quiet) setSaveStatus("Opslaan...", "saving");
     try {
       await DataStore.save(data);
-      markDirtyState(false);
+      await flushUploadDeletes();
+      markDirtyState(false, { announce: !quiet });
     } catch (error) {
       console.error(error);
       adminHasUnsavedChanges = true;
@@ -1049,6 +1288,21 @@
     data.photos.monthlyPlanning[branch] = value;
   }
 
+  function formatPlanningLabel(title) {
+    const months = String(title || "")
+      .split(/[_\s]+/)
+      .map((part) => part.trim().toLowerCase())
+      .filter((month) => PLANNING_MONTHS.includes(month));
+    const label = months.length
+      ? months.join(", ")
+      : String(title || "")
+          .replace(/\.pdf$/i, "")
+          .replace(/[-_]+/g, " ")
+          .trim();
+    if (!label) return "Maandplanning";
+    return label.charAt(0).toUpperCase() + label.slice(1);
+  }
+
   function getMonthlyPlanningTitle(data, branch) {
     const savedTitle = data.photos?.monthlyPlanningTitle?.[branch];
     if (savedTitle) return savedTitle;
@@ -1085,7 +1339,7 @@
                         <input type="hidden" data-planning-title="${branch}" value="${escapeHtml(title)}">
                         ${
                           value
-                            ? `<span class="document-static-title planning-saved-title">${escapeHtml(title)}</span>`
+                            ? `<span class="document-static-title planning-saved-title">${escapeHtml(formatPlanningLabel(title))}</span>`
                             : `<details class="planning-month-dropdown" data-planning-month-dropdown="${branch}">
                           <summary><span data-planning-month-label="${branch}">${selectedMonthsLabel}</span></summary>
                           <div class="planning-month-options">
@@ -1147,6 +1401,7 @@
     setMonthlyPlanningTitle(data, branch, "");
     await persist(data);
     renderAdminPanel();
+    if (!adminHasUnsavedChanges) setSaveStatus("Maandplanning verwijderd", "saved");
   }
 
   function getBranchLetters(data, branch) {
@@ -1215,7 +1470,9 @@
       data.letters[branch] = [];
     }
     data.letters[branch].push({ title, path: result.path });
+    await persist(data);
     renderAdminPanel();
+    if (!adminHasUnsavedChanges) setSaveStatus("Brief opgeslagen", "saved");
   }
 
   async function removeLetter(data, branch, index) {
@@ -1232,6 +1489,7 @@
     data.letters[branch].splice(index, 1);
     await persist(data);
     renderAdminPanel();
+    if (!adminHasUnsavedChanges) setSaveStatus("Brief verwijderd", "saved");
   }
 
   const PHOTO_FILENAMES = {
@@ -1411,6 +1669,72 @@
         },
       ],
     },
+    news: {
+      itemLabel: "Nieuws",
+      newItem: {
+        title: "Nieuw bericht",
+        date: "",
+        summary: "",
+        text: "",
+        image: "",
+        link: "",
+        linkText: "",
+      },
+      fields: [
+        {
+          key: "title",
+          label: "Titel",
+          tag: "input",
+          type: "text",
+          default: "Nieuw bericht",
+        },
+        {
+          key: "date",
+          label: "Datum of periode",
+          tag: "input",
+          type: "text",
+          default: "",
+          placeholder: "Bijvoorbeeld Maart 2026",
+        },
+        {
+          key: "summary",
+          label: "Korte intro",
+          tag: "textarea",
+          default: "",
+          placeholder: "Korte tekst die zichtbaar is voor het uitklappen",
+        },
+        {
+          key: "text",
+          label: "Volledige tekst",
+          tag: "textarea",
+          default: "",
+          placeholder: "De rest van het bericht...",
+        },
+        {
+          key: "linkText",
+          label: "Linktekst",
+          tag: "input",
+          type: "text",
+          default: "",
+          placeholder: "Tekst van de link",
+        },
+        {
+          key: "link",
+          label: "Link",
+          tag: "input",
+          type: "url",
+          default: "",
+          placeholder: "https://...",
+        },
+        {
+          key: "image",
+          label: "Foto",
+          tag: "file",
+          type: "file",
+          accept: "image/jpeg,image/png,image/webp,image/gif",
+        },
+      ],
+    },
     secondhand: {
       itemLabel: "Item",
 
@@ -1447,6 +1771,97 @@
       ],
     },
   };
+
+  function renderNewsEditor(items) {
+    const container = document.getElementById("newsEditor");
+    if (!container) return;
+
+    if (!items.length) {
+      container.innerHTML =
+        `<p class="admin-news-empty">Nog geen nieuwsberichten. Klik op + Nieuws om te beginnen.</p>`;
+      return;
+    }
+
+    container.innerHTML = items
+      .map((item, index) => {
+        const image = typeof item.image === "string" ? item.image : "";
+        const isHome = index < NEWS_HOME_LIMIT;
+        const title = item.title || `Nieuws ${index + 1}`;
+        return `
+          <article class="admin-item admin-collapsible-item admin-news-item is-collapsed${isHome ? " is-home-news" : ""}">
+            <div class="admin-item-head">
+              <button type="button" class="admin-collapse-toggle" data-collapse-toggle aria-expanded="false">
+                <span class="admin-collapse-chevron" aria-hidden="true"></span>
+                <span class="admin-news-summary">
+                  <strong>${escapeHtml(title)}</strong>
+                  <span class="admin-news-summary-date"${item.date ? "" : " hidden"}>${escapeHtml(item.date || "")}</span>
+                </span>
+              </button>
+              <div class="admin-item-actions">
+                <div class="admin-reorder-controls">
+                  <button type="button" class="admin-reorder" data-move="news" data-index="${index}" data-direction="-1" ${index === 0 ? "disabled" : ""} aria-label="Omhoog verplaatsen">↑</button>
+                  <button type="button" class="admin-reorder" data-move="news" data-index="${index}" data-direction="1" ${index === items.length - 1 ? "disabled" : ""} aria-label="Omlaag verplaatsen">↓</button>
+                </div>
+                <button type="button" data-remove="news" data-index="${index}">Verwijderen</button>
+              </div>
+            </div>
+            <div class="admin-collapsible-content">
+              <div class="admin-collapsible-content-inner">
+                <div class="admin-news-editor">
+                  <div class="admin-news-photo">
+                    ${
+                      image
+                        ? `<img src="${escapeHtml(image)}" alt="${escapeHtml(title)}" loading="lazy">
+                           <div class="admin-news-photo-actions">
+                             <label class="admin-news-photo-change"><span>↻</span> Foto wijzigen<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" data-list-image-upload="news" data-index="${index}"></label>
+                             <button type="button" class="admin-news-photo-remove" data-list-image-remove="news" data-index="${index}">Foto weg</button>
+                           </div>`
+                        : `<label class="admin-news-photo-empty">
+                             <span class="admin-news-photo-plus" aria-hidden="true">＋</span>
+                             <strong>Foto toevoegen</strong>
+                             <small>JPG, PNG of WebP</small>
+                             <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" data-list-image-upload="news" data-index="${index}">
+                           </label>`
+                    }
+                  </div>
+                  <div class="admin-news-fields">
+                    <div class="admin-news-field-row">
+                      <label>
+                        <span>Titel</span>
+                        <input type="text" data-field="news-title" data-index="${index}" value="${escapeHtml(item.title || "")}" placeholder="Titel van het bericht">
+                      </label>
+                      <label>
+                        <span>Datum of periode</span>
+                        <input type="text" data-field="news-date" data-index="${index}" value="${escapeHtml(item.date || "")}" placeholder="Bijvoorbeeld Maart 2026">
+                      </label>
+                    </div>
+                    <label>
+                      <span>Korte intro</span>
+                      <textarea data-field="news-summary" data-index="${index}" rows="2" placeholder="Zichtbaar vóór het uitklappen">${escapeHtml(item.summary || "")}</textarea>
+                    </label>
+                    <label>
+                      <span>Volledige tekst</span>
+                      <textarea data-field="news-text" data-index="${index}" rows="4" placeholder="De rest van het bericht...">${escapeHtml(item.text || "")}</textarea>
+                    </label>
+                    <div class="admin-news-field-row">
+                      <label>
+                        <span>Linktekst</span>
+                        <input type="text" data-field="news-linkText" data-index="${index}" value="${escapeHtml(item.linkText || "")}" placeholder="Tekst van de link">
+                      </label>
+                      <label>
+                        <span>Link</span>
+                        <input type="url" data-field="news-link" data-index="${index}" value="${escapeHtml(item.link || "")}" placeholder="https://...">
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </article>
+        `;
+      })
+      .join("");
+  }
 
   function renderListEditor(containerId, items, type) {
     const container = document.getElementById(containerId);
@@ -1602,12 +2017,12 @@
                         ${field.label}
                         ${
                           item.image
-                            ? `<img src="${escapeHtml(item.image)}" alt="Foto van ${escapeHtml(item.title || "agenda-item")}" loading="lazy">
+                            ? `<img src="${escapeHtml(item.image)}" alt="Foto van ${escapeHtml(item.title || item.question || "item")}" loading="lazy">
                                <span class="admin-agenda-photo-actions">
-                                 <span class="admin-agenda-photo-change">Nieuwe foto kiezen<input type="file" accept="${field.accept}" data-agenda-upload="${index}"></span>
-                                 <button type="button" class="admin-agenda-photo-remove" data-agenda-photo-remove="${index}">Foto verwijderen</button>
+                                 <span class="admin-agenda-photo-change">Nieuwe foto kiezen<input type="file" accept="${field.accept}" data-list-image-upload="${type}" data-index="${index}"></span>
+                                 <button type="button" class="admin-agenda-photo-remove" data-list-image-remove="${type}" data-index="${index}">Foto verwijderen</button>
                                </span>`
-                            : `<span class="admin-agenda-photo-change">Foto toevoegen<input type="file" accept="${field.accept}" data-agenda-upload="${index}"></span>`
+                            : `<span class="admin-agenda-photo-change">Foto toevoegen<input type="file" accept="${field.accept}" data-list-image-upload="${type}" data-index="${index}"></span>`
                         }
                     </div>
                 `;
@@ -1682,16 +2097,22 @@
                         <div class="admin-item-head">
                             <button type="button" class="admin-collapse-toggle" data-collapse-toggle aria-expanded="false">
                                 <span class="admin-collapse-chevron" aria-hidden="true"></span>
-                                <strong>${escapeHtml(type === "agenda" ? `${item.day || ""} ${item.month || ""} · ${item.title || `Event ${index + 1}`}` : item.question || `Vraag ${index + 1}`)}</strong>
+                                <strong>${escapeHtml(
+                                  type === "agenda"
+                                    ? `${item.day || ""} ${item.month || ""} · ${item.title || `Event ${index + 1}`}`
+                                    : item.question || `Vraag ${index + 1}`,
+                                )}</strong>
                             </button>
 
-                            <button
-                                type="button"
-                                data-remove="${type}"
-                                data-index="${index}"
-                            >
-                                Verwijderen
-                            </button>
+                            <div class="admin-item-actions">
+                              <button
+                                  type="button"
+                                  data-remove="${type}"
+                                  data-index="${index}"
+                              >
+                                  Verwijderen
+                              </button>
+                            </div>
                         </div>
 
                         <div class="admin-collapsible-content">
@@ -1746,6 +2167,56 @@
     }
   }
 
+  const TAKLEIDER_SUFFIX = /\s*\(\s*takleider\s*\)\s*$/i;
+
+  function stripTakleiderSuffix(name) {
+    return String(name ?? "").replace(TAKLEIDER_SUFFIX, "").trim();
+  }
+
+  function leadershipPublicName(item) {
+    const rawName = String(item?.name ?? "");
+    const name = stripTakleiderSuffix(rawName);
+    const isTakleider =
+      Boolean(item?.takleider) || TAKLEIDER_SUFFIX.test(rawName);
+    return isTakleider && name ? `${name} (Takleider)` : name;
+  }
+
+  function normalizeBranchLeaderList(list) {
+    if (!Array.isArray(list)) return;
+
+    const suffixIndexes = [];
+    list.forEach((item, index) => {
+      if (!item || typeof item !== "object") return;
+      const rawName = String(item.name ?? "");
+      if (TAKLEIDER_SUFFIX.test(rawName)) suffixIndexes.push(index);
+      item.name = stripTakleiderSuffix(rawName);
+      item.takleider = Boolean(item.takleider);
+    });
+
+    let chosen = -1;
+    if (suffixIndexes.length) {
+      chosen = suffixIndexes[suffixIndexes.length - 1];
+    } else {
+      for (let index = list.length - 1; index >= 0; index -= 1) {
+        if (list[index]?.takleider) {
+          chosen = index;
+          break;
+        }
+      }
+    }
+
+    list.forEach((item, index) => {
+      if (!item || typeof item !== "object") return;
+      item.takleider = index === chosen;
+    });
+  }
+
+  function normalizeBranchLeadership(data) {
+    const branches = data?.branchLeadership;
+    if (!branches || typeof branches !== "object") return;
+    Object.values(branches).forEach((list) => normalizeBranchLeaderList(list));
+  }
+
   function renderLeadershipList(
     container,
     items,
@@ -1767,12 +2238,15 @@
     };
 
     if (includeEmail) appendItem("Email", email);
-    items.forEach((item) => appendItem(item.name, item.phone));
+    items.forEach((item) => appendItem(leadershipPublicName(item), item.phone));
   }
 
   function renderLeadershipEditor(items, containerId, type) {
     const container = document.getElementById(containerId);
     if (!container) return;
+
+    const isBranchLeadership = type.startsWith("branchLeadership:");
+    if (isBranchLeadership) normalizeBranchLeaderList(items);
 
     container.classList.add("admin-leadership-list");
     container.classList.toggle(
@@ -1780,19 +2254,24 @@
       type === "groupLeadership",
     );
     container.innerHTML = items
-      .map(
-        (item, index) => `
+      .map((item, index) => {
+        const takleiderField = isBranchLeadership
+          ? `<label class="leadership-takleider"><input type="checkbox" data-field="leadership-takleider" data-type="${type}" data-index="${index}"${item.takleider ? " checked" : ""}><span>Takleider</span></label>`
+          : "";
+
+        return `
                 <article class="admin-item leadership-card">
                     <div class="leadership-card-head">
+                        ${takleiderField}
                         <button type="button" class="leadership-remove" data-remove="${type}" data-index="${index}">Verwijderen</button>
                     </div>
                     <div class="leadership-fields">
-                        <label>Naam<input type="text" data-field="leadership-name" data-type="${type}" data-index="${index}" value="${escapeHtml(item.name)}" placeholder="Naam van de leider"></label>
-                        <label>Telefoonnummer<input type="tel" data-field="leadership-phone" data-type="${type}" data-index="${index}" value="${escapeHtml(item.phone)}" placeholder="Telefoonnummer"></label>
+                        <label><span>Naam</span><input type="text" data-field="leadership-name" data-type="${type}" data-index="${index}" value="${escapeHtml(item.name)}" placeholder="Naam van de leider"></label>
+                        <label><span>Telefoonnummer</span><input type="tel" data-field="leadership-phone" data-type="${type}" data-index="${index}" value="${escapeHtml(item.phone)}" placeholder="Telefoonnummer"></label>
                     </div>
                 </article>
-            `,
-      )
+            `;
+      })
       .join("");
   }
 
@@ -1901,6 +2380,19 @@
             </div>
           </section>
         `;
+      return;
+    }
+
+    if (activePage === "news") {
+      if (!Array.isArray(data.news)) data.news = [];
+      container.innerHTML = `
+                <section class="admin-card compact-card admin-news-card">
+                    <div class="admin-card-head"><h2>Nieuws</h2><button type="button" class="mini-button" data-add="news">+ Nieuws</button></div>
+                    <p class="form-help">De eerste 3 berichten (oranje balk) staan op de homepage. Verplaats met ↑ en ↓. Extra berichten staan op /nieuws.</p>
+                    <div id="newsEditor" class="admin-list admin-news-list"></div>
+                </section>
+            `;
+      renderNewsEditor(data.news);
       return;
     }
 
@@ -2099,15 +2591,43 @@
         `;
   }
 
+  const publicPagePaths = {
+    home: "/",
+    news: "/nieuws",
+    "over-ons": "/over-ons",
+    inschrijven: "/inschrijven",
+    kapoenen: "/kapoenen",
+    welpen: "/welpen",
+    jongverkenners: "/jongverkenners",
+    verkenners: "/verkenners",
+    jins: "/jins",
+    secondhand: "/tweedehands",
+  };
+
   function renderAdminPanel() {
     const data = DataStore.get();
+    const activePage = data.activePage || "home";
 
-    qsa(".page-picker-tile").forEach((button) => {
-      const isActive =
-        button.dataset.pageOption === (data.activePage || "home");
+    qsa("[data-page-option]").forEach((button) => {
+      const isActive = button.dataset.pageOption === activePage;
       button.classList.toggle("is-active", isActive);
-      button.setAttribute("aria-pressed", String(isActive));
+      if (button.getAttribute("role") === "radio") {
+        button.setAttribute("aria-checked", String(isActive));
+      } else {
+        button.setAttribute("aria-pressed", String(isActive));
+      }
     });
+
+    const viewLink = document.getElementById("viewLivePage");
+    const livePath = publicPagePaths[activePage];
+    if (viewLink) {
+      if (livePath) {
+        viewLink.href = livePath;
+        viewLink.hidden = false;
+      } else {
+        viewLink.hidden = true;
+      }
+    }
 
     renderPageSpecificEditors(data);
   }
@@ -2119,7 +2639,9 @@
     readFormValues();
 
     if (type in listEditorConfig) {
-      data[type].push(structuredClone(listEditorConfig[type].newItem));
+      const newItem = structuredClone(listEditorConfig[type].newItem);
+      if (type === "news") data.news.unshift(newItem);
+      else data[type].push(newItem);
       if (type === "agenda") sortAgendaInPlace(data.agenda);
     } else if (type === "groupLeadership") {
       if (!data.groupLeadership) {
@@ -2140,9 +2662,33 @@
       data.branchLeadership[branch].push({
         name: "",
         phone: "",
+        takleider: false,
       });
     }
 
+    renderAdminPanel();
+
+    if (type === "news") {
+      const newest = document.querySelector(".admin-news-item");
+      if (newest?.classList.contains("is-collapsed")) {
+        toggleAdminCollapsible(newest);
+      }
+    }
+  }
+
+  function moveEntry(type, index, direction) {
+    const data = DataStore.get();
+    readFormValues();
+
+    const list = data[type];
+    if (!Array.isArray(list)) return;
+
+    const target = index + direction;
+    if (target < 0 || target >= list.length) return;
+
+    const [item] = list.splice(index, 1);
+    list.splice(target, 0, item);
+    markDirtyState(true);
     renderAdminPanel();
   }
 
@@ -2162,33 +2708,11 @@
       removedItem = data.branchLeadership[type.split(":")[1]][index];
     }
 
-    /*
-     * Verwijder eventueel de bijhorende tweedehandsfoto
-     * ook daadwerkelijk uit /uploads.
-     */
-    if (type === "secondhand" && removedItem?.image) {
-      try {
-        const filename = removedItem.image
-          .split("/")
-          .pop()
-          ?.split("?")[0]
-          ?.replace(/\.[^/.]+$/, "");
-
-        if (filename) {
-          const response = await fetch(
-            `/api/uploads/photo/${encodeURIComponent(filename)}`,
-            {
-              method: "DELETE",
-            },
-          );
-
-          if (!response.ok) {
-            console.warn("Tweedehandsfoto kon niet verwijderd worden.");
-          }
-        }
-      } catch (error) {
-        console.warn("Foto verwijderen mislukt:", error);
-      }
+    if (
+      (type === "secondhand" || type === "news" || type === "agenda") &&
+      removedItem?.image
+    ) {
+      queueUploadDelete(removedItem.image);
     }
 
     if (type in listEditorConfig) {
@@ -2199,16 +2723,22 @@
       data.branchLeadership[type.split(":")[1]].splice(index, 1);
     }
 
-    await persist(data);
+    markDirtyState(true);
     renderAdminPanel();
   }
 
   function readFormValues() {
     const data = DataStore.get();
-    const activePageButton = qs(".page-picker-tile.is-active");
+    const activePageButton = qs("[data-page-option].is-active");
     data.activePage = activePageButton
       ? activePageButton.dataset.pageOption
       : "home";
+
+    if (data.activePage === "news") {
+      if (!Array.isArray(data.news)) data.news = [];
+      readListFields(data.news, "news");
+      return data;
+    }
 
     if (data.activePage === "home") {
       qsa("[data-contact-field]").forEach((input) => {
@@ -2267,6 +2797,14 @@
           input.dataset.field === "leadership-name" ? "name" : "phone";
         list[index][field] = input.value.trim();
       });
+      list.forEach((item) => {
+        item.takleider = false;
+      });
+      qsa("[data-field='leadership-takleider']").forEach((input) => {
+        const index = Number(input.dataset.index);
+        if (list[index]) list[index].takleider = input.checked;
+      });
+      normalizeBranchLeaderList(list);
       return data;
     }
 
@@ -2290,7 +2828,7 @@
       return;
     }
     sortAgendaInPlace(DataStore.get().agenda);
-    markDirtyState(false);
+    markDirtyState(false, { announce: false });
     renderAdminPanel();
 
     document.addEventListener("input", (event) => {
@@ -2386,11 +2924,42 @@
             collapsibleItem.querySelector("[data-field='faq-question']")
               ?.value || `Vraag ${itemIndex + 1}`;
           summary.textContent = question;
+        } else if (summary && type === "news") {
+          const title =
+            collapsibleItem.querySelector("[data-field='news-title']")?.value.trim() ||
+            `Nieuws ${itemIndex + 1}`;
+          const dateValue =
+            collapsibleItem.querySelector("[data-field='news-date']")?.value.trim() ||
+            "";
+          const dateLabel = collapsibleItem.querySelector(
+            ".admin-news-summary-date",
+          );
+          summary.textContent = title;
+          if (dateLabel) {
+            dateLabel.hidden = !dateValue;
+            dateLabel.textContent = dateValue;
+          }
         }
       }
     });
 
     document.addEventListener("change", async (event) => {
+      const takleiderToggle = event.target.closest(
+        "[data-field='leadership-takleider']",
+      );
+      if (takleiderToggle) {
+        if (takleiderToggle.checked) {
+          const type = takleiderToggle.dataset.type;
+          qsa(
+            `[data-field='leadership-takleider'][data-type="${type}"]`,
+          ).forEach((other) => {
+            if (other !== takleiderToggle) other.checked = false;
+          });
+        }
+        markDirtyState(true);
+        return;
+      }
+
       const planningUpload = event.target.closest("[data-planning-upload]");
       if (planningUpload?.files[0]) {
         const branch = planningUpload.dataset.planningUpload;
@@ -2445,23 +3014,24 @@
         return;
       }
 
-      const agendaUpload = event.target.closest("[data-agenda-upload]");
-      if (agendaUpload?.files[0]) {
+      const listImageUpload = event.target.closest("[data-list-image-upload]");
+      if (listImageUpload?.files[0]) {
         readFormValues();
         const data = DataStore.get();
-        const index = Number(agendaUpload.dataset.agendaUpload);
-        const file = agendaUpload.files[0];
+        const type = listImageUpload.dataset.listImageUpload;
+        const index = Number(listImageUpload.dataset.index);
+        const file = listImageUpload.files[0];
 
         if (!file.type.startsWith("image/")) {
           setSaveStatus("Selecteer een afbeeldingsbestand.", "error");
           return;
         }
 
-        if (!data.agenda[index]) return;
+        if (!Array.isArray(data[type]) || !data[type][index]) return;
 
         try {
           setSaveStatus("Foto uploaden...", "saving");
-          const filename = `agenda-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`;
+          const filename = `${type}-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`;
           const formData = new FormData();
           formData.append("photo", file);
           formData.append("filename", filename);
@@ -2475,7 +3045,7 @@
             throw new Error(result.message || "Foto uploaden mislukt.");
           }
 
-          data.agenda[index].image = result.path;
+          data[type][index].image = result.path;
           markDirtyState(true);
           renderAdminPanel();
         } catch (error) {
@@ -2690,21 +3260,22 @@
         return;
       }
 
-      const agendaPhotoRemove = event.target.closest(
-        "[data-agenda-photo-remove]",
-      );
-      if (agendaPhotoRemove) {
+      const listImageRemove = event.target.closest("[data-list-image-remove]");
+      if (listImageRemove) {
         readFormValues();
         const data = DataStore.get();
-        const index = Number(agendaPhotoRemove.dataset.agendaPhotoRemove);
-        const imagePath = data.agenda[index]?.image || "";
+        const type = listImageRemove.dataset.listImageRemove;
+        const index = Number(listImageRemove.dataset.index);
+        if (!Array.isArray(data[type]) || !data[type][index]) return;
+
+        const imagePath = data[type][index].image || "";
         const filename = imagePath
           .split("/")
           .pop()
           ?.split("?")[0]
           ?.replace(/\.[^/.]+$/, "");
 
-        if (!window.confirm("Wil je deze eventfoto verwijderen?")) return;
+        if (!window.confirm("Wil je deze foto verwijderen?")) return;
 
         try {
           if (filename && imagePath.startsWith("/uploads/")) {
@@ -2718,7 +3289,7 @@
             }
           }
 
-          data.agenda[index].image = "";
+          data[type][index].image = "";
           await persist(data);
           renderAdminPanel();
         } catch (error) {
@@ -2728,25 +3299,20 @@
         return;
       }
 
-      const pageTile = event.target.closest(".page-picker-tile");
+      const pageTile = event.target.closest("[data-page-option]");
       if (pageTile) {
-        const data = DataStore.get();
         const targetPage = pageTile.dataset.pageOption;
-        const currentPage = data.activePage || "home";
-        if (
-          targetPage !== currentPage &&
-          adminHasUnsavedChanges &&
-          !window.confirm(
-            "Er zijn onopgeslagen wijzigingen. Wil je toch naar een andere pagina gaan?",
-          )
-        ) {
-          return;
+        const currentPage = DataStore.get().activePage || "home";
+        if (targetPage === currentPage) return;
+
+        if (adminHasUnsavedChanges) {
+          const leave = window.confirm(
+            "Er zijn onopgeslagen wijzigingen. Die gaan verloren als je naar een andere pagina gaat. Toch verdergaan?",
+          );
+          if (!leave) return;
         }
-        if (targetPage !== currentPage && adminHasUnsavedChanges) {
-          pendingPlanningUploads.clear();
-          adminHasUnsavedChanges = false;
-        }
-        if (pageTile.dataset.pageOption === "settings") {
+
+        if (targetPage === "settings") {
           const password = window.prompt("Voer het instellingenwachtwoord in:");
           if (!password) return;
           const unlockResponse = await fetch(
@@ -2770,9 +3336,19 @@
             googleDriveSettings = await settingsResponse.json();
           }
         }
-        data.activePage = targetPage;
-        await persist(data);
+
+        if (adminHasUnsavedChanges) {
+          pendingPlanningUploads.clear();
+          pendingUploadDeletes.length = 0;
+          adminHasUnsavedChanges = false;
+          await DataStore.load({ force: true });
+        }
+
+        const fresh = DataStore.get();
+        fresh.activePage = targetPage;
+        await persist(fresh, { quiet: true });
         renderAdminPanel();
+        window.scrollTo(0, 0);
         return;
       }
 
@@ -2783,11 +3359,22 @@
         return;
       }
 
+      const moveTarget = event.target.closest("[data-move]");
+      if (moveTarget && !moveTarget.disabled) {
+        moveEntry(
+          moveTarget.dataset.move,
+          Number(moveTarget.dataset.index),
+          Number(moveTarget.dataset.direction),
+        );
+        return;
+      }
+
       const removeTarget = event.target.closest("[data-remove]");
       if (removeTarget) {
         const removeType = removeTarget.dataset.remove;
         const confirmation = {
           agenda: "Wil je dit event echt verwijderen?",
+          news: "Wil je dit nieuwsbericht echt verwijderen?",
           faq: "Wil je deze praktische vraag echt verwijderen?",
           secondhand: "Wil je dit tweedehandsitem echt verwijderen?",
           groupLeadership: "Wil je deze groepsleider echt verwijderen?",
@@ -2864,6 +3451,7 @@
         }
 
         const driveErrors = [];
+        const hadPlanningUpload = pendingPlanningUploads.size > 0;
         try {
           for (const [branch, pendingUpload] of pendingPlanningUploads) {
             const uploadButton = qs(
@@ -2914,8 +3502,8 @@
               `Maandplanning staat op de website, maar Google Drive gaf deze fout: ${driveErrors[0]}`,
               "error",
             );
-          } else {
-            setSaveStatus("Maandplanning opgeslagen.", "saved");
+          } else if (hadPlanningUpload) {
+            setSaveStatus("Maandplanning opgeslagen", "saved");
           }
         } catch (error) {
           console.error(error);
@@ -2979,6 +3567,66 @@
         });
       }
 
+      const branchPhotoNames = {
+        "branch-kapoenen": "kapoenen",
+        "branch-welpen": "welpen",
+        "branch-jongverkenners": "jongverkenners",
+        "branch-verkenners": "verkenners",
+        "branch-jins": "jins",
+      };
+
+      qsa(".branch-bg").forEach((image) => {
+        const card = image.closest(".branch");
+        const className = Object.keys(branchPhotoNames).find((name) => card?.classList.contains(name));
+        const photo = className ? data.photos?.branches?.[branchPhotoNames[className]] : "";
+
+        if (!photo) {
+          image.hidden = true;
+          return;
+        }
+
+        let attempt = 0;
+
+        const loadPhoto = (src) => {
+          image.onload = () => {
+            image.hidden = false;
+          };
+          image.onerror = () => {
+            if (image.naturalWidth > 0) {
+              image.hidden = false;
+              return;
+            }
+
+            if (attempt < 1) {
+              attempt += 1;
+              const glue = src.includes("?") ? "&" : "?";
+              loadPhoto(`${src}${glue}retry=${attempt}`);
+              return;
+            }
+
+            image.hidden = true;
+          };
+
+          const absolute = new URL(src, window.location.origin).href;
+          const alreadyFailed = image.src === absolute && image.complete && image.naturalWidth === 0;
+
+          if (alreadyFailed && attempt < 1) {
+            attempt += 1;
+            const glue = src.includes("?") ? "&" : "?";
+            loadPhoto(`${src}${glue}retry=${attempt}`);
+            return;
+          }
+
+          image.src = src;
+
+          if (image.complete && image.naturalWidth > 0) {
+            image.hidden = false;
+          }
+        };
+
+        loadPhoto(photo);
+      });
+
       if (pageName === "over-ons") {
         renderLeadershipList(
           qs(".story-card .contact-list"),
@@ -3003,7 +3651,7 @@
                                 </div>
                                 <a class="button button-primary download-button document-action-button" href="${escapeHtml(planning)}" target="_blank" rel="noopener" download>
                                   <span class="button-icon" aria-hidden="true">↓</span>
-                                  <span>${escapeHtml(planningTitle)}</span>
+                                  <span>${escapeHtml(formatPlanningLabel(planningTitle))}</span>
                                 </a>
                             </div>
                         `);
@@ -3034,6 +3682,33 @@
             "afterend",
             `<div class="document-resource-grid">${resourceCards.join("")}</div>`,
           );
+        }
+      }
+
+      const newsSection = document.getElementById("nieuws");
+      const newsEl = qs(".news-list");
+      const newsMore = qs(".news-more");
+      if (newsEl) {
+        const newsItems = Array.isArray(data.news) ? data.news : [];
+        const isNewsArchive = document.body.classList.contains("news-page");
+        const visibleItems = isNewsArchive
+          ? newsItems
+          : newsItems.slice(0, NEWS_HOME_LIMIT);
+
+        if (!newsItems.length) {
+          if (isNewsArchive) newsSection?.removeAttribute("hidden");
+          else newsSection?.setAttribute("hidden", "");
+          newsEl.innerHTML = isNewsArchive
+            ? `<p class="news-empty">Er zijn nog geen nieuwsberichten.</p>`
+            : "";
+          if (newsMore) newsMore.hidden = true;
+        } else {
+          newsSection?.removeAttribute("hidden");
+          newsEl.innerHTML = visibleItems.map(buildNewsItemHtml).join("");
+          setupNewsAccordion(newsEl);
+          if (newsMore) {
+            newsMore.hidden = isNewsArchive || newsItems.length <= NEWS_HOME_LIMIT;
+          }
         }
       }
 
@@ -3142,6 +3817,8 @@
           .join("");
         setupSecondhandScroll();
       }
+
+      initRevealAnimations();
     },
   };
 

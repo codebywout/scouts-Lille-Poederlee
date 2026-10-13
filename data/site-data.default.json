@@ -18,6 +18,16 @@
       "text": "Vandaag beginnen de activiteiten. Iedereen is welkom."
     }
   ],
+  "news": [
+    {
+      "title": "Bouw van ons lokaal",
+      "date": "2026",
+      "text": "We werken aan de bouw van ons nieuwe scoutslokaal. Hier delen we updates over de voortgang, de planning en hoe jullie de werken kunnen volgen.",
+      "image": "",
+      "link": "",
+      "linkText": ""
+    }
+  ],
   "faq": [
     {
       "question": "Wanneer zijn de activiteiten?",
@@ -69,8 +79,9 @@
   "branchLeadership": {
     "kapoenen": [
       {
-        "name": "Ruben Van den Broeck (Takleider)",
-        "phone": "04 00 00 00 00"
+        "name": "Ruben Van den Broeck",
+        "phone": "04 00 00 00 00",
+        "takleider": true
       },
       {
         "name": "Wies Smeyers",

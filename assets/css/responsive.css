@@ -18,22 +18,6 @@
         display: none;
     }
 
-    .mobile-menu {
-        display: none;
-        flex-direction: column;
-        gap: 18px;
-        padding: 20px 6% 26px;
-        background: var(--green);
-    }
-
-    .mobile-menu.open {
-        display: flex;
-    }
-
-    .mobile-menu a {
-        font-size: 22px;
-        font-weight: 700;
-    }
 }
 
 /* Subpagina's (uniform, over-ons, inschrijven, ...) */
@@ -73,9 +57,35 @@
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
+    .registration-payment-layout {
+        gap: 18px;
+    }
+
     .registration-payment-qr {
-        justify-self: center;
-        width: min(100%, 280px);
+        justify-self: stretch;
+        align-items: center;
+        width: 100%;
+        max-width: none;
+        padding: 20px 16px 18px;
+    }
+
+    .registration-payment-qr-code {
+        width: min(240px, 72vw);
+        height: min(240px, 72vw);
+        margin-inline: auto;
+        padding: 16px;
+    }
+
+    .registration-payment-qr-code img,
+    .registration-payment-qr-code canvas,
+    .registration-payment-qr-code table {
+        width: min(208px, calc(72vw - 32px)) !important;
+        height: min(208px, calc(72vw - 32px)) !important;
+    }
+
+    .registration-payment-qr p {
+        max-width: 34ch;
+        margin-inline: auto;
     }
 
     .field-row {
@@ -680,5 +690,136 @@
 @media (max-width: 1024px) {
     body.home-page .branches {
         padding-bottom: 32px;
+    }
+}
+
+@media (max-width: 950px) {
+    .mobile-menu-button {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 44px;
+        height: 44px;
+        padding: 0;
+        border: 1px solid rgba(255, 255, 255, 0.45);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.08);
+        cursor: pointer;
+    }
+
+    .mobile-menu-button:hover,
+    .mobile-menu-button:focus-visible {
+        background: rgba(255, 255, 255, 0.16);
+    }
+
+    .mobile-menu-button span {
+        position: absolute;
+        left: 13px;
+        width: 18px;
+        height: 2px;
+        margin: 0;
+        border-radius: 999px;
+        background: #fff;
+        transition: transform 0.2s ease, opacity 0.2s ease, top 0.2s ease;
+    }
+
+    .mobile-menu-button span:nth-child(1) {
+        top: 16px;
+    }
+
+    .mobile-menu-button span:nth-child(2) {
+        top: 21px;
+    }
+
+    .mobile-menu-button span:nth-child(3) {
+        top: 26px;
+    }
+
+    .mobile-menu-button.is-open span:nth-child(1),
+    .mobile-menu-button.is-open span:nth-child(3) {
+        top: 21px;
+    }
+
+    .mobile-menu-button.is-open span:nth-child(1) {
+        transform: rotate(45deg);
+    }
+
+    .mobile-menu-button.is-open span:nth-child(2) {
+        opacity: 0;
+    }
+
+    .mobile-menu-button.is-open span:nth-child(3) {
+        transform: rotate(-45deg);
+    }
+
+    .mobile-menu {
+        display: none;
+        flex-direction: column;
+        gap: 2px;
+        width: min(calc(100% - 10%), 360px);
+        margin: 8px 5% 0 auto;
+        padding: 10px;
+        background: #0d1a14;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 22px;
+        box-shadow: 0 18px 40px rgba(8, 16, 12, 0.35);
+    }
+
+    .mobile-menu.open {
+        display: flex;
+        animation: mobileMenuIn 0.22s ease-out both;
+    }
+
+    .mobile-menu a {
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        min-height: 44px;
+        padding: 0 14px;
+        border: 0;
+        border-radius: 12px;
+        color: #dfe5e1;
+        font-size: 15px;
+        font-weight: 600;
+    }
+
+    .mobile-menu a::after {
+        content: none;
+    }
+
+    .mobile-menu a:hover,
+    .mobile-menu a:focus-visible {
+        color: #fff;
+        background: rgba(255, 255, 255, 0.06);
+    }
+
+    .mobile-menu a:last-child {
+        justify-content: center;
+        margin-top: 6px;
+        border: 1px solid var(--scout-orange);
+        border-radius: 999px;
+        background: linear-gradient(135deg, var(--scout-orange), #c1791a);
+        color: #fff;
+        font-size: 13px;
+        font-weight: 700;
+    }
+
+    .mobile-menu a:last-child:hover,
+    .mobile-menu a:last-child:focus-visible {
+        background: #c3731a;
+        color: #fff;
+    }
+}
+
+@keyframes mobileMenuIn {
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
     }
 }

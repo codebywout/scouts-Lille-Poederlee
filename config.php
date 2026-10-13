@@ -224,7 +224,7 @@ function scouts_allowed_photo_name(string $filename): bool
         'over-ons', 'kapoenenleiding', 'welpenleiding',
         'jongverkennersleiding', 'verkennersleiding', 'jinsleiding',
     ], true)
-        || (bool) preg_match('/^(?:tweedehands|agenda)-[0-9]+-[a-z0-9]+$/', $filename);
+        || (bool) preg_match('/^(?:tweedehands|agenda|news)-[0-9]+-[a-z0-9]+$/', $filename);
 }
 
 function scouts_delete_photo_versions(string $filename): void

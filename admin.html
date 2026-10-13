@@ -8,7 +8,7 @@
     <meta name="robots" content="noindex, nofollow">
     <title>Beheer | Scouts Lille-Poederlee</title>
     <meta name="description" content="Beheerpagina voor de Scouts Lille-Poederlee website.">
-    <link rel="stylesheet" href="assets/css/style.css?v=20260930-5">
+    <link rel="stylesheet" href="assets/css/style.css?v=20261013-118">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Montserrat:wght@600;700;800;900&display=swap" rel="stylesheet">
@@ -22,6 +22,7 @@
 
             <div class="admin-toolbar">
                 <a href="/" class="nav-cta">Terug naar site</a>
+                <button type="button" class="nav-cta admin-settings-button" data-page-option="settings" aria-pressed="false">Instellingen</button>
                 <button type="button" id="logoutBtn" class="nav-cta nav-cta--danger">Uitloggen</button>
             </div>
         </div>
@@ -30,65 +31,49 @@
     <main class="admin-shell">
         <form id="adminForm" class="admin-form">
             <div class="page-picker">
-                <div class="page-picker-grid" id="pageSelector" role="radiogroup" aria-labelledby="pagePickerLabel">
-                    <button type="button" class="page-picker-tile is-active" data-page-option="home" role="radio" aria-checked="true">Home</button>
-                    <button type="button" class="page-picker-tile" data-page-option="over-ons" role="radio" aria-checked="false">Over ons</button>
-                    <button type="button" class="page-picker-tile" data-page-option="inschrijven" role="radio" aria-checked="false">Inschrijven</button>
-                    <button type="button" class="page-picker-tile" data-page-option="photos" role="radio" aria-checked="false">Foto's</button>
-                    <button type="button" class="page-picker-tile" data-page-option="kapoenen" role="radio" aria-checked="false">Kapoenen</button>
-                    <button type="button" class="page-picker-tile" data-page-option="welpen" role="radio" aria-checked="false">Welpen</button>
-                    <button type="button" class="page-picker-tile" data-page-option="jongverkenners" role="radio" aria-checked="false">Jongverkenners</button>
-                    <button type="button" class="page-picker-tile" data-page-option="verkenners" role="radio" aria-checked="false">Verkenners</button>
-                    <button type="button" class="page-picker-tile" data-page-option="jins" role="radio" aria-checked="false">Jins</button>
-                    <button type="button" class="page-picker-tile" data-page-option="secondhand" role="radio" aria-checked="false">Tweedehands</button>
-                    <button type="button" class="page-picker-tile" data-page-option="settings" role="radio" aria-checked="false">Instellingen</button>
-                </div>
+                <section class="page-picker-group" aria-labelledby="sitePickerLabel">
+                    <h2 class="page-picker-label" id="sitePickerLabel">Site</h2>
+                    <div class="page-picker-grid">
+                        <button type="button" class="page-picker-tile is-active" data-page-option="home" role="radio" aria-checked="true">Home</button>
+                        <button type="button" class="page-picker-tile" data-page-option="news" role="radio" aria-checked="false">Nieuws</button>
+                        <button type="button" class="page-picker-tile" data-page-option="over-ons" role="radio" aria-checked="false">Over ons</button>
+                        <button type="button" class="page-picker-tile" data-page-option="inschrijven" role="radio" aria-checked="false">Inschrijven</button>
+                        <button type="button" class="page-picker-tile" data-page-option="photos" role="radio" aria-checked="false">Foto's</button>
+                        <button type="button" class="page-picker-tile" data-page-option="secondhand" role="radio" aria-checked="false">Tweedehands</button>
+                    </div>
+                </section>
+                <section class="page-picker-group" aria-labelledby="branchPickerLabel">
+                    <h2 class="page-picker-label" id="branchPickerLabel">Takken</h2>
+                    <div class="page-picker-grid">
+                        <button type="button" class="page-picker-tile" data-page-option="kapoenen" role="radio" aria-checked="false">Kapoenen</button>
+                        <button type="button" class="page-picker-tile" data-page-option="welpen" role="radio" aria-checked="false">Welpen</button>
+                        <button type="button" class="page-picker-tile" data-page-option="jongverkenners" role="radio" aria-checked="false">Jongverkenners</button>
+                        <button type="button" class="page-picker-tile" data-page-option="verkenners" role="radio" aria-checked="false">Verkenners</button>
+                        <button type="button" class="page-picker-tile" data-page-option="jins" role="radio" aria-checked="false">Jins</button>
+                    </div>
+                </section>
             </div>
 
             <div id="pageEditor" class="admin-grid" aria-live="polite"></div>
 
             <div class="save-row">
-                <button type="submit" class="button button-primary">Wijzigingen opslaan</button>
+                <a id="viewLivePage" class="admin-view-live" href="/" target="_blank" rel="noopener noreferrer">Bekijk op de site</a>
+                <button type="submit" id="saveChanges" class="button button-primary">
+                    <span class="save-button-label save-button-label-idle">Wijzigingen opslaan</span>
+                    <span class="save-button-label save-button-label-saving" aria-hidden="true">
+                        <span class="save-button-spinner" aria-hidden="true"></span>
+                        <span>Opslaan...</span>
+                    </span>
+                    <span class="save-button-label save-button-label-done" aria-hidden="true">
+                        <span class="save-button-check" aria-hidden="true">✓</span>
+                        <span>Opgeslagen</span>
+                    </span>
+                </button>
                 <span id="saveStatus" aria-live="polite"></span>
             </div>
         </form>
     </main>
 
-    <footer class="footer admin-footer">
-        <div class="footer-main">
-            <div class="footer-brand">
-                <div class="brand" aria-label="Scouts Lille-Poederlee">
-                    <img class="brand-logo" src="assets/images/scouts.png" alt="Scouts Lille-Poederlee logo">
-                </div>
-                <p>Scouts Lille-Poederlee is een jeugdbeweging voor kinderen en jongeren in de regio.</p>
-            </div>
-
-            <div class="footer-column">
-                <span>NAVIGATIE</span>
-                <a href="/">Home</a>
-                <a href="/over-ons">Over ons</a>
-                <a href="/uniform">Uniform</a>
-            </div>
-
-            <div class="footer-column">
-            <span>CONTACT</span>
-            <a data-footer-email href="mailto:groepsleidingscoutslille@gmail.com">groepsleidingscoutslille@gmail.com</a>
-            <p data-footer-address>Zagerijstraat 29<br>2275 Lille</p>
-        </div>
-
-            <div class="footer-column">
-                <span>SOCIALS</span>
-                <a href="https://www.facebook.com/scoutslille" target="_blank" rel="noopener noreferrer">Facebook ↗</a>
-                <a href="https://www.instagram.com/scoutslille/" target="_blank" rel="noopener noreferrer">Instagram ↗</a>
-            </div>
-        </div>
-
-        <div class="footer-bottom">
-            <span>© 2026 Scouts Lille-Poederlee</span>
-            <span>Wout Pluym</span>
-        </div>
-    </footer>
-
-    <script src="assets/js/script.js?v=20261013-3"></script>
+    <script src="assets/js/script.js?v=20261013-117"></script>
 </body>
 </html>

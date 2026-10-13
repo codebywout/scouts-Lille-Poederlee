@@ -23,6 +23,7 @@ $cleanRoutes = [
     '/jongverkenners' => 'pages/jongverkenners.html',
     '/kapoenen' => 'pages/kapoenen.html',
     '/tweedehands' => 'pages/tweedehands.html',
+    '/nieuws' => 'pages/nieuws.html',
     '/uniform' => 'pages/uniform.html',
     '/verkenners' => 'pages/verkenners.html',
     '/welpen' => 'pages/welpen.html',
@@ -56,7 +57,7 @@ if (in_array($requestPath, [
 
 $legacyPageNames = [
     'over-ons', 'inschrijven', 'jins', 'jongverkenners', 'kapoenen',
-    'tweedehands', 'uniform', 'verkenners', 'welpen',
+    'tweedehands', 'nieuws', 'uniform', 'verkenners', 'welpen',
 ];
 
 if (preg_match('#^/(' . implode('|', $legacyPageNames) . ')\.html$#', $requestPath, $matches)) {

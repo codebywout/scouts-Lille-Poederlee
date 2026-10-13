@@ -441,6 +441,16 @@ body.home-page .hero {
     font-size: 11px;
 }
 
+/* De view-timeline reveal stopt onderaan de pagina rond 15% opacity. */
+.footer-bottom.reveal-in,
+.footer-bottom.reveal-fallback {
+    animation: none;
+    animation-timeline: auto;
+    opacity: 1;
+    translate: none;
+    scale: none;
+}
+
 .contact-list,
 .meta-list {
     list-style: none;

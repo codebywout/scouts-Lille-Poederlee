@@ -6,7 +6,7 @@
     <title>Inschrijven | Scouts Lille-Poederlee</title>
     <meta name="description" content="Inschrijven bij Scouts Lille-Poederlee.">
     <link rel="canonical" href="https://scoutslille.be/inschrijven">
-    <link rel="stylesheet" href="../assets/css/style.css?v=20261013-41">
+    <link rel="stylesheet" href="../assets/css/style.css?v=20261013-105">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Montserrat:wght@600;700;800;900&display=swap" rel="stylesheet">
@@ -195,19 +195,29 @@
                 </div>
                 <div class="registration-payment-layout">
                     <div class="registration-payment-action">
-                        <a
-                            id="registrationPaymentLink"
-                            class="button button-primary registration-button-current registration-payment-link"
-                            href="#"
-                        >
-                            Betaal in bankapp <span>↗</span>
-                        </a>
+                        <div id="registrationPaymentDetails" class="registration-payment-details" hidden>
+                            <dl>
+                                <div>
+                                    <dt>Bedrag</dt>
+                                    <dd id="registrationPaymentAmount" class="registration-payment-value"></dd>
+                                </div>
+                                <div>
+                                    <dt>Rekeningnummer</dt>
+                                    <dd id="registrationPaymentIban" class="registration-payment-value registration-payment-iban"></dd>
+                                </div>
+                                <div>
+                                    <dt>Mededeling</dt>
+                                    <dd id="registrationPaymentMessage" class="registration-payment-value"></dd>
+                                </div>
+                            </dl>
+                        </div>
                         <span hidden data-page-content="lidgeld"></span>
                         <span hidden data-page-content="rekeningnummer"></span>
                     </div>
                     <div class="registration-payment-qr">
+                        <p class="registration-payment-qr-label">Scan om te betalen</p>
                         <div id="registrationPaymentQr" class="registration-payment-qr-code" role="img" aria-label="Betaal-QR-code"></div>
-                        <p>Of scan de QR-code</p>
+                        <p id="registrationPaymentQrCaption">Open je bankapp en scan deze code</p>
                     </div>
                 </div>
             </aside>
@@ -253,7 +263,7 @@
 </footer>
 
 <script src="../assets/js/qrcode.min.js"></script>
-<script src="../assets/js/script.js?v=20261013-16"></script>
+<script src="../assets/js/script.js?v=20261013-103"></script>
 
 </body>
 </html>

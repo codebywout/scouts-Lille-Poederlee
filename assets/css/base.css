@@ -7,7 +7,7 @@
 html {
     scroll-behavior: smooth;
     background: var(--scout-forest-dark);
-    overflow-x: hidden;
+    overflow-x: clip;
 }
 
 body {
@@ -16,7 +16,7 @@ body {
     color: #14261d;
     line-height: 1.6;
     background: #f5efe7;
-    overflow-x: hidden;
+    overflow-x: clip;
 }
 
 body > * {
