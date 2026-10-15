@@ -9,16 +9,16 @@ const SCOUTS_GOOGLE_SERVICE_ACCOUNT_FILE = SCOUTS_ROOT . DIRECTORY_SEPARATOR . '
 const SCOUTS_GOOGLE_OAUTH_FILE = SCOUTS_ROOT . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . '.google-oauth.json';
 const SCOUTS_UPLOADS_DIR = SCOUTS_ROOT . DIRECTORY_SEPARATOR . 'uploads';
 const SCOUTS_MAX_UPLOAD_BYTES = 20971520;
-/** Keep uploads sharp on retina screens while capping huge camera files. */
-const SCOUTS_PHOTO_MAX_EDGE = 2800;
-const SCOUTS_PHOTO_JPEG_QUALITY = 95;
+/** Match manually optimized heroes: sharp on retina, light to download. */
+const SCOUTS_PHOTO_MAX_EDGE = 2400;
+const SCOUTS_PHOTO_JPEG_QUALITY = 90;
 const SCOUTS_MAX_PDF_UPLOAD_BYTES = 20971520;
 
 /**
  * Bump this on every deploy so HTML/CSS/JS URLs change and old caches are skipped.
  * Format: YYYYMMDD-N
  */
-const SCOUTS_ASSET_VERSION = '20261015-26';
+const SCOUTS_ASSET_VERSION = '20261015-29';
 
 // Best-effort: some hosts allow raising these at runtime.
 @ini_set('upload_max_filesize', '20M');
@@ -438,8 +438,10 @@ function scouts_photo_apply_orientation($image, int $orientation)
 }
 
 /**
- * Store an uploaded photo with minimal quality loss.
- * Returns the public path including cache-buster query.
+ * Store an uploaded photo (max edge 2400px, JPEG quality 90, progressive).
+ * Always re-encodes when GD is available. $width/$height come from the caller
+ * after getimagesize validation; GD reads final dimensions from the image.
+ * Returns the public path including a cache-buster query.
  */
 function scouts_store_uploaded_photo(string $sourcePath, string $basename, string $mime, int $width, int $height): string
 {
@@ -450,8 +452,6 @@ function scouts_store_uploaded_photo(string $sourcePath, string $basename, strin
     $gdAvailable = function_exists('imagejpeg') && function_exists('imagecreatefromstring');
     $orientation = scouts_photo_exif_orientation($sourcePath);
     $needsOrient = $orientation !== 1;
-    $needsResize = max($width, $height) > SCOUTS_PHOTO_MAX_EDGE;
-    $isJpeg = $mime === 'image/jpeg';
 
     $tempFile = tempnam(SCOUTS_UPLOADS_DIR, $basename . '-');
     if ($tempFile === false) {
@@ -462,12 +462,7 @@ function scouts_store_uploaded_photo(string $sourcePath, string $basename, strin
     $finalPath = SCOUTS_UPLOADS_DIR . DIRECTORY_SEPARATOR . $basename . '.' . $extension;
 
     try {
-        // Keep original JPEG bytes when no transform is needed (no re-encode loss).
-        if ($isJpeg && !$needsOrient && !$needsResize) {
-            if (!copy($sourcePath, $tempFile)) {
-                throw new RuntimeException('Afbeelding kon niet worden opgeslagen.');
-            }
-        } elseif ($gdAvailable) {
+        if ($gdAvailable) {
             $binary = file_get_contents($sourcePath);
             if ($binary === false) {
                 throw new RuntimeException('Afbeelding kon niet worden gelezen.');

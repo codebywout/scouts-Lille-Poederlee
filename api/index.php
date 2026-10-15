@@ -23,7 +23,7 @@ try {
         header('Last-Modified: ' . gmdate('D, d M Y H:i:s', $modifiedAt) . ' GMT');
 
         $clientEtags = array_map(
-            static fn (string $value): string => trim($value, " \t\"") ,
+            static fn (string $value): string => trim($value, " \t\""),
             explode(',', (string) ($_SERVER['HTTP_IF_NONE_MATCH'] ?? ''))
         );
         if (in_array(trim($etag, '"'), $clientEtags, true)) {

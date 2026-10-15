@@ -1,5 +1,5 @@
 {
-    "activePage": "news",
+    "activePage": "photos",
     "pageContent": {
         "over-ons": {
             "intro": "Met 20 leiders, een hoop energie en net genoeg gezond verstand zorgen wij er elke week voor dat de scouts gevuld zijn met actie, plezier en verhalen die thuis niet altijd volledig worden verteld.\n\nWij geloven dat kinderen en jongeren het best groeien in een omgeving waar ze kunnen bewegen, experimenteren, samenwerken en zichzelf ontdekken."
@@ -27,7 +27,7 @@
             "text": "Zoals elk jaar organiseert de Jeugdraad, in samenwerking met de jeugddienst, opnieuw de Jeugdverenigingendag! Een namiddag om samen te komen, goe te ravotten en ons gewoon kei hard te amuseren!",
             "linkText": "Inschrijvingsformulier",
             "link": "https:\/\/forms.gle\/gyRRbgwhc8rx5kiq5",
-            "image": "\/uploads\/agenda-1790777268432-3ee66cfe.jpg?v=1790777279"
+            "image": "\/uploads\/agenda-1790777268432-3ee66cfe.jpg?v=20261015-28"
         },
         {
             "day": "19",
@@ -44,13 +44,13 @@
             "title": "Welkom op onze nieuwe site!",
             "date": "September 2026",
             "text": "Je hebt het vast al gemerkt. Dit is onze nieuwe website, wat een upgrade.",
-            "image": "\/uploads\/news-1791911687331-359a4430.jpg?v=1791911687",
+            "image": "\/uploads\/news-1791911687331-359a4430.jpg?v=20261015-28",
             "link": "",
             "linkText": "",
-            "summary": "Wat is er allemaal verandert op onze website?",
+            "summary": "Wat is er allemaal veranderd op onze website?",
             "images": [
-                "\/uploads\/news-1791911687331-359a4430.jpg?v=1791911687",
-                "\/uploads\/news-1792067019781-bba91747.jpg?v=1792067019"
+                "\/uploads\/news-1791911687331-359a4430.jpg?v=20261015-28",
+                "\/uploads\/news-1792067019781-bba91747.jpg?v=20261015-28"
             ]
         },
         {
@@ -107,7 +107,7 @@
         },
         {
             "question": "Kan ik eerst een keer komen proberen?",
-            "answer": "Zeker! Je kind mag twee keer komen proberen bij Scouts Lille. Tijdens deze activiteiten is je kind volledig verzekerd, ook als het nog niet is ingeschreven. Vanaf de derde activiteit moet het lidgeld betaald zijn."
+            "answer": "Zeker! Je kind mag twee keer komen proberen bij Scouts Lille. Tijdens deze activiteiten is je kind volledig verzekerd, ook als het nog niet is ingeschreven. Vanaf de derde activiteit moet het lidgeld (€60) betaald zijn."
         }
     ],
     "contact": {
@@ -244,18 +244,18 @@
     "photos": {
         "logo": "\/assets\/images\/scouts.png",
         "homeHero": "\/assets\/images\/domein.jpg",
-        "aboutHero": "\/uploads\/over-ons.jpg?v=1790525257",
+        "aboutHero": "\/uploads\/over-ons.jpg?v=20261015-28",
         "uniform": [
             "https:\/\/images.unsplash.com\/photo-1472162072942-cd5147eb3902?auto=format&fit=crop&w=900&q=80",
             "https:\/\/images.unsplash.com\/photo-1504150558240-0b4fd8946624?auto=format&fit=crop&w=900&q=80",
             "https:\/\/images.unsplash.com\/photo-1504150558240-0b4fd8946624?auto=format&fit=crop&w=900&q=80"
         ],
         "branches": {
-            "kapoenen": "\/uploads\/kapoenenleiding.jpg?v=1790525084",
-            "welpen": "\/uploads\/welpenleiding.jpg?v=1790524454",
-            "jongverkenners": "\/uploads\/jongverkennersleiding.jpg?v=1790524491",
-            "verkenners": "\/uploads\/verkennersleiding.jpg?v=1790524498",
-            "jins": "\/uploads\/jinsleiding.jpg?v=1790612719"
+            "kapoenen": "\/uploads\/kapoenenleiding.jpg?v=20261015-28",
+            "welpen": "\/uploads\/welpenleiding.jpg?v=20261015-28",
+            "jongverkenners": "\/uploads\/jongverkennersleiding.jpg?v=20261015-28",
+            "verkenners": "\/uploads\/verkennersleiding.jpg?v=20261015-28",
+            "jins": "\/uploads\/jinsleiding.jpg?v=20261015-28"
         },
         "monthlyPlanning": {
             "kapoenen": "\/uploads\/maandplanning-kapoenen.pdf?v=1791245038",

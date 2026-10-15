@@ -6,7 +6,7 @@
     background-color: #0d2419;
     background-image:
         linear-gradient(rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.65)),
-        url("/assets/images/domein2.jpg?v=20260930-3");
+        url("/assets/images/domein2.jpg?v=20261015-28");
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
@@ -51,7 +51,7 @@ body.news-page::before {
     background-color: #0d2419;
     background-image:
         linear-gradient(rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.65)),
-        url("/assets/images/domein2.jpg?v=20260930-3");
+        url("/assets/images/domein2.jpg?v=20261015-28");
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
@@ -60,19 +60,19 @@ body.news-page::before {
 body.secondhand-page::before {
     background-image:
         linear-gradient(rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.65)),
-        url("/assets/images/domein3.jpg?v=20260930-3");
+        url("/assets/images/domein3.jpg?v=20261015-28");
 }
 
 body.about-page::before {
     background-image:
         linear-gradient(rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.65)),
-        url("/assets/images/domein4.jpg?v=20260930-3");
+        url("/assets/images/domein4.jpg?v=20261015-28");
 }
 
 body.uniform-page::before {
     background-image:
         linear-gradient(rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.65)),
-        url("/assets/images/domein5.jpg?v=20260930-3");
+        url("/assets/images/domein5.jpg?v=20261015-28");
 }
 
 .registration-page .page-shell,
@@ -194,7 +194,7 @@ body.uniform-page::before {
 }
 
 .page-over-ons .about-hero {
-    background-image: url("/uploads/over-ons.jpg?v=20260930-4") !important;
+    background-image: url("/uploads/over-ons.jpg?v=20261015-28") !important;
 }
 
 .page-hero {

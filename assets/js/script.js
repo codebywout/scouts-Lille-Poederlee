@@ -40,7 +40,7 @@
       });
   }
 
-  const IMAGE_ASSET_VERSION = "20261015-26";
+  const IMAGE_ASSET_VERSION = "20261015-29";
 
   function formatLidgeldLabel(amount) {
     const amountNumber = Number(String(amount || "").replace(",", ".").replace(/[^\d.]/g, ""));
@@ -744,7 +744,7 @@
   }
 
   /* ==========================================================
-       Soft page transitions for internal links
+       Soft page enter animation
        ========================================================== */
 
   function initPageTransitions() {
@@ -756,10 +756,9 @@
     try {
       sessionStorage.removeItem("page-transition");
     } catch {
-      /* ignore */
+      /* ignore legacy transition flag */
     }
 
-    // Soft land only — no full-screen veil, no background preloads (saves MB on mobile).
     if (!reduceMotion && !isAdmin) {
       document.body.classList.add("page-enter");
       window.setTimeout(() => {
@@ -793,7 +792,7 @@
     faqItems.forEach((item) => {
       const summary = item.querySelector("summary");
       const content = item.querySelector(".faq-content");
-      if (!summary || !content) return; // guards against a missing-markup crash
+      if (!summary || !content) return;
 
       summary.addEventListener("click", (event) => {
         event.preventDefault();
@@ -1347,7 +1346,6 @@
 
     const items = qsa(".secondhand-item", secondhandScroll);
 
-    // Geen tweedehandsitems beschikbaar
     if (items.length === 0) {
       secondhandScroll.innerHTML = `
                 <div class="secondhand-empty">
@@ -1358,12 +1356,10 @@
                 </div>
             `;
 
-      // Pijltjes verbergen
       buttons.forEach((button) => {
         button.hidden = true;
       });
 
-      // Teller verbergen
       if (status) {
         status.hidden = true;
       }
@@ -1371,7 +1367,6 @@
       return;
     }
 
-    // Er zijn wel items → pijltjes tonen
     buttons.forEach((button) => {
       button.hidden = false;
     });
@@ -1609,9 +1604,6 @@
     );
   }
 
-  // Wraps a DataStore.save() call with consistent status messaging and
-  // error handling, so every mutation (add/remove/photo/form submit) does
-  // the same thing on failure: keep the change locally, tell the user.
   async function persist(data, { quiet = false } = {}) {
     normalizeBranchLeadership(data);
     normalizeNewsItems(data);
@@ -1894,6 +1886,8 @@
   };
 
   const CLIENT_MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
+  const PHOTO_UPLOAD_MAX_EDGE = 2400;
+  const PHOTO_UPLOAD_JPEG_QUALITY = 0.9;
 
   function assertUploadSize(file, label = "bestand") {
     if (!file) return;
@@ -1902,6 +1896,53 @@
       throw new Error(
         `Dit ${label} is ${mb} MB en daarmee te groot. Maximum is 20 MB.`,
       );
+    }
+  }
+
+  /** Resize/compress uploads to max 2400px JPEG @ 0.9 before sending. */
+  async function optimizeImageForUpload(file) {
+    if (!file || !file.type.startsWith("image/")) return file;
+
+    let bitmap;
+    try {
+      bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
+    } catch {
+      try {
+        bitmap = await createImageBitmap(file);
+      } catch {
+        return file;
+      }
+    }
+
+    try {
+      const longest = Math.max(bitmap.width, bitmap.height);
+      const scale =
+        longest > PHOTO_UPLOAD_MAX_EDGE ? PHOTO_UPLOAD_MAX_EDGE / longest : 1;
+      const width = Math.max(1, Math.round(bitmap.width * scale));
+      const height = Math.max(1, Math.round(bitmap.height * scale));
+
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d", { alpha: false });
+      if (!ctx) return file;
+
+      ctx.fillStyle = "#f5efe7";
+      ctx.fillRect(0, 0, width, height);
+      ctx.drawImage(bitmap, 0, 0, width, height);
+
+      const blob = await new Promise((resolve) => {
+        canvas.toBlob(resolve, "image/jpeg", PHOTO_UPLOAD_JPEG_QUALITY);
+      });
+      if (!blob || blob.size < 1) return file;
+
+      const baseName = String(file.name || "foto").replace(/\.[^.]+$/, "");
+      return new File([blob], `${baseName}.jpg`, {
+        type: "image/jpeg",
+        lastModified: Date.now(),
+      });
+    } finally {
+      if (typeof bitmap.close === "function") bitmap.close();
     }
   }
 
@@ -1915,6 +1956,7 @@
     }
 
     assertUploadSize(file, "foto");
+    const optimized = await optimizeImageForUpload(file);
 
     const filename = PHOTO_FILENAMES[key];
 
@@ -1924,7 +1966,7 @@
 
     const formData = new FormData();
 
-    formData.append("photo", file);
+    formData.append("photo", optimized);
     formData.append("filename", filename);
 
     const response = await fetch("/api/uploads/photo", {
@@ -1948,10 +1990,6 @@
       throw new Error("Server gaf geen fotopad terug.");
     }
 
-    /*
-     * Server bewaart JPG zo veel mogelijk zonder hercompressie,
-     * of herslaat scherp op hoge kwaliteit (max. ~2800px).
-     */
     setPhotoValue(data, key, result.path);
 
     await persist(data);
@@ -1967,9 +2005,8 @@
     ],
   };
 
-  // Generic config for the three "flat list" editors (agenda / faq / secondhand).
-  // `row: true` groups a field onto a shared line with the field(s) before it.
-  // `default` is the fallback value used when a saved field is blank.
+  // Flat list editors (agenda / faq / secondhand).
+  // row: shared line with previous fields; default: fallback when blank.
   const listEditorConfig = {
     agenda: {
       itemLabel: "Event",
@@ -3063,7 +3100,6 @@
   async function addEntry(type) {
     const data = DataStore.get();
 
-    // Eerst alle huidige formulierwaarden bewaren.
     readFormValues();
 
     if (type in listEditorConfig) {
@@ -3123,7 +3159,6 @@
   async function removeEntry(type, index) {
     const data = DataStore.get();
 
-    // Eerst huidige formulierwaarden bewaren.
     readFormValues();
 
     let removedItem = null;
@@ -3474,9 +3509,10 @@
             "saving",
           );
           for (const file of imageFiles) {
+            const optimized = await optimizeImageForUpload(file);
             const filename = `news-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`;
             const formData = new FormData();
-            formData.append("photo", file);
+            formData.append("photo", optimized);
             formData.append("filename", filename);
             const response = await fetch("/api/uploads/photo", {
               method: "POST",
@@ -3520,9 +3556,10 @@
         try {
           assertUploadSize(file, "foto");
           setSaveStatus("Foto uploaden...", "saving");
+          const optimized = await optimizeImageForUpload(file);
           const filename = `${type}-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`;
           const formData = new FormData();
-          formData.append("photo", file);
+          formData.append("photo", optimized);
           formData.append("filename", filename);
 
           const response = await fetch("/api/uploads/photo", {
@@ -3563,14 +3600,10 @@
         assertUploadSize(file, "foto");
         setSaveStatus("Foto uploaden...", "saving");
 
-        /*
-         * Iedere tweedehandsfoto krijgt een unieke bestandsnaam.
-         */
+        const optimized = await optimizeImageForUpload(file);
         const filename = `tweedehands-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`;
-
         const formData = new FormData();
-
-        formData.append("photo", file);
+        formData.append("photo", optimized);
         formData.append("filename", filename);
 
         const response = await fetch("/api/uploads/photo", {
