@@ -9,7 +9,71 @@ const SCOUTS_GOOGLE_SERVICE_ACCOUNT_FILE = SCOUTS_ROOT . DIRECTORY_SEPARATOR . '
 const SCOUTS_GOOGLE_OAUTH_FILE = SCOUTS_ROOT . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . '.google-oauth.json';
 const SCOUTS_UPLOADS_DIR = SCOUTS_ROOT . DIRECTORY_SEPARATOR . 'uploads';
 const SCOUTS_MAX_UPLOAD_BYTES = 20971520;
+/** Keep uploads sharp on retina screens while capping huge camera files. */
+const SCOUTS_PHOTO_MAX_EDGE = 2800;
+const SCOUTS_PHOTO_JPEG_QUALITY = 95;
 const SCOUTS_MAX_PDF_UPLOAD_BYTES = 20971520;
+
+// Best-effort: some hosts allow raising these at runtime.
+@ini_set('upload_max_filesize', '20M');
+@ini_set('post_max_size', '25M');
+@ini_set('memory_limit', '256M');
+
+function scouts_ini_bytes(string $value): int
+{
+    $value = trim($value);
+    if ($value === '') {
+        return 0;
+    }
+
+    if (is_numeric($value)) {
+        return max(0, (int) $value);
+    }
+
+    $unit = strtolower(substr($value, -1));
+    $number = (float) $value;
+    return match ($unit) {
+        'g' => (int) round($number * 1024 * 1024 * 1024),
+        'm' => (int) round($number * 1024 * 1024),
+        'k' => (int) round($number * 1024),
+        default => max(0, (int) $number),
+    };
+}
+
+function scouts_format_mb(int $bytes): string
+{
+    $mb = $bytes / (1024 * 1024);
+    $formatted = number_format($mb, $mb >= 10 ? 0 : 1, ',', '');
+    return $formatted . ' MB';
+}
+
+/** Smallest of app limit, upload_max_filesize and post_max_size. */
+function scouts_effective_upload_max_bytes(int $appLimit = SCOUTS_MAX_UPLOAD_BYTES): int
+{
+    $limits = [$appLimit];
+    $upload = scouts_ini_bytes((string) ini_get('upload_max_filesize'));
+    $post = scouts_ini_bytes((string) ini_get('post_max_size'));
+    if ($upload > 0) {
+        $limits[] = $upload;
+    }
+    if ($post > 0) {
+        $limits[] = $post;
+    }
+    return max(1, min($limits));
+}
+
+function scouts_upload_too_large_message(string $kind = 'bestand'): string
+{
+    $appLimit = $kind === 'foto' ? SCOUTS_MAX_UPLOAD_BYTES : SCOUTS_MAX_PDF_UPLOAD_BYTES;
+    $limit = scouts_effective_upload_max_bytes($appLimit);
+    $label = match (strtolower($kind)) {
+        'foto' => 'De foto',
+        'pdf' => 'De PDF',
+        'brief' => 'De brief',
+        default => 'Het bestand',
+    };
+    return $label . ' is te groot. Maximum is ' . scouts_format_mb($limit) . '.';
+}
 
 $scoutsAuthConfig = dirname(SCOUTS_ROOT) . DIRECTORY_SEPARATOR . 'auth-config.php';
 if (!is_file($scoutsAuthConfig)) {
@@ -238,6 +302,191 @@ function scouts_delete_photo_versions(string $filename): void
             throw new RuntimeException('Foto kon niet worden verwijderd.');
         }
     }
+}
+
+function scouts_photo_exif_orientation(string $sourcePath): int
+{
+    if (!function_exists('exif_read_data')) {
+        return 1;
+    }
+
+    $exif = @exif_read_data($sourcePath);
+    if (!is_array($exif)) {
+        return 1;
+    }
+
+    $orientation = (int) ($exif['Orientation'] ?? 1);
+    return $orientation >= 1 && $orientation <= 8 ? $orientation : 1;
+}
+
+/**
+ * @param \GdImage|resource $image
+ * @return \GdImage|resource
+ */
+function scouts_photo_apply_orientation($image, int $orientation)
+{
+    switch ($orientation) {
+        case 2:
+            if (function_exists('imageflip')) {
+                imageflip($image, IMG_FLIP_HORIZONTAL);
+            }
+            return $image;
+        case 3:
+            $rotated = imagerotate($image, 180, 0);
+            break;
+        case 4:
+            if (function_exists('imageflip')) {
+                imageflip($image, IMG_FLIP_VERTICAL);
+            }
+            return $image;
+        case 5:
+            if (function_exists('imageflip')) {
+                imageflip($image, IMG_FLIP_VERTICAL);
+            }
+            $rotated = imagerotate($image, -90, 0);
+            break;
+        case 6:
+            $rotated = imagerotate($image, -90, 0);
+            break;
+        case 7:
+            if (function_exists('imageflip')) {
+                imageflip($image, IMG_FLIP_HORIZONTAL);
+            }
+            $rotated = imagerotate($image, -90, 0);
+            break;
+        case 8:
+            $rotated = imagerotate($image, 90, 0);
+            break;
+        default:
+            return $image;
+    }
+
+    if ($rotated === false) {
+        return $image;
+    }
+
+    imagedestroy($image);
+    return $rotated;
+}
+
+/**
+ * Store an uploaded photo with minimal quality loss.
+ * Returns the public path including cache-buster query.
+ */
+function scouts_store_uploaded_photo(string $sourcePath, string $basename, string $mime, int $width, int $height): string
+{
+    if (!is_dir(SCOUTS_UPLOADS_DIR) && !mkdir(SCOUTS_UPLOADS_DIR, 0755, true) && !is_dir(SCOUTS_UPLOADS_DIR)) {
+        throw new RuntimeException('Uploadmap kon niet worden aangemaakt.');
+    }
+
+    $gdAvailable = function_exists('imagejpeg') && function_exists('imagecreatefromstring');
+    $orientation = scouts_photo_exif_orientation($sourcePath);
+    $needsOrient = $orientation !== 1;
+    $needsResize = max($width, $height) > SCOUTS_PHOTO_MAX_EDGE;
+    $isJpeg = $mime === 'image/jpeg';
+
+    $tempFile = tempnam(SCOUTS_UPLOADS_DIR, $basename . '-');
+    if ($tempFile === false) {
+        throw new RuntimeException('Tijdelijk uploadbestand kon niet worden aangemaakt.');
+    }
+
+    $extension = 'jpg';
+    $finalPath = SCOUTS_UPLOADS_DIR . DIRECTORY_SEPARATOR . $basename . '.' . $extension;
+
+    try {
+        // Keep original JPEG bytes when no transform is needed (no re-encode loss).
+        if ($isJpeg && !$needsOrient && !$needsResize) {
+            if (!copy($sourcePath, $tempFile)) {
+                throw new RuntimeException('Afbeelding kon niet worden opgeslagen.');
+            }
+        } elseif ($gdAvailable) {
+            $binary = file_get_contents($sourcePath);
+            if ($binary === false) {
+                throw new RuntimeException('Afbeelding kon niet worden gelezen.');
+            }
+
+            $image = @imagecreatefromstring($binary);
+            if ($image === false) {
+                throw new RuntimeException('Afbeelding kon niet worden verwerkt.');
+            }
+
+            if (function_exists('imagepalettetotruecolor')) {
+                @imagepalettetotruecolor($image);
+            }
+
+            if ($needsOrient) {
+                $image = scouts_photo_apply_orientation($image, $orientation);
+            }
+
+            $currentWidth = imagesx($image);
+            $currentHeight = imagesy($image);
+            $longest = max($currentWidth, $currentHeight);
+            if ($longest > SCOUTS_PHOTO_MAX_EDGE && function_exists('imagescale')) {
+                $scale = SCOUTS_PHOTO_MAX_EDGE / $longest;
+                $targetWidth = max(1, (int) round($currentWidth * $scale));
+                $targetHeight = max(1, (int) round($currentHeight * $scale));
+                $mode = defined('IMG_BICUBIC') ? IMG_BICUBIC : IMG_BILINEAR_FIXED;
+                $scaled = imagescale($image, $targetWidth, $targetHeight, $mode);
+                if ($scaled !== false) {
+                    imagedestroy($image);
+                    $image = $scaled;
+                    $currentWidth = $targetWidth;
+                    $currentHeight = $targetHeight;
+                }
+            }
+
+            // Flatten onto cream so PNG/WebP transparency never becomes black.
+            $canvas = imagecreatetruecolor($currentWidth, $currentHeight);
+            if ($canvas === false) {
+                imagedestroy($image);
+                throw new RuntimeException('Afbeelding kon niet worden verwerkt.');
+            }
+            $background = imagecolorallocate($canvas, 245, 239, 231);
+            imagefilledrectangle($canvas, 0, 0, $currentWidth, $currentHeight, $background);
+            imagecopy($canvas, $image, 0, 0, 0, 0, $currentWidth, $currentHeight);
+            imagedestroy($image);
+
+            if (function_exists('imageinterlace')) {
+                imageinterlace($canvas, true);
+            }
+
+            if (!imagejpeg($canvas, $tempFile, SCOUTS_PHOTO_JPEG_QUALITY)) {
+                imagedestroy($canvas);
+                throw new RuntimeException('Afbeelding kon niet worden opgeslagen.');
+            }
+            imagedestroy($canvas);
+        } else {
+            $allowed = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp', 'image/gif' => 'gif'];
+            $extension = $allowed[$mime] ?? 'jpg';
+            $finalPath = SCOUTS_UPLOADS_DIR . DIRECTORY_SEPARATOR . $basename . '.' . $extension;
+            if (!copy($sourcePath, $tempFile)) {
+                throw new RuntimeException('Afbeelding kon niet worden opgeslagen.');
+            }
+        }
+
+        if (is_file($finalPath) && !unlink($finalPath)) {
+            throw new RuntimeException('Bestaande foto kon niet worden vervangen.');
+        }
+        if (!rename($tempFile, $finalPath)) {
+            throw new RuntimeException('Afbeelding kon niet definitief worden opgeslagen.');
+        }
+        if (!chmod($finalPath, 0644)) {
+            throw new RuntimeException('Afbeelding kon niet leesbaar worden gemaakt.');
+        }
+
+        foreach (['jpg', 'jpeg', 'png', 'webp', 'gif'] as $oldExtension) {
+            $oldPath = SCOUTS_UPLOADS_DIR . DIRECTORY_SEPARATOR . $basename . '.' . $oldExtension;
+            if ($oldPath !== $finalPath && is_file($oldPath)) {
+                @unlink($oldPath);
+            }
+        }
+    } finally {
+        if (is_file($tempFile)) {
+            @unlink($tempFile);
+        }
+    }
+
+    return '/uploads/' . basename($finalPath) . '?v=' . time();
 }
 
 function scouts_read_google_drive_settings(): array

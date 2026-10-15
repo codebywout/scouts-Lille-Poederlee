@@ -43,8 +43,16 @@ De huidige versie draait volledig op PHP en gebruikt geen Node.js-dependencies o
 3. Start de ingebouwde PHP-server vanuit de projectmap:
 
    ```powershell
-   php -d upload_max_filesize=20M -d post_max_size=21M -S localhost:8000 router.php
+   .\start-server.ps1
    ```
+
+   Of handmatig:
+
+   ```powershell
+   php -d upload_max_filesize=20M -d post_max_size=25M -d memory_limit=256M -S localhost:8000 router.php
+   ```
+
+   Belangrijk: zonder die `-d`-flags blijft PHP vaak op 2 MB uploadlimiet staan, waardoor een foto van bv. 4 MB ten onrechte als “te groot” wordt geweigerd.
 
 4. Open de website op <http://localhost:8000> en de adminlogin op <http://localhost:8000/login>.
 

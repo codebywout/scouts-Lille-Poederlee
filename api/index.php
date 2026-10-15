@@ -261,19 +261,28 @@ try {
     if ($route === 'uploads/photo' && $method === 'POST') {
         scouts_require_admin();
         scouts_require_same_origin();
+        $contentLength = (int) ($_SERVER['CONTENT_LENGTH'] ?? 0);
+        $uploadLimit = scouts_effective_upload_max_bytes(SCOUTS_MAX_UPLOAD_BYTES);
         if (!isset($_FILES['photo'])) {
+            if ($contentLength > 0 && $contentLength > $uploadLimit) {
+                scouts_json_response(['message' => scouts_upload_too_large_message('foto')], 413);
+            }
             scouts_json_response(['message' => 'Geen foto ontvangen.'], 400);
         }
         $file = $_FILES['photo'];
         if (($file['error'] ?? UPLOAD_ERR_OK) !== UPLOAD_ERR_OK) {
             $tooLarge = in_array($file['error'], [UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE], true);
-            scouts_json_response(['message' => $tooLarge ? 'De foto is te groot. Maximum 20 MB.' : 'De foto kon niet worden geupload.'], $tooLarge ? 413 : 400);
+            scouts_json_response([
+                'message' => $tooLarge
+                    ? scouts_upload_too_large_message('foto')
+                    : 'De foto kon niet worden geupload.',
+            ], $tooLarge ? 413 : 400);
         }
         if (!is_uploaded_file($file['tmp_name'])) {
             scouts_json_response(['message' => 'Geen geldige foto-upload ontvangen.'], 400);
         }
-        if ((int) $file['size'] > SCOUTS_MAX_UPLOAD_BYTES) {
-            scouts_json_response(['message' => 'De foto is te groot. Maximum 20 MB.'], 413);
+        if ((int) $file['size'] > $uploadLimit) {
+            scouts_json_response(['message' => scouts_upload_too_large_message('foto')], 413);
         }
         $filename = strtolower(trim((string) ($_POST['filename'] ?? '')));
         if (!scouts_allowed_photo_name($filename)) {
@@ -295,52 +304,15 @@ try {
         if (!isset($allowedMimes[$mime]) || !is_array($imageInfo)) {
             scouts_json_response(['message' => 'Ongeldig afbeeldingsbestand. Gebruik JPG, PNG, WEBP of GIF.'], 400);
         }
-        if (!is_dir(SCOUTS_UPLOADS_DIR) && !mkdir(SCOUTS_UPLOADS_DIR, 0755, true)) {
-            throw new RuntimeException('Uploadmap kon niet worden aangemaakt.');
+
+        $width = (int) ($imageInfo[0] ?? 0);
+        $height = (int) ($imageInfo[1] ?? 0);
+        if ($width < 1 || $height < 1) {
+            scouts_json_response(['message' => 'Ongeldig afbeeldingsbestand. Gebruik JPG, PNG, WEBP of GIF.'], 400);
         }
 
-        $extension = 'jpg';
-        $tempFile = tempnam(SCOUTS_UPLOADS_DIR, $filename . '-');
-        if ($tempFile === false) {
-            throw new RuntimeException('Tijdelijk uploadbestand kon niet worden aangemaakt.');
-        }
-        $finalPath = SCOUTS_UPLOADS_DIR . DIRECTORY_SEPARATOR . $filename . '.' . $extension;
-        try {
-            $gdAvailable = function_exists('imagejpeg') && function_exists('imagecreatefromstring');
-            if ($gdAvailable) {
-                $image = @imagecreatefromstring((string) file_get_contents($file['tmp_name']));
-                if ($image === false || !imagejpeg($image, $tempFile, 92)) {
-                    throw new RuntimeException('Afbeelding kon niet worden verwerkt.');
-                }
-                imagedestroy($image);
-            } else {
-                $extension = $allowedMimes[$mime];
-                $finalPath = SCOUTS_UPLOADS_DIR . DIRECTORY_SEPARATOR . $filename . '.' . $extension;
-                if (!copy($file['tmp_name'], $tempFile)) {
-                    throw new RuntimeException('Afbeelding kon niet worden opgeslagen.');
-                }
-            }
-            if (is_file($finalPath) && !unlink($finalPath)) {
-                throw new RuntimeException('Bestaande foto kon niet worden vervangen.');
-            }
-            if (!rename($tempFile, $finalPath)) {
-                throw new RuntimeException('Afbeelding kon niet definitief worden opgeslagen.');
-            }
-            if (!chmod($finalPath, 0644)) {
-                throw new RuntimeException('Afbeelding kon niet leesbaar worden gemaakt.');
-            }
-            foreach (['jpg', 'jpeg', 'png', 'webp', 'gif'] as $oldExtension) {
-                $oldPath = SCOUTS_UPLOADS_DIR . DIRECTORY_SEPARATOR . $filename . '.' . $oldExtension;
-                if ($oldPath !== $finalPath && is_file($oldPath)) {
-                    @unlink($oldPath);
-                }
-            }
-        } finally {
-            if (is_file($tempFile)) {
-                @unlink($tempFile);
-            }
-        }
-        scouts_json_response(['success' => true, 'path' => '/uploads/' . basename($finalPath) . '?v=' . time()]);
+        $path = scouts_store_uploaded_photo($file['tmp_name'], $filename, $mime, $width, $height);
+        scouts_json_response(['success' => true, 'path' => $path]);
     }
 
     if ($route === 'uploads/planning' && $method === 'POST') {
@@ -351,15 +323,20 @@ try {
         }
 
         $file = $_FILES['planning'];
+        $pdfLimit = scouts_effective_upload_max_bytes(SCOUTS_MAX_PDF_UPLOAD_BYTES);
         if (($file['error'] ?? UPLOAD_ERR_OK) !== UPLOAD_ERR_OK) {
             $tooLarge = in_array($file['error'], [UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE], true);
-            scouts_json_response(['message' => $tooLarge ? 'De PDF is te groot. Maximum 20 MB.' : 'De PDF kon niet worden geupload.'], $tooLarge ? 413 : 400);
+            scouts_json_response([
+                'message' => $tooLarge
+                    ? scouts_upload_too_large_message('PDF')
+                    : 'De PDF kon niet worden geupload.',
+            ], $tooLarge ? 413 : 400);
         }
         if (!is_uploaded_file($file['tmp_name'])) {
             scouts_json_response(['message' => 'Geen geldige PDF-upload ontvangen.'], 400);
         }
-        if ((int) $file['size'] > SCOUTS_MAX_PDF_UPLOAD_BYTES) {
-            scouts_json_response(['message' => 'De PDF is te groot. Maximum 20 MB.'], 413);
+        if ((int) $file['size'] > $pdfLimit) {
+            scouts_json_response(['message' => scouts_upload_too_large_message('PDF')], 413);
         }
 
         $branch = strtolower(trim((string) ($_POST['branch'] ?? '')));
@@ -437,12 +414,20 @@ try {
         }
 
         $file = $_FILES['letter'];
+        $letterLimit = scouts_effective_upload_max_bytes(SCOUTS_MAX_PDF_UPLOAD_BYTES);
         if (($file['error'] ?? UPLOAD_ERR_OK) !== UPLOAD_ERR_OK) {
             $tooLarge = in_array($file['error'], [UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE], true);
-            scouts_json_response(['message' => $tooLarge ? 'De brief is te groot. Maximum 20 MB.' : 'De brief kon niet worden geupload.'], $tooLarge ? 413 : 400);
+            scouts_json_response([
+                'message' => $tooLarge
+                    ? scouts_upload_too_large_message('brief')
+                    : 'De brief kon niet worden geupload.',
+            ], $tooLarge ? 413 : 400);
         }
-        if (!is_uploaded_file($file['tmp_name']) || (int) $file['size'] > SCOUTS_MAX_PDF_UPLOAD_BYTES) {
-            scouts_json_response(['message' => 'Ongeldige brief of bestand te groot. Gebruik een PDF van maximaal 20 MB.'], 400);
+        if (!is_uploaded_file($file['tmp_name'])) {
+            scouts_json_response(['message' => 'Geen geldige brief-upload ontvangen.'], 400);
+        }
+        if ((int) $file['size'] > $letterLimit) {
+            scouts_json_response(['message' => scouts_upload_too_large_message('brief')], 413);
         }
 
         $branch = strtolower(trim((string) ($_POST['branch'] ?? '')));

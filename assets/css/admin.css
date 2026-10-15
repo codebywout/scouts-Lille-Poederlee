@@ -24,19 +24,93 @@ html:has(body.admin-page) {
 }
 
 .admin-nav-inner {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
     max-width: 1240px;
     margin: 0 auto;
     padding: 16px 5%;
     border-bottom: none;
 }
 
+.admin-navbar .brand-logo {
+    width: 44px;
+    height: 44px;
+}
+
 .admin-toolbar {
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    gap: 10px;
+    gap: 8px;
     margin-left: auto;
     flex-wrap: wrap;
+}
+
+.admin-tool-label--short {
+    display: none;
+}
+
+/* Own class — never hidden by public .nav-cta { display: none } on mobile. */
+.admin-tool-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 44px;
+    padding: 10px 14px;
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.2;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+}
+
+.admin-tool-icon {
+    display: inline-grid;
+    place-items: center;
+    width: 1.1em;
+    font-size: 14px;
+    line-height: 1;
+    opacity: 0.9;
+}
+
+.admin-tool-btn--site {
+    border-color: rgba(255, 255, 255, 0.42);
+    background: rgba(255, 255, 255, 0.14);
+}
+
+.admin-tool-btn--site:hover,
+.admin-tool-btn--site:focus-visible {
+    background: #fff;
+    border-color: #fff;
+    color: var(--scout-brown);
+}
+
+.admin-tool-btn--settings:hover,
+.admin-tool-btn--settings:focus-visible {
+    background: rgba(255, 255, 255, 0.22);
+    border-color: rgba(255, 255, 255, 0.55);
+}
+
+.admin-tool-btn--logout {
+    border-color: rgba(232, 120, 96, 0.55);
+    background: rgba(165, 72, 39, 0.88);
+    color: #fff;
+}
+
+.admin-tool-btn--logout:hover,
+.admin-tool-btn--logout:focus-visible {
+    background: #c45a32;
+    border-color: #f0b29a;
+    color: #fff;
 }
 
 .nav-cta.nav-cta--danger {
@@ -84,7 +158,8 @@ html:has(body.admin-page) {
     color: rgba(78, 43, 26, 0.55);
 }
 
-.admin-settings-button.is-active {
+.admin-settings-button.is-active,
+.admin-tool-btn--settings.is-active {
     background: #fff;
     border-color: #fff;
     color: var(--scout-brown);
@@ -1972,34 +2047,142 @@ html:has(body.admin-page) {
     }
 }
 
+.admin-action-short {
+    display: none;
+}
+
 @media (max-width: 640px) {
     .admin-shell {
-        width: 94%;
-        padding-top: 28px;
+        width: min(100% - 20px, 1240px);
+        padding: 20px 0 88px;
     }
 
     .admin-nav-inner {
-        gap: 12px;
-        flex-wrap: wrap;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+        padding: 12px max(12px, 4%);
+    }
+
+    .admin-navbar .brand {
+        align-self: flex-start;
+    }
+
+    .admin-navbar .brand-logo {
+        width: 40px;
+        height: 40px;
     }
 
     .admin-toolbar {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
         width: 100%;
         margin-left: 0;
+        gap: 6px;
     }
 
-    .admin-toolbar .nav-cta {
-        flex: 1;
+    .admin-tool-btn {
+        flex: unset;
+        flex-direction: column;
+        gap: 4px;
+        width: 100%;
+        min-height: 54px;
+        padding: 8px 6px;
+        font-size: 11px;
         text-align: center;
     }
 
+    .admin-tool-btn--logout {
+        flex: unset;
+    }
+
+    .admin-tool-label--full {
+        display: none;
+    }
+
+    .admin-tool-label--short {
+        display: inline;
+    }
+
+    .admin-tool-icon {
+        font-size: 15px;
+    }
+
+    .admin-news-photo-item {
+        grid-template-columns: 32px minmax(0, 1fr);
+        grid-template-areas:
+            "order thumb"
+            "controls controls";
+        gap: 10px;
+        padding: 10px;
+    }
+
+    .admin-news-photo-order {
+        grid-area: order;
+        align-self: start;
+    }
+
+    .admin-news-photo-thumb {
+        grid-area: thumb;
+        max-width: none;
+    }
+
+    .admin-news-photo-controls {
+        grid-area: controls;
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 6px;
+    }
+
+    .admin-news-photo-move,
+    .admin-news-photo-remove {
+        width: 100%;
+        min-height: 44px;
+        padding: 8px 6px;
+        font-size: 12px;
+    }
+
+    .admin-news-photos-head small {
+        font-size: 12px;
+    }
+
+    .admin-collapsible-item .admin-item-head {
+        flex-wrap: wrap;
+        align-items: flex-start;
+        gap: 8px;
+        padding: 10px 12px;
+    }
+
+    .admin-collapse-toggle {
+        flex: 1 1 100%;
+        width: 100%;
+    }
+
+    .admin-item-actions {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .admin-action-full {
+        display: none;
+    }
+
+    .admin-action-short {
+        display: inline;
+    }
+
+    .admin-reorder {
+        width: 40px;
+        height: 40px;
+    }
+
     .page-picker-grid {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 8px;
     }
 
     .page-picker-tile {
-        min-height: 46px;
+        min-height: 48px;
         padding: 10px 8px;
         font-size: 12px;
     }
@@ -2020,12 +2203,14 @@ html:has(body.admin-page) {
     }
 
     .admin-card {
-        padding: 15px;
+        padding: 14px;
         border-radius: 14px;
     }
 
     .admin-card-head {
         align-items: flex-start;
+        flex-wrap: wrap;
+        gap: 10px;
     }
 
     .admin-item-head {
@@ -2059,16 +2244,52 @@ html:has(body.admin-page) {
     }
 
     .save-row {
+        bottom: max(10px, env(safe-area-inset-bottom));
+        left: 0;
+        right: 0;
         flex-direction: column;
         align-items: stretch;
+        gap: 10px;
+        margin-inline: 0;
+        padding: 12px;
     }
 
     .save-row .button {
+        order: 1;
         width: 100%;
+        margin-left: 0;
+        min-height: 48px;
+    }
+
+    .admin-view-live {
+        order: 2;
+        width: 100%;
+        text-align: center;
     }
 
     #saveStatus {
+        order: 3;
         justify-content: center;
+        width: 100%;
+    }
+}
+
+@media (max-width: 400px) {
+    .admin-tool-btn {
+        min-height: 50px;
+        padding: 7px 4px;
+        font-size: 10.5px;
+        border-radius: 10px;
+    }
+
+    .page-picker-tile {
+        min-height: 44px;
+        font-size: 11px;
+        padding: 8px 6px;
+    }
+
+    .admin-news-photo-move-label {
+        font-size: 11px;
     }
 }
 
@@ -2192,7 +2413,7 @@ html:has(body.admin-page) {
 
 .admin-news-photos-head {
     display: grid;
-    gap: 2px;
+    gap: 4px;
 }
 
 .admin-news-photos-head > span {
@@ -2204,23 +2425,52 @@ html:has(body.admin-page) {
 }
 
 .admin-news-photos-head small {
-    color: rgba(78, 43, 26, 0.5);
-    font-size: 12px;
-    line-height: 1.4;
+    color: rgba(78, 43, 26, 0.62);
+    font-size: 13px;
+    line-height: 1.45;
 }
 
-.admin-news-photo-grid {
+.admin-news-photos-head small strong {
+    color: var(--scout-brown);
+    font-weight: 800;
+}
+
+.admin-news-photo-list {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
     gap: 10px;
+    min-width: 0;
+}
+
+.admin-news-photo-item {
+    display: grid;
+    grid-template-columns: 36px minmax(88px, 140px) minmax(0, 1fr);
+    align-items: center;
+    gap: 12px;
+    padding: 10px;
+    border: 1px solid rgba(78, 43, 26, 0.12);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.72);
+}
+
+.admin-news-photo-order {
+    display: inline-grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: rgba(78, 43, 26, 0.08);
+    color: var(--scout-brown);
+    font-size: 14px;
+    font-weight: 800;
 }
 
 .admin-news-photo-thumb {
     position: relative;
     overflow: hidden;
+    width: 100%;
     aspect-ratio: 4 / 3;
-    border: 1px solid rgba(78, 43, 26, 0.12);
-    border-radius: 12px;
+    border: 1px solid rgba(78, 43, 26, 0.1);
+    border-radius: 10px;
     background: rgba(78, 43, 26, 0.04);
 }
 
@@ -2231,29 +2481,64 @@ html:has(body.admin-page) {
     object-fit: cover;
 }
 
+.admin-news-photo-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    min-width: 0;
+}
+
+.admin-news-photo-move,
 .admin-news-photo-remove {
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    z-index: 1;
-    display: inline-grid;
-    place-items: center;
-    width: 28px;
-    height: 28px;
-    padding: 0;
-    border: 0;
-    border-radius: 999px;
-    background: rgba(165, 72, 39, 0.92);
-    color: #fff;
-    font-size: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 40px;
+    padding: 8px 12px;
+    border: 1px solid rgba(78, 43, 26, 0.16);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.92);
+    color: var(--scout-brown);
+    font: inherit;
+    font-size: 13px;
     font-weight: 700;
     line-height: 1;
     cursor: pointer;
 }
 
+.admin-news-photo-move:hover,
+.admin-news-photo-move:focus-visible {
+    border-color: rgba(211, 138, 45, 0.5);
+    color: var(--scout-orange);
+}
+
+.admin-news-photo-move:disabled {
+    opacity: 0.35;
+    cursor: default;
+}
+
+.admin-news-photo-remove {
+    border-color: rgba(165, 72, 39, 0.28);
+    background: rgba(165, 72, 39, 0.08);
+    color: #a54827;
+}
+
 .admin-news-photo-remove:hover,
 .admin-news-photo-remove:focus-visible {
-    background: rgba(165, 72, 39, 1);
+    background: rgba(165, 72, 39, 0.16);
+    border-color: rgba(165, 72, 39, 0.45);
+}
+
+.admin-news-photos-limit {
+    margin: 0;
+    padding: 18px 12px;
+    border: 1px dashed rgba(78, 43, 26, 0.2);
+    border-radius: 12px;
+    color: rgba(78, 43, 26, 0.55);
+    font-size: 12px;
+    font-weight: 700;
+    text-align: center;
 }
 
 .admin-news-photo-add {
@@ -2261,10 +2546,10 @@ html:has(body.admin-page) {
     display: grid;
     place-items: center;
     gap: 4px;
-    min-height: 120px;
-    padding: 14px 10px;
+    min-height: 88px;
+    padding: 16px 12px;
     border: 1px dashed rgba(78, 43, 26, 0.28);
-    border-radius: 12px;
+    border-radius: 14px;
     background: rgba(247, 241, 232, 0.55);
     color: var(--scout-brown);
     text-align: center;

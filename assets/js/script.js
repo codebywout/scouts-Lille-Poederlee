@@ -684,9 +684,96 @@
        ========================================================== */
 
   function initPageTransitions() {
+    const reduceMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    const isAdmin = document.body.classList.contains("admin-page");
+    const preloadedBackgrounds = new Set();
+
+    try {
+      sessionStorage.removeItem("page-transition");
+    } catch {
+      /* ignore */
+    }
+
+    function normalizePath(pathname) {
+      return pathname.replace(/\/+$/, "") || "/";
+    }
+
+    function backgroundForPath(pathname) {
+      const path = normalizePath(pathname);
+      if (path === "/") {
+        return `/assets/images/domein.jpg?v=${IMAGE_ASSET_VERSION}`;
+      }
+      if (path === "/tweedehands") {
+        return `/assets/images/domein3.jpg?v=${IMAGE_ASSET_VERSION}`;
+      }
+      if (path === "/over-ons") {
+        return `/assets/images/domein4.jpg?v=${IMAGE_ASSET_VERSION}`;
+      }
+      if (path === "/uniform") {
+        return `/assets/images/domein5.jpg?v=${IMAGE_ASSET_VERSION}`;
+      }
+      if (
+        path === "/inschrijven" ||
+        path === "/nieuws" ||
+        path === "/kapoenen" ||
+        path === "/welpen" ||
+        path === "/jongverkenners" ||
+        path === "/verkenners" ||
+        path === "/jins"
+      ) {
+        return `/assets/images/domein2.jpg?v=${IMAGE_ASSET_VERSION}`;
+      }
+      return null;
+    }
+
+    function preloadBackground(pathname) {
+      const src = backgroundForPath(pathname);
+      if (!src || preloadedBackgrounds.has(src)) return;
+      preloadedBackgrounds.add(src);
+      const image = new Image();
+      image.src = src;
+    }
+
+    // Soft land only — no full-screen veil (that caused white flashes / double reveal).
+    if (!reduceMotion && !isAdmin) {
+      document.body.classList.add("page-enter");
+      window.setTimeout(() => {
+        document.body.classList.remove("page-enter");
+      }, 280);
+    }
+
+    document.addEventListener(
+      "pointerenter",
+      (event) => {
+        const link = event.target.closest?.("a");
+        if (!link || isAdmin) return;
+        try {
+          const url = new URL(link.href, window.location.href);
+          if (url.origin === window.location.origin) {
+            preloadBackground(url.pathname);
+          }
+        } catch {
+          /* ignore invalid urls */
+        }
+      },
+      true,
+    );
+
     document.addEventListener("click", (event) => {
       const link = event.target.closest("a");
-      if (!link || event.defaultPrevented || link.target === "_blank") return;
+      if (
+        !link ||
+        event.defaultPrevented ||
+        link.target === "_blank" ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.shiftKey ||
+        event.altKey
+      ) {
+        return;
+      }
 
       let url;
       try {
@@ -703,11 +790,10 @@
         !url.hash &&
         !link.hasAttribute("download");
 
-      if (!isInternalPage) return;
+      if (!isInternalPage || isAdmin) return;
 
-      event.preventDefault();
-      document.body.classList.add("page-leaving");
-      window.setTimeout(() => (window.location.href = url.href), 220);
+      // Warm the next background, then navigate immediately — no leave delay.
+      preloadBackground(url.pathname);
     });
   }
 
@@ -851,6 +937,7 @@
   }
 
   const NEWS_HOME_LIMIT = 3;
+  const NEWS_IMAGES_MAX = 8;
   const NEWS_CAROUSEL_INTERVAL_MS = 5000;
 
   function getNewsImages(item) {
@@ -869,7 +956,8 @@
     if (!item || typeof item !== "object") return;
     const cleaned = (images || [])
       .filter((src) => typeof src === "string" && src.trim())
-      .map((src) => src.trim());
+      .map((src) => src.trim())
+      .slice(0, NEWS_IMAGES_MAX);
     item.images = cleaned;
     item.image = cleaned[0] || "";
   }
@@ -888,33 +976,41 @@
     if (!images.length) return "";
     const alt = escapeHtml(title || "Nieuwsfoto");
     if (images.length === 1) {
-      return `<figure class="news-media"><img src="${escapeHtml(images[0])}" alt="${alt}" loading="lazy"></figure>`;
+      return `<figure class="news-media"><img src="${escapeHtml(images[0])}" alt="${alt}" loading="lazy" decoding="async"></figure>`;
     }
 
+    const total = images.length;
+    const pad = (value) => String(value).padStart(2, "0");
     const slides = images
       .map(
         (src, index) => `
-                      <div class="news-carousel-slide${index === 0 ? " is-active" : ""}" data-slide-index="${index}">
-                        <img src="${escapeHtml(src)}" alt="${alt} ${index + 1}" loading="${index === 0 ? "eager" : "lazy"}" draggable="false">
+                      <div class="news-carousel-slide${index === 0 ? " is-active" : ""}" data-slide-index="${index}" role="group" aria-roledescription="slide" aria-label="Foto ${index + 1} van ${total}">
+                        <img src="${escapeHtml(src)}" alt="${alt} ${index + 1}" loading="${index === 0 ? "eager" : "lazy"}" decoding="async" draggable="false">
                       </div>`,
       )
       .join("");
     const dots = images
       .map(
         (_, index) =>
-          `<button type="button" class="news-carousel-dot${index === 0 ? " is-active" : ""}" data-carousel-dot="${index}" aria-label="Foto ${index + 1}"></button>`,
+          `<button type="button" class="news-carousel-dot${index === 0 ? " is-active" : ""}" role="tab" data-carousel-dot="${index}" aria-label="Foto ${index + 1} van ${total}" aria-selected="${index === 0 ? "true" : "false"}" tabindex="${index === 0 ? "0" : "-1"}"></button>`,
       )
       .join("");
 
     return `
-                      <figure class="news-media news-carousel" data-news-carousel>
-                        <div class="news-carousel-viewport">
+                      <figure class="news-media news-carousel" data-news-carousel aria-roledescription="carousel" aria-label="Foto's bij ${alt}">
+                        <div class="news-carousel-viewport" tabindex="0">
                           <div class="news-carousel-track">
                             ${slides}
                           </div>
-                        </div>
-                        <div class="news-carousel-dots" role="tablist" aria-label="Foto's">
-                          ${dots}
+                          <div class="news-carousel-overlay">
+                            <div class="news-carousel-dots" role="tablist" aria-label="Foto's">
+                              ${dots}
+                            </div>
+                            <p class="news-carousel-status" aria-live="polite">
+                              <span data-carousel-current>${pad(1)}</span><span class="news-carousel-status-sep" aria-hidden="true">/</span><span data-carousel-total>${pad(total)}</span>
+                            </p>
+                          </div>
+                          <div class="news-carousel-progress" aria-hidden="true"><span></span></div>
                         </div>
                       </figure>`;
   }
@@ -923,8 +1019,12 @@
     if (!carousel || carousel.dataset.carouselReady === "true") return;
     const slides = qsa(".news-carousel-slide", carousel);
     const dots = qsa("[data-carousel-dot]", carousel);
+    const dotsWrap = qs(".news-carousel-dots", carousel);
     const track = qs(".news-carousel-track", carousel);
     const viewport = qs(".news-carousel-viewport", carousel);
+    const currentLabel = qs("[data-carousel-current]", carousel);
+    const progress = qs(".news-carousel-progress", carousel);
+    const progressBar = qs(".news-carousel-progress > span", carousel);
     if (slides.length <= 1 || !track || !viewport) return;
 
     carousel.dataset.carouselReady = "true";
@@ -932,22 +1032,77 @@
     let timer = 0;
     let pointerId = null;
     let startX = 0;
+    let startY = 0;
     let deltaX = 0;
+    let axis = null;
     let dragging = false;
+    let pausedByUser = false;
     const reduceMotion = window.matchMedia(
       "(prefers-reduced-motion: reduce)",
     ).matches;
+    const pad = (value) => String(value).padStart(2, "0");
+
+    const syncFrame = () => {
+      const images = slides
+        .map((slide) => slide.querySelector("img"))
+        .filter((img) => img && img.naturalWidth > 0);
+      if (!images.length) return;
+
+      let best = images[0];
+      let bestArea = best.naturalWidth * best.naturalHeight;
+      images.forEach((img) => {
+        const area = img.naturalWidth * img.naturalHeight;
+        if (area > bestArea) {
+          best = img;
+          bestArea = area;
+        }
+      });
+      viewport.style.aspectRatio = `${best.naturalWidth} / ${best.naturalHeight}`;
+    };
+
+    const stopProgress = () => {
+      if (!progress || !progressBar) return;
+      progress.classList.remove("is-running");
+      progressBar.style.animation = "none";
+      // Force reflow so the next animation can restart cleanly.
+      void progressBar.offsetWidth;
+      progressBar.style.animation = "";
+    };
+
+    const startProgress = () => {
+      if (!progress || !progressBar || reduceMotion || pausedByUser) {
+        stopProgress();
+        return;
+      }
+      const details = carousel.closest("details.news-item");
+      if (details && !details.classList.contains("is-open")) {
+        stopProgress();
+        return;
+      }
+      progress.style.setProperty(
+        "--carousel-progress-ms",
+        `${NEWS_CAROUSEL_INTERVAL_MS}ms`,
+      );
+      stopProgress();
+      progress.classList.add("is-running");
+    };
 
     const goTo = (nextIndex, { animate = true } = {}) => {
       index = ((nextIndex % slides.length) + slides.length) % slides.length;
-      track.style.transition = animate ? "" : "none";
-      track.style.transform = `translateX(-${index * 100}%)`;
+      track.style.transition = animate && !reduceMotion ? "" : "none";
+      track.style.transform = `translate3d(-${index * 100}%, 0, 0)`;
       slides.forEach((slide, slideIndex) => {
-        slide.classList.toggle("is-active", slideIndex === index);
+        const active = slideIndex === index;
+        slide.classList.toggle("is-active", active);
+        slide.setAttribute("aria-hidden", active ? "false" : "true");
       });
       dots.forEach((dot, dotIndex) => {
-        dot.classList.toggle("is-active", dotIndex === index);
+        const active = dotIndex === index;
+        dot.classList.toggle("is-active", active);
+        dot.setAttribute("aria-selected", active ? "true" : "false");
+        dot.tabIndex = active ? 0 : -1;
       });
+      if (currentLabel) currentLabel.textContent = pad(index + 1);
       if (!animate) {
         requestAnimationFrame(() => {
           track.style.transition = "";
@@ -960,19 +1115,29 @@
         window.clearInterval(timer);
         timer = 0;
       }
+      stopProgress();
     };
 
     const startAutoplay = () => {
       stopAutoplay();
-      if (reduceMotion || slides.length < 2) return;
+      if (reduceMotion || slides.length < 2 || pausedByUser) return;
       const details = carousel.closest("details.news-item");
       if (details && !details.classList.contains("is-open")) return;
-      timer = window.setInterval(() => goTo(index + 1), NEWS_CAROUSEL_INTERVAL_MS);
+      startProgress();
+      timer = window.setInterval(() => {
+        goTo(index + 1);
+        startProgress();
+      }, NEWS_CAROUSEL_INTERVAL_MS);
     };
 
     const restartAutoplay = () => {
       stopAutoplay();
       startAutoplay();
+    };
+
+    const step = (direction) => {
+      goTo(index + direction);
+      restartAutoplay();
     };
 
     dots.forEach((dot) => {
@@ -984,46 +1149,113 @@
       });
     });
 
+    const onKeyNav = (event) => {
+      if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
+      event.preventDefault();
+      event.stopPropagation();
+      step(event.key === "ArrowRight" ? 1 : -1);
+    };
+
+    dotsWrap?.addEventListener("keydown", onKeyNav);
+    viewport.addEventListener("keydown", onKeyNav);
+
+    const pause = () => {
+      pausedByUser = true;
+      stopAutoplay();
+    };
+    const resume = () => {
+      pausedByUser = false;
+      startAutoplay();
+    };
+
+    carousel.addEventListener("mouseenter", pause);
+    carousel.addEventListener("mouseleave", resume);
+    carousel.addEventListener("focusin", pause);
+    carousel.addEventListener("focusout", (event) => {
+      if (!carousel.contains(event.relatedTarget)) resume();
+    });
+
     viewport.addEventListener("pointerdown", (event) => {
       if (event.button !== undefined && event.button !== 0) return;
+      if (event.target.closest("button")) return;
       pointerId = event.pointerId;
       startX = event.clientX;
+      startY = event.clientY;
       deltaX = 0;
+      axis = null;
       dragging = true;
       stopAutoplay();
-      viewport.setPointerCapture?.(pointerId);
-      track.style.transition = "none";
     });
 
     viewport.addEventListener("pointermove", (event) => {
       if (!dragging || event.pointerId !== pointerId) return;
-      deltaX = event.clientX - startX;
+      const dx = event.clientX - startX;
+      const dy = event.clientY - startY;
+
+      if (axis === null) {
+        if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+        axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+        if (axis === "y") {
+          dragging = false;
+          pointerId = null;
+          restartAutoplay();
+          return;
+        }
+        viewport.setPointerCapture?.(pointerId);
+        viewport.classList.add("is-dragging");
+        track.style.transition = "none";
+      }
+
+      if (axis !== "x") return;
+      deltaX = dx;
       const width = viewport.clientWidth || 1;
-      const offset = (-index * 100) + (deltaX / width) * 100;
-      track.style.transform = `translateX(${offset}%)`;
+      let drag = deltaX;
+      // Soft rubber-band at the ends.
+      if ((index === 0 && drag > 0) || (index === slides.length - 1 && drag < 0)) {
+        drag *= 0.35;
+      }
+      const offset = -index * 100 + (drag / width) * 100;
+      track.style.transform = `translate3d(${offset}%, 0, 0)`;
     });
 
     const endDrag = (event) => {
-      if (!dragging || event.pointerId !== pointerId) return;
-      dragging = false;
-      viewport.releasePointerCapture?.(pointerId);
-      pointerId = null;
-      const width = viewport.clientWidth || 1;
-      const threshold = Math.min(80, width * 0.18);
-      if (Math.abs(deltaX) > threshold) {
-        goTo(index + (deltaX < 0 ? 1 : -1));
-      } else {
-        goTo(index);
+      if (event.pointerId !== pointerId) return;
+      const wasHorizontal = axis === "x";
+      viewport.classList.remove("is-dragging");
+      if (dragging && wasHorizontal) {
+        viewport.releasePointerCapture?.(pointerId);
+        const width = viewport.clientWidth || 1;
+        const threshold = Math.min(56, width * 0.18);
+        if (Math.abs(deltaX) > threshold) {
+          goTo(index + (deltaX < 0 ? 1 : -1));
+        } else {
+          goTo(index);
+        }
       }
+      dragging = false;
+      pointerId = null;
+      axis = null;
       deltaX = 0;
       restartAutoplay();
     };
 
     viewport.addEventListener("pointerup", endDrag);
     viewport.addEventListener("pointercancel", endDrag);
+    viewport.addEventListener("pointerleave", (event) => {
+      if (dragging && event.pointerId === pointerId) endDrag(event);
+    });
+
+    slides.forEach((slide) => {
+      const img = slide.querySelector("img");
+      if (!img) return;
+      if (img.complete) syncFrame();
+      else img.addEventListener("load", syncFrame, { once: true });
+    });
+    window.addEventListener("resize", debounce(syncFrame, 120));
 
     carousel._newsCarousel = { startAutoplay, stopAutoplay, goTo };
     goTo(0, { animate: false });
+    syncFrame();
     startAutoplay();
   }
 
@@ -1063,18 +1295,18 @@
                 `
       : "";
 
+    const thumb = images[0]
+      ? `<span class="news-thumb" aria-hidden="true"><img src="${escapeHtml(images[0])}" alt="" loading="lazy"></span>`
+      : "";
+
     return `
                 <details class="news-item${images.length ? " has-news-image" : ""}${hasDetails ? "" : " is-static"}">
                   <summary class="news-summary">
+                    ${thumb}
                     <div class="news-copy">
                       ${date ? `<span class="news-date">${escapeHtml(date)}</span>` : ""}
                       <h3>${escapeHtml(title || "Nieuws")}</h3>
                       ${teaser ? `<p class="news-teaser">${escapeHtml(teaser)}</p>` : ""}
-                      ${
-                        hasDetails
-                          ? `<span class="news-expand">Meer lezen <span aria-hidden="true">+</span></span>`
-                          : ""
-                      }
                     </div>
                   </summary>
                   ${detailsHtml}
@@ -1086,15 +1318,19 @@
        Scroll-reveal animations
        ========================================================== */
 
-  const revealSelector = ".section-top, .practical-heading, .branch, .news-item, .agenda-item, .faq-item, .footer-brand, .footer-column, .footer-bottom";
+  const revealSelector =
+    ".section-top, .practical-heading, .branch, .news-item, .agenda-item, .faq-item";
   let revealObserver = null;
 
   function initRevealAnimations() {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
     const homePage = document.body.classList.contains("home-page");
-    const elements = qsa(homePage ? revealSelector : ".footer-brand, .footer-column, .footer-bottom")
-      .filter((element) => !element.dataset.revealReady);
+    if (!homePage) return;
+
+    const elements = qsa(revealSelector).filter(
+      (element) => !element.dataset.revealReady,
+    );
     if (elements.length === 0) return;
 
     const supportsViewTimeline = window.CSS && CSS.supports("animation-timeline", "view()");
@@ -1686,6 +1922,18 @@
     "branches.jins": "jinsleiding",
   };
 
+  const CLIENT_MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
+
+  function assertUploadSize(file, label = "bestand") {
+    if (!file) return;
+    if (file.size > CLIENT_MAX_UPLOAD_BYTES) {
+      const mb = (file.size / (1024 * 1024)).toFixed(1).replace(".", ",");
+      throw new Error(
+        `Dit ${label} is ${mb} MB en daarmee te groot. Maximum is 20 MB.`,
+      );
+    }
+  }
+
   async function updatePhoto(data, key, file) {
     if (!file) {
       throw new Error("Geen foto geselecteerd.");
@@ -1694,6 +1942,8 @@
     if (!file.type.startsWith("image/")) {
       throw new Error("Selecteer een afbeeldingsbestand.");
     }
+
+    assertUploadSize(file, "foto");
 
     const filename = PHOTO_FILENAMES[key];
 
@@ -1728,11 +1978,8 @@
     }
 
     /*
-     * De server zet iedere afbeelding om naar:
-     *
-     * /uploads/kapoenenleiding.jpg?v=123456789
-     *
-     * De originele resolutie wordt behouden.
+     * Server bewaart JPG zo veel mogelijk zonder hercompressie,
+     * of herslaat scherp op hoge kwaliteit (max. ~2800px).
      */
     setPhotoValue(data, key, result.path);
 
@@ -1969,12 +2216,37 @@
         const thumbs = images
           .map(
             (src, imageIndex) => `
-                      <div class="admin-news-photo-thumb">
-                        <img src="${escapeHtml(src)}" alt="${escapeHtml(title)} ${imageIndex + 1}" loading="lazy">
-                        <button type="button" class="admin-news-photo-remove" data-news-image-remove data-index="${index}" data-image-index="${imageIndex}" aria-label="Foto verwijderen">×</button>
+                      <div class="admin-news-photo-item">
+                        <span class="admin-news-photo-order" aria-hidden="true">${imageIndex + 1}</span>
+                        <div class="admin-news-photo-thumb">
+                          <img src="${escapeHtml(src)}" alt="${escapeHtml(title)} foto ${imageIndex + 1}" loading="lazy">
+                        </div>
+                        <div class="admin-news-photo-controls">
+                          <button type="button" class="admin-news-photo-move" data-news-image-move data-index="${index}" data-image-index="${imageIndex}" data-direction="-1" ${imageIndex === 0 ? "disabled" : ""} aria-label="Foto ${imageIndex + 1} eerder zetten">
+                            <span aria-hidden="true">↑</span>
+                            <span class="admin-news-photo-move-label">Eerder</span>
+                          </button>
+                          <button type="button" class="admin-news-photo-move" data-news-image-move data-index="${index}" data-image-index="${imageIndex}" data-direction="1" ${imageIndex === images.length - 1 ? "disabled" : ""} aria-label="Foto ${imageIndex + 1} later zetten">
+                            <span aria-hidden="true">↓</span>
+                            <span class="admin-news-photo-move-label">Later</span>
+                          </button>
+                          <button type="button" class="admin-news-photo-remove" data-news-image-remove data-index="${index}" data-image-index="${imageIndex}" aria-label="Foto ${imageIndex + 1} verwijderen">
+                            <span aria-hidden="true">×</span>
+                            <span class="admin-news-photo-move-label">Weg</span>
+                          </button>
+                        </div>
                       </div>`,
           )
           .join("");
+        const addPhotoHtml =
+          images.length >= NEWS_IMAGES_MAX
+            ? `<p class="admin-news-photos-limit">Maximum van ${NEWS_IMAGES_MAX} foto's bereikt.</p>`
+            : `<label class="admin-news-photo-add">
+                        <span class="admin-news-photo-plus" aria-hidden="true">＋</span>
+                        <strong>Foto's toevoegen</strong>
+                        <small>Max. ${NEWS_IMAGES_MAX} · JPG, PNG of WebP</small>
+                        <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple data-news-image-upload data-index="${index}">
+                      </label>`;
         return `
           <article class="admin-item admin-collapsible-item admin-news-item is-collapsed${isHome ? " is-home-news" : ""}">
             <div class="admin-item-head">
@@ -1986,11 +2258,14 @@
                 </span>
               </button>
               <div class="admin-item-actions">
-                <div class="admin-reorder-controls">
-                  <button type="button" class="admin-reorder" data-move="news" data-index="${index}" data-direction="-1" ${index === 0 ? "disabled" : ""} aria-label="Omhoog verplaatsen">↑</button>
-                  <button type="button" class="admin-reorder" data-move="news" data-index="${index}" data-direction="1" ${index === items.length - 1 ? "disabled" : ""} aria-label="Omlaag verplaatsen">↓</button>
+                <div class="admin-reorder-controls" title="Volgorde van dit nieuwsbericht">
+                  <button type="button" class="admin-reorder" data-move="news" data-index="${index}" data-direction="-1" ${index === 0 ? "disabled" : ""} aria-label="Bericht omhoog">↑</button>
+                  <button type="button" class="admin-reorder" data-move="news" data-index="${index}" data-direction="1" ${index === items.length - 1 ? "disabled" : ""} aria-label="Bericht omlaag">↓</button>
                 </div>
-                <button type="button" data-remove="news" data-index="${index}">Verwijderen</button>
+                <button type="button" data-remove="news" data-index="${index}">
+                  <span class="admin-action-full">Verwijderen</span>
+                  <span class="admin-action-short">Weg</span>
+                </button>
               </div>
             </div>
             <div class="admin-collapsible-content">
@@ -1999,16 +2274,10 @@
                   <div class="admin-news-photos">
                     <div class="admin-news-photos-head">
                       <span>Foto's</span>
-                      <small>Meerdere foto's: bezoekers kunnen swipen of zien ze om de 5 seconden wisselen.</small>
                     </div>
-                    <div class="admin-news-photo-grid">
+                    <div class="admin-news-photo-list">
                       ${thumbs}
-                      <label class="admin-news-photo-add">
-                        <span class="admin-news-photo-plus" aria-hidden="true">＋</span>
-                        <strong>Foto's toevoegen</strong>
-                        <small>JPG, PNG of WebP</small>
-                        <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple data-news-image-upload data-index="${index}">
-                      </label>
+                      ${addPhotoHtml}
                     </div>
                   </div>
                   <div class="admin-news-fields">
@@ -2297,7 +2566,8 @@
                                   data-remove="${type}"
                                   data-index="${index}"
                               >
-                                  Verwijderen
+                                  <span class="admin-action-full">Verwijderen</span>
+                                  <span class="admin-action-short">Weg</span>
                               </button>
                             </div>
                         </div>
@@ -3210,18 +3480,28 @@
         const files = [...newsImageUpload.files];
         if (!Array.isArray(data.news) || !data.news[index]) return;
 
-        const imageFiles = files.filter((file) => file.type.startsWith("image/"));
+        const images = getNewsImages(data.news[index]);
+        const remaining = NEWS_IMAGES_MAX - images.length;
+        if (remaining <= 0) {
+          setSaveStatus(`Maximum van ${NEWS_IMAGES_MAX} foto's bereikt.`, "error");
+          newsImageUpload.value = "";
+          return;
+        }
+
+        const imageFiles = files
+          .filter((file) => file.type.startsWith("image/"))
+          .slice(0, remaining);
         if (!imageFiles.length) {
           setSaveStatus("Selecteer een afbeeldingsbestand.", "error");
           return;
         }
 
         try {
+          imageFiles.forEach((file) => assertUploadSize(file, "foto"));
           setSaveStatus(
             imageFiles.length > 1 ? "Foto's uploaden..." : "Foto uploaden...",
             "saving",
           );
-          const images = getNewsImages(data.news[index]);
           for (const file of imageFiles) {
             const filename = `news-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`;
             const formData = new FormData();
@@ -3238,8 +3518,7 @@
             images.push(result.path);
           }
           setNewsImages(data.news[index], images);
-          markDirtyState(true);
-          setSaveStatus("");
+          await persist(data);
           renderAdminPanel();
           const card = qsa(".admin-news-item")[index];
           if (card?.classList.contains("is-collapsed")) {
@@ -3268,6 +3547,7 @@
         if (!Array.isArray(data[type]) || !data[type][index]) return;
 
         try {
+          assertUploadSize(file, "foto");
           setSaveStatus("Foto uploaden...", "saving");
           const filename = `${type}-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`;
           const formData = new FormData();
@@ -3309,6 +3589,7 @@
       if (!data.secondhand[index]) return;
 
       try {
+        assertUploadSize(file, "foto");
         setSaveStatus("Foto uploaden...", "saving");
 
         /*
@@ -3495,6 +3776,31 @@
           renderAdminPanel();
         }
 
+        return;
+      }
+
+      const newsImageMove = event.target.closest("[data-news-image-move]");
+      if (newsImageMove) {
+        readFormValues();
+        const data = DataStore.get();
+        const index = Number(newsImageMove.dataset.index);
+        const imageIndex = Number(newsImageMove.dataset.imageIndex);
+        const direction = Number(newsImageMove.dataset.direction);
+        if (!Array.isArray(data.news) || !data.news[index]) return;
+
+        const images = getNewsImages(data.news[index]);
+        const target = imageIndex + direction;
+        if (target < 0 || target >= images.length) return;
+
+        const [moved] = images.splice(imageIndex, 1);
+        images.splice(target, 0, moved);
+        setNewsImages(data.news[index], images);
+        await persist(data);
+        renderAdminPanel();
+        const card = qsa(".admin-news-item")[index];
+        if (card?.classList.contains("is-collapsed")) {
+          toggleAdminCollapsible(card);
+        }
         return;
       }
 
@@ -4011,6 +4317,9 @@
                 : "";
             const linkText =
               typeof item.linkText === "string" ? item.linkText.trim() : "";
+            const thumb = image
+              ? `<span class="agenda-thumb" aria-hidden="true"><img src="${escapeHtml(image)}" alt="" loading="lazy"></span>`
+              : "";
             return `
                 <details class="agenda-item ${image ? "has-agenda-image" : ""}">
                   <summary class="agenda-summary">
@@ -4020,8 +4329,8 @@
                     </div>
                     <div class="agenda-body">
                       <h3>${escapeHtml(item.title)}</h3>
-                      <span class="agenda-expand">Meer info <span aria-hidden="true">+</span></span>
                     </div>
+                    ${thumb}
                   </summary>
                   <div class="agenda-details">
                     <div class="agenda-details-inner">

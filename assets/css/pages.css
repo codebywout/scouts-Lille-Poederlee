@@ -3,6 +3,7 @@
     width: 100%;
     margin: 0;
     padding: 0 0 100px;
+    background-color: #0d2419;
     background-image:
         linear-gradient(rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.65)),
         url("/assets/images/domein2.jpg?v=20260930-3");
@@ -10,7 +11,16 @@
     background-position: center;
     background-repeat: no-repeat;
     overflow: hidden;
-    animation: pageGradientIn 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Dark fallback on html only — body stays transparent so ::before photo shows. */
+html:has(body.registration-page),
+html:has(body.secondhand-page),
+html:has(body.about-page),
+html:has(body.uniform-page),
+html:has(body.branch-page),
+html:has(body.news-page) {
+    background: #0d2419;
 }
 
 body.registration-page,
@@ -32,6 +42,7 @@ body.news-page::before {
     position: fixed;
     inset: 0;
     z-index: -1;
+    background-color: #0d2419;
     background-image:
         linear-gradient(rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.65)),
         url("/assets/images/domein2.jpg?v=20260930-3");
@@ -178,17 +189,6 @@ body.uniform-page::before {
 
 .page-over-ons .about-hero {
     background-image: url("/uploads/over-ons.jpg?v=20260930-4") !important;
-}
-
-@keyframes pageGradientIn {
-    from {
-        transform: translateY(-12px);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
 }
 
 .page-hero {
@@ -955,17 +955,14 @@ body.uniform-page::before {
     color: var(--scout-brown);
 }
 
-.news-page .news-archive .news-list {
-    border-top-color: rgba(78, 43, 26, 0.14);
-}
-
 .news-page .news-archive .news-item {
-    border-bottom-color: rgba(78, 43, 26, 0.14);
+    background: rgba(255, 255, 255, 0.55);
+    border-color: rgba(78, 43, 26, 0.1);
 }
 
 .news-page .news-archive .news-item:not(.is-static):hover,
 .news-page .news-archive .news-item:not(.is-static):focus-within {
-    background: rgba(255, 255, 255, 0.45);
+    background: rgba(255, 255, 255, 0.82);
 }
 
 .news-page .news-archive .news-copy h3 {
@@ -986,8 +983,28 @@ body.uniform-page::before {
     .news-page .news-archive {
         width: min(100% - 24px, var(--max-width));
         margin-bottom: 28px;
-        padding: 18px 18px 22px;
-        border-radius: 22px;
+        padding: 14px;
+        border-radius: 20px;
+    }
+
+    .news-page .news-archive .news-list {
+        gap: 8px;
+    }
+
+    .news-page .news-archive .news-item {
+        padding: 12px;
+        border-radius: 14px;
+    }
+}
+
+@media (max-width: 480px) {
+    .news-page .news-archive {
+        padding: 12px;
+        border-radius: 16px;
+    }
+
+    .news-page .news-archive .news-item {
+        padding: 11px;
     }
 }
 

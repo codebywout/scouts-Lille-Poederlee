@@ -1,13 +1,5 @@
 /* Mobiele navigatie */
 @media (max-width: 950px) {
-    body.page-leaving > * {
-        transform: translateY(-3px);
-    }
-
-    .navbar {
-        animation: none;
-    }
-
     .navbar .brand-logo {
         width: 48px;
         height: 48px;
@@ -16,6 +8,16 @@
     .desktop-nav,
     .nav-cta {
         display: none;
+    }
+
+    /* Admin actions stay visible on every screen size. */
+    .admin-page .admin-toolbar,
+    .admin-page .admin-tool-btn {
+        display: flex;
+    }
+
+    .admin-page .admin-tool-btn {
+        display: inline-flex;
     }
 
 }
@@ -361,6 +363,9 @@
 
     .agenda-item.has-agenda-image .agenda-details-inner img {
         width: min(100%, 360px);
+        height: auto;
+        max-height: none;
+        object-fit: contain;
         margin-top: 16px;
     }
 
@@ -405,7 +410,11 @@
         padding-block: 10px;
     }
 
-    .admin-page .admin-toolbar .nav-cta {
+    .admin-page .admin-toolbar {
+        display: flex;
+    }
+
+    .admin-page .admin-tool-btn {
         display: inline-flex;
     }
 
@@ -463,7 +472,7 @@
         box-sizing: border-box;
     }
 
-    .admin-page .admin-toolbar .nav-cta {
+    .admin-page .admin-tool-btn {
         flex: 1 1 0;
         min-width: 0;
         padding-inline: 10px;
@@ -572,15 +581,6 @@
     .page-picker-grid,
     .admin-photo-grid {
         grid-template-columns: 1fr;
-    }
-
-    .admin-toolbar {
-        gap: 8px;
-    }
-
-    .admin-toolbar .nav-cta {
-        padding-inline: 10px;
-        font-size: 12px;
     }
 
     .admin-card-head {

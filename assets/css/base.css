@@ -6,30 +6,46 @@
 
 html {
     scroll-behavior: smooth;
-    background: var(--scout-forest-dark);
+    background: #f5efe7;
     overflow-x: clip;
 }
 
 body {
     font-family: "DM Sans", sans-serif;
-    background: linear-gradient(180deg, #f7f1e8 0%, #f5efe7 100%);
+    background: #f5efe7;
     color: #14261d;
     line-height: 1.6;
-    background: #f5efe7;
     overflow-x: clip;
 }
 
-body > * {
-    transition: transform 0.22s ease;
+/* Subtle content settle — never cover the page (no white/dark veil flash). */
+body.page-enter .navbar,
+body.page-enter .footer,
+body.page-enter .page-hero,
+body.page-enter .page-main,
+body.page-enter main > *:not(.hero),
+body.page-enter .hero-content {
+    animation: pageContentIn 0.28s ease;
 }
 
-body.page-leaving > * {
-    transform: translateY(-8px);
+@keyframes pageContentIn {
+    from {
+        opacity: 0.88;
+    }
+
+    to {
+        opacity: 1;
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {
-    body > * {
-        transition: none;
+    body.page-enter .navbar,
+    body.page-enter .footer,
+    body.page-enter .page-hero,
+    body.page-enter .page-main,
+    body.page-enter main > *:not(.hero),
+    body.page-enter .hero-content {
+        animation: none;
     }
 }
 

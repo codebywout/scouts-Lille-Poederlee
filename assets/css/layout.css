@@ -7,7 +7,6 @@
     color: #fff;
     background: transparent;
     backdrop-filter: none;
-    animation: pageGradientIn 0.8s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 body.home-page .nav-inner {
@@ -384,6 +383,8 @@ body.home-page .hero {
 }
 
 .footer {
+    position: relative;
+    z-index: 2;
     padding: 70px 5% 26px;
     background: #0d1a14;
     color: #fff;
@@ -400,7 +401,7 @@ body.home-page .hero {
 
 .footer-brand p {
     margin-top: 20px;
-    color: #a5afa8;
+    color: #c5cec8;
     max-width: 320px;
 }
 
@@ -412,7 +413,7 @@ body.home-page .hero {
 
 .footer-column > span {
     margin-bottom: 8px;
-    color: #d8b985;
+    color: #e4c48a;
     font-size: 10px;
     letter-spacing: 2px;
     font-weight: 800;
@@ -420,7 +421,7 @@ body.home-page .hero {
 
 .footer-column a,
 .footer-column p {
-    color: #dfe5e1;
+    color: #f0f3f1;
     font-size: 14px;
 }
 
@@ -433,22 +434,26 @@ body.home-page .hero {
     max-width: var(--max-width);
     margin: 46px auto 0;
     padding-top: 18px;
-    border-top: 1px solid rgba(255,255,255,0.09);
+    border-top: 1px solid rgba(255,255,255,0.14);
     display: flex;
     justify-content: space-between;
     gap: 16px;
-    color: #97a29b;
+    color: #b7c0ba;
     font-size: 11px;
 }
 
-/* De view-timeline reveal stopt onderaan de pagina rond 15% opacity. */
-.footer-bottom.reveal-in,
-.footer-bottom.reveal-fallback {
-    animation: none;
-    animation-timeline: auto;
-    opacity: 1;
-    translate: none;
-    scale: none;
+/* Footer never uses scroll-reveal — that left it half-transparent ("wazig"). */
+.footer .reveal-in,
+.footer .reveal-fallback,
+.footer-brand,
+.footer-column,
+.footer-bottom {
+    animation: none !important;
+    animation-timeline: auto !important;
+    opacity: 1 !important;
+    translate: none !important;
+    scale: none !important;
+    filter: none !important;
 }
 
 .contact-list,
