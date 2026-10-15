@@ -756,13 +756,14 @@
     .mobile-menu {
         display: none;
         flex-direction: column;
-        gap: 2px;
-        width: min(calc(100% - 10%), 360px);
-        margin: 8px 5% 0 auto;
-        padding: 10px;
+        gap: 4px;
+        width: calc(100% - 24px);
+        max-width: 420px;
+        margin: 10px 12px 0 auto;
+        padding: 12px;
         background: #0d1a14;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 22px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 20px;
         box-shadow: 0 18px 40px rgba(8, 16, 12, 0.35);
     }
 
@@ -775,12 +776,12 @@
         display: flex;
         align-items: center;
         justify-content: flex-start;
-        min-height: 44px;
-        padding: 0 14px;
+        min-height: 48px;
+        padding: 0 16px;
         border: 0;
         border-radius: 12px;
-        color: #dfe5e1;
-        font-size: 15px;
+        color: #f0f3f1;
+        font-size: 16px;
         font-weight: 600;
     }
 
@@ -821,5 +822,336 @@
     to {
         opacity: 1;
         transform: translateY(0);
+    }
+}
+
+/* ==========================================================
+   Clarity pass — phones & tablets
+   Larger tap targets, steadier type, less cramped layouts.
+   ========================================================== */
+
+@media (max-width: 1024px) {
+    body {
+        overflow-wrap: break-word;
+        word-break: normal;
+    }
+
+    .section-top h2,
+    .practical-heading h2,
+    .page-card h2,
+    .page-card h3 {
+        overflow-wrap: break-word;
+        word-break: normal;
+        hyphens: auto;
+    }
+
+    .section-top p,
+    .page-hero .hero-content p,
+    .page-card p,
+    .story-card p,
+    .info-item strong {
+        line-height: 1.55;
+    }
+
+    .info-grid {
+        gap: 12px;
+    }
+}
+
+@media (max-width: 950px) {
+    .mobile-menu a:last-child {
+        min-height: 50px;
+        font-size: 15px;
+    }
+
+    .page-main,
+    .page-over-ons,
+    .secondhand-intro,
+    .secondhand-process {
+        padding-inline: max(18px, 5%);
+    }
+
+    .branch-detail-layout {
+        gap: 20px;
+    }
+
+    .uniform-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+    }
+}
+
+@media (max-width: 768px) {
+    /* Prevent iOS zoom on focus */
+    input,
+    select,
+    textarea {
+        font-size: 16px !important;
+    }
+
+    .news-carousel-dot {
+        width: 12px;
+        height: 12px;
+        min-width: 12px;
+    }
+
+    .news-carousel-dots {
+        gap: 10px;
+        padding: 4px;
+    }
+
+    .news-carousel-status {
+        font-size: 11px;
+        letter-spacing: 0.04em;
+    }
+
+    .hero-actions {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 10px;
+        width: 100%;
+        max-width: 420px;
+    }
+
+    .hero-actions .button,
+    .hero-actions .button-primary,
+    .hero-actions .button-ghost {
+        width: 100%;
+        justify-content: center;
+        min-height: 50px;
+    }
+
+    .section-top {
+        gap: 10px;
+        margin-bottom: 22px;
+    }
+
+    .section-top h2,
+    .practical-heading h2 {
+        line-height: 1.08;
+    }
+
+    .section-top p,
+    .practical-heading p {
+        font-size: 15px;
+        line-height: 1.6;
+        max-width: 42ch;
+    }
+
+    .branch {
+        min-height: 96px;
+        padding: 14px 14px 14px 16px;
+    }
+
+    .branch-main h3 {
+        font-size: clamp(18px, 5.4vw, 22px);
+        line-height: 1.15;
+    }
+
+    .branch-main span,
+    .branch-main p {
+        font-size: 13px;
+        line-height: 1.4;
+    }
+
+    .agenda-item,
+    .news-item {
+        border-radius: 16px;
+    }
+
+    .agenda-body h3,
+    .news-copy h3 {
+        font-size: clamp(16px, 4.6vw, 19px);
+        line-height: 1.25;
+    }
+
+    .agenda-details-inner p,
+    .news-details-inner p,
+    .news-teaser {
+        font-size: 14px;
+        line-height: 1.55;
+    }
+
+    .faq-item summary {
+        min-height: 56px;
+        font-size: 15px;
+        line-height: 1.35;
+        padding-inline: 16px;
+    }
+
+    .page-card,
+    .registration-form,
+    .contact-card,
+    .registration-info-content,
+    .story-card {
+        padding: 20px 18px;
+        border-radius: 18px;
+    }
+
+    .page-card p,
+    .registration-info-content p,
+    .story-card p,
+    .contact-card p {
+        font-size: 15px;
+        line-height: 1.6;
+    }
+
+    .footer-column > span {
+        margin-bottom: 8px;
+        font-size: 11px;
+    }
+
+    .footer-column a {
+        min-height: 40px;
+        display: inline-flex;
+        align-items: center;
+        font-size: 15px;
+    }
+
+    .footer-brand p {
+        font-size: 14px;
+        line-height: 1.55;
+        max-width: 36ch;
+    }
+
+    .privacy-toc {
+        gap: 8px;
+    }
+
+    .privacy-toc a {
+        flex: 1 1 auto;
+        justify-content: center;
+        min-height: 40px;
+        font-size: 13px;
+    }
+
+    .privacy-rights > li {
+        padding: 16px 14px 16px 58px;
+    }
+
+    .privacy-data-list,
+    .privacy-contact-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .document-resource-grid .document-action-button,
+    .document-resource-grid .planning-download-card .button {
+        width: 100%;
+        min-height: 48px;
+        justify-content: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .mobile-menu {
+        width: calc(100% - 16px);
+        margin-inline: 8px;
+        margin-left: auto;
+        border-radius: 18px;
+    }
+
+    .hero-content {
+        width: auto;
+        max-width: none;
+        margin-inline: 0;
+        padding-inline: max(16px, 5%);
+    }
+
+    .hero h1 {
+        font-size: clamp(32px, 10vw, 44px);
+        line-height: 1.02;
+    }
+
+    .hero-actions {
+        max-width: none;
+    }
+
+    .section-top p,
+    .practical-heading p {
+        max-width: none;
+    }
+
+    .branch {
+        grid-template-columns: minmax(0, 1fr) 44px;
+        gap: 8px;
+        padding: 12px;
+    }
+
+    .branch-logo {
+        width: 44px;
+        height: 44px;
+        min-width: 44px;
+    }
+
+    .agenda-summary,
+    .news-summary {
+        gap: 10px;
+    }
+
+    .agenda-date strong {
+        font-size: 22px;
+    }
+
+    .news-copy h3,
+    .agenda-body h3 {
+        font-size: 16px;
+    }
+
+    .page-hero .hero-content h1,
+    .secondhand-hero h1 {
+        font-size: clamp(30px, 9.5vw, 42px);
+        letter-spacing: -1px;
+    }
+
+    .page-hero .hero-content p,
+    .secondhand-hero p {
+        font-size: 15px;
+        line-height: 1.55;
+    }
+
+    .uniform-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .registration-choice-button {
+        min-height: 52px;
+        padding: 12px 10px;
+    }
+
+    .registration-choice-button span {
+        font-size: clamp(15px, 4.2vw, 18px);
+    }
+
+    .privacy-toc a {
+        flex: 1 1 calc(50% - 8px);
+        font-size: 12px;
+        padding-inline: 10px;
+    }
+
+    .privacy-panel {
+        padding: 16px;
+    }
+
+    .privacy-panel-title {
+        font-size: 16px;
+    }
+
+    .footer {
+        padding-bottom: max(22px, env(safe-area-inset-bottom));
+    }
+}
+
+@media (max-width: 360px) {
+    .mobile-menu a {
+        font-size: 15px;
+        min-height: 46px;
+    }
+
+    .privacy-toc a {
+        flex-basis: 100%;
+    }
+
+    .branch-main h3 {
+        font-size: 17px;
     }
 }
