@@ -47,7 +47,11 @@
             "image": "\/uploads\/news-1791911687331-359a4430.jpg?v=1791911687",
             "link": "",
             "linkText": "",
-            "summary": "Wat is er allemaal verandert op onze website?"
+            "summary": "Wat is er allemaal verandert op onze website?",
+            "images": [
+                "\/uploads\/news-1791911687331-359a4430.jpg?v=1791911687",
+                "\/uploads\/news-1792067019781-bba91747.jpg?v=1792067019"
+            ]
         },
         {
             "title": "Een nieuw dak op ons scoutslokaal",
@@ -56,7 +60,8 @@
             "image": "",
             "link": "",
             "linkText": "",
-            "summary": "Yesssss, eindelijk een nieuw dak. Na een heleboel gedoe met de verzekering."
+            "summary": "Yesssss, eindelijk een nieuw dak. Na een heleboel gedoe met de verzekering.",
+            "images": []
         },
         {
             "title": "Sfeerfoto's oktober",
@@ -65,7 +70,8 @@
             "image": "",
             "link": "",
             "linkText": "",
-            "summary": "Kijk wat jullie kinderen allemaal hebben uitgestoken deze maand"
+            "summary": "Kijk wat jullie kinderen allemaal hebben uitgestoken deze maand",
+            "images": []
         },
         {
             "title": "Test bericht 2",
@@ -74,7 +80,8 @@
             "image": "",
             "link": "",
             "linkText": "",
-            "summary": "dit is een testbericht"
+            "summary": "dit is een testbericht",
+            "images": []
         }
     ],
     "faq": [

@@ -821,6 +821,9 @@
         event.preventDefault();
 
         if (item.classList.contains("is-open")) {
+          qsa("[data-news-carousel]", item).forEach((carousel) => {
+            carousel._newsCarousel?.stopAutoplay?.();
+          });
           closeNewsItem(item);
           return;
         }
@@ -829,18 +832,207 @@
           .filter(
             (other) => other !== item && other.classList.contains("is-open"),
           )
-          .forEach(closeNewsItem);
+          .forEach((other) => {
+            qsa("[data-news-carousel]", other).forEach((carousel) => {
+              carousel._newsCarousel?.stopAutoplay?.();
+            });
+            closeNewsItem(other);
+          });
 
         item.setAttribute("open", "");
-        requestAnimationFrame(() => item.classList.add("is-open"));
+        requestAnimationFrame(() => {
+          item.classList.add("is-open");
+          qsa("[data-news-carousel]", item).forEach((carousel) => {
+            carousel._newsCarousel?.startAutoplay?.();
+          });
+        });
       });
     });
   }
 
   const NEWS_HOME_LIMIT = 3;
+  const NEWS_CAROUSEL_INTERVAL_MS = 5000;
+
+  function getNewsImages(item) {
+    if (!item || typeof item !== "object") return [];
+    const fromArray = Array.isArray(item.images)
+      ? item.images.filter((src) => typeof src === "string" && src.trim())
+      : [];
+    if (fromArray.length) return fromArray.map((src) => src.trim());
+    if (typeof item.image === "string" && item.image.trim()) {
+      return [item.image.trim()];
+    }
+    return [];
+  }
+
+  function setNewsImages(item, images) {
+    if (!item || typeof item !== "object") return;
+    const cleaned = (images || [])
+      .filter((src) => typeof src === "string" && src.trim())
+      .map((src) => src.trim());
+    item.images = cleaned;
+    item.image = cleaned[0] || "";
+  }
+
+  function normalizeNewsItems(data) {
+    if (!data) return;
+    if (!Array.isArray(data.news)) data.news = [];
+    data.news.forEach((item) => {
+      if (!item || typeof item !== "object") return;
+      if (typeof item.summary !== "string") item.summary = "";
+      setNewsImages(item, getNewsImages(item));
+    });
+  }
+
+  function buildNewsCarouselHtml(images, title) {
+    if (!images.length) return "";
+    const alt = escapeHtml(title || "Nieuwsfoto");
+    if (images.length === 1) {
+      return `<figure class="news-media"><img src="${escapeHtml(images[0])}" alt="${alt}" loading="lazy"></figure>`;
+    }
+
+    const slides = images
+      .map(
+        (src, index) => `
+                      <div class="news-carousel-slide${index === 0 ? " is-active" : ""}" data-slide-index="${index}">
+                        <img src="${escapeHtml(src)}" alt="${alt} ${index + 1}" loading="${index === 0 ? "eager" : "lazy"}" draggable="false">
+                      </div>`,
+      )
+      .join("");
+    const dots = images
+      .map(
+        (_, index) =>
+          `<button type="button" class="news-carousel-dot${index === 0 ? " is-active" : ""}" data-carousel-dot="${index}" aria-label="Foto ${index + 1}"></button>`,
+      )
+      .join("");
+
+    return `
+                      <figure class="news-media news-carousel" data-news-carousel>
+                        <div class="news-carousel-viewport">
+                          <div class="news-carousel-track">
+                            ${slides}
+                          </div>
+                        </div>
+                        <div class="news-carousel-dots" role="tablist" aria-label="Foto's">
+                          ${dots}
+                        </div>
+                      </figure>`;
+  }
+
+  function setupNewsCarousel(carousel) {
+    if (!carousel || carousel.dataset.carouselReady === "true") return;
+    const slides = qsa(".news-carousel-slide", carousel);
+    const dots = qsa("[data-carousel-dot]", carousel);
+    const track = qs(".news-carousel-track", carousel);
+    const viewport = qs(".news-carousel-viewport", carousel);
+    if (slides.length <= 1 || !track || !viewport) return;
+
+    carousel.dataset.carouselReady = "true";
+    let index = 0;
+    let timer = 0;
+    let pointerId = null;
+    let startX = 0;
+    let deltaX = 0;
+    let dragging = false;
+    const reduceMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+
+    const goTo = (nextIndex, { animate = true } = {}) => {
+      index = ((nextIndex % slides.length) + slides.length) % slides.length;
+      track.style.transition = animate ? "" : "none";
+      track.style.transform = `translateX(-${index * 100}%)`;
+      slides.forEach((slide, slideIndex) => {
+        slide.classList.toggle("is-active", slideIndex === index);
+      });
+      dots.forEach((dot, dotIndex) => {
+        dot.classList.toggle("is-active", dotIndex === index);
+      });
+      if (!animate) {
+        requestAnimationFrame(() => {
+          track.style.transition = "";
+        });
+      }
+    };
+
+    const stopAutoplay = () => {
+      if (timer) {
+        window.clearInterval(timer);
+        timer = 0;
+      }
+    };
+
+    const startAutoplay = () => {
+      stopAutoplay();
+      if (reduceMotion || slides.length < 2) return;
+      const details = carousel.closest("details.news-item");
+      if (details && !details.classList.contains("is-open")) return;
+      timer = window.setInterval(() => goTo(index + 1), NEWS_CAROUSEL_INTERVAL_MS);
+    };
+
+    const restartAutoplay = () => {
+      stopAutoplay();
+      startAutoplay();
+    };
+
+    dots.forEach((dot) => {
+      dot.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        goTo(Number(dot.dataset.carouselDot) || 0);
+        restartAutoplay();
+      });
+    });
+
+    viewport.addEventListener("pointerdown", (event) => {
+      if (event.button !== undefined && event.button !== 0) return;
+      pointerId = event.pointerId;
+      startX = event.clientX;
+      deltaX = 0;
+      dragging = true;
+      stopAutoplay();
+      viewport.setPointerCapture?.(pointerId);
+      track.style.transition = "none";
+    });
+
+    viewport.addEventListener("pointermove", (event) => {
+      if (!dragging || event.pointerId !== pointerId) return;
+      deltaX = event.clientX - startX;
+      const width = viewport.clientWidth || 1;
+      const offset = (-index * 100) + (deltaX / width) * 100;
+      track.style.transform = `translateX(${offset}%)`;
+    });
+
+    const endDrag = (event) => {
+      if (!dragging || event.pointerId !== pointerId) return;
+      dragging = false;
+      viewport.releasePointerCapture?.(pointerId);
+      pointerId = null;
+      const width = viewport.clientWidth || 1;
+      const threshold = Math.min(80, width * 0.18);
+      if (Math.abs(deltaX) > threshold) {
+        goTo(index + (deltaX < 0 ? 1 : -1));
+      } else {
+        goTo(index);
+      }
+      deltaX = 0;
+      restartAutoplay();
+    };
+
+    viewport.addEventListener("pointerup", endDrag);
+    viewport.addEventListener("pointercancel", endDrag);
+
+    carousel._newsCarousel = { startAutoplay, stopAutoplay, goTo };
+    goTo(0, { animate: false });
+    startAutoplay();
+  }
+
+  function initNewsCarousels(container = document) {
+    qsa("[data-news-carousel]", container).forEach(setupNewsCarousel);
+  }
 
   function buildNewsItemHtml(item) {
-    const image = typeof item.image === "string" ? item.image.trim() : "";
+    const images = getNewsImages(item);
     const date = typeof item.date === "string" ? item.date.trim() : "";
     const title = typeof item.title === "string" ? item.title.trim() : "";
     const summary =
@@ -853,7 +1045,7 @@
         : "";
     const linkText =
       typeof item.linkText === "string" ? item.linkText.trim() : "";
-    const hasDetails = Boolean(text || image || (link && linkText));
+    const hasDetails = Boolean(text || images.length || (link && linkText));
     const teaser = summary || (!hasDetails && text ? text : "");
     const detailsHtml = hasDetails
       ? `
@@ -865,18 +1057,14 @@
                           ? `<a class="news-link" href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer">${escapeHtml(linkText)} <span aria-hidden="true">↗</span></a>`
                           : ""
                       }
-                      ${
-                        image
-                          ? `<figure class="news-media"><img src="${escapeHtml(image)}" alt="${escapeHtml(title || "Nieuwsfoto")}" loading="lazy"></figure>`
-                          : ""
-                      }
+                      ${buildNewsCarouselHtml(images, title)}
                     </div>
                   </div>
                 `
       : "";
 
     return `
-                <details class="news-item${image ? " has-news-image" : ""}${hasDetails ? "" : " is-static"}">
+                <details class="news-item${images.length ? " has-news-image" : ""}${hasDetails ? "" : " is-static"}">
                   <summary class="news-summary">
                     <div class="news-copy">
                       ${date ? `<span class="news-date">${escapeHtml(date)}</span>` : ""}
@@ -1055,11 +1243,7 @@
       }
 
       this._cache = await response.json();
-      if (!Array.isArray(this._cache.news)) this._cache.news = [];
-      this._cache.news.forEach((item) => {
-        if (!item || typeof item !== "object") return;
-        if (typeof item.summary !== "string") item.summary = "";
-      });
+      normalizeNewsItems(this._cache);
       normalizeBranchLeadership(this._cache);
       return this._cache;
     },
@@ -1223,6 +1407,7 @@
   // the same thing on failure: keep the change locally, tell the user.
   async function persist(data, { quiet = false } = {}) {
     normalizeBranchLeadership(data);
+    normalizeNewsItems(data);
     if (!quiet) setSaveStatus("Opslaan...", "saving");
     try {
       await DataStore.save(data);
@@ -1677,6 +1862,7 @@
         summary: "",
         text: "",
         image: "",
+        images: [],
         link: "",
         linkText: "",
       },
@@ -1725,13 +1911,6 @@
           type: "url",
           default: "",
           placeholder: "https://...",
-        },
-        {
-          key: "image",
-          label: "Foto",
-          tag: "file",
-          type: "file",
-          accept: "image/jpeg,image/png,image/webp,image/gif",
         },
       ],
     },
@@ -1784,9 +1963,18 @@
 
     container.innerHTML = items
       .map((item, index) => {
-        const image = typeof item.image === "string" ? item.image : "";
+        const images = getNewsImages(item);
         const isHome = index < NEWS_HOME_LIMIT;
         const title = item.title || `Nieuws ${index + 1}`;
+        const thumbs = images
+          .map(
+            (src, imageIndex) => `
+                      <div class="admin-news-photo-thumb">
+                        <img src="${escapeHtml(src)}" alt="${escapeHtml(title)} ${imageIndex + 1}" loading="lazy">
+                        <button type="button" class="admin-news-photo-remove" data-news-image-remove data-index="${index}" data-image-index="${imageIndex}" aria-label="Foto verwijderen">×</button>
+                      </div>`,
+          )
+          .join("");
         return `
           <article class="admin-item admin-collapsible-item admin-news-item is-collapsed${isHome ? " is-home-news" : ""}">
             <div class="admin-item-head">
@@ -1808,21 +1996,20 @@
             <div class="admin-collapsible-content">
               <div class="admin-collapsible-content-inner">
                 <div class="admin-news-editor">
-                  <div class="admin-news-photo">
-                    ${
-                      image
-                        ? `<img src="${escapeHtml(image)}" alt="${escapeHtml(title)}" loading="lazy">
-                           <div class="admin-news-photo-actions">
-                             <label class="admin-news-photo-change"><span>↻</span> Foto wijzigen<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" data-list-image-upload="news" data-index="${index}"></label>
-                             <button type="button" class="admin-news-photo-remove" data-list-image-remove="news" data-index="${index}">Foto weg</button>
-                           </div>`
-                        : `<label class="admin-news-photo-empty">
-                             <span class="admin-news-photo-plus" aria-hidden="true">＋</span>
-                             <strong>Foto toevoegen</strong>
-                             <small>JPG, PNG of WebP</small>
-                             <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" data-list-image-upload="news" data-index="${index}">
-                           </label>`
-                    }
+                  <div class="admin-news-photos">
+                    <div class="admin-news-photos-head">
+                      <span>Foto's</span>
+                      <small>Meerdere foto's: bezoekers kunnen swipen of zien ze om de 5 seconden wisselen.</small>
+                    </div>
+                    <div class="admin-news-photo-grid">
+                      ${thumbs}
+                      <label class="admin-news-photo-add">
+                        <span class="admin-news-photo-plus" aria-hidden="true">＋</span>
+                        <strong>Foto's toevoegen</strong>
+                        <small>JPG, PNG of WebP</small>
+                        <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple data-news-image-upload data-index="${index}">
+                      </label>
+                    </div>
                   </div>
                   <div class="admin-news-fields">
                     <div class="admin-news-field-row">
@@ -2737,6 +2924,7 @@
     if (data.activePage === "news") {
       if (!Array.isArray(data.news)) data.news = [];
       readListFields(data.news, "news");
+      normalizeNewsItems(data);
       return data;
     }
 
@@ -3014,6 +3202,56 @@
         return;
       }
 
+      const newsImageUpload = event.target.closest("[data-news-image-upload]");
+      if (newsImageUpload?.files?.length) {
+        readFormValues();
+        const data = DataStore.get();
+        const index = Number(newsImageUpload.dataset.index);
+        const files = [...newsImageUpload.files];
+        if (!Array.isArray(data.news) || !data.news[index]) return;
+
+        const imageFiles = files.filter((file) => file.type.startsWith("image/"));
+        if (!imageFiles.length) {
+          setSaveStatus("Selecteer een afbeeldingsbestand.", "error");
+          return;
+        }
+
+        try {
+          setSaveStatus(
+            imageFiles.length > 1 ? "Foto's uploaden..." : "Foto uploaden...",
+            "saving",
+          );
+          const images = getNewsImages(data.news[index]);
+          for (const file of imageFiles) {
+            const filename = `news-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`;
+            const formData = new FormData();
+            formData.append("photo", file);
+            formData.append("filename", filename);
+            const response = await fetch("/api/uploads/photo", {
+              method: "POST",
+              body: formData,
+            });
+            const result = await response.json().catch(() => ({}));
+            if (!response.ok || !result.path) {
+              throw new Error(result.message || "Foto uploaden mislukt.");
+            }
+            images.push(result.path);
+          }
+          setNewsImages(data.news[index], images);
+          markDirtyState(true);
+          setSaveStatus("");
+          renderAdminPanel();
+          const card = qsa(".admin-news-item")[index];
+          if (card?.classList.contains("is-collapsed")) {
+            toggleAdminCollapsible(card);
+          }
+        } catch (error) {
+          console.error(error);
+          setSaveStatus(error.message || "Foto uploaden mislukt.", "error");
+        }
+        return;
+      }
+
       const listImageUpload = event.target.closest("[data-list-image-upload]");
       if (listImageUpload?.files[0]) {
         readFormValues();
@@ -3257,6 +3495,53 @@
           renderAdminPanel();
         }
 
+        return;
+      }
+
+      const newsImageRemove = event.target.closest("[data-news-image-remove]");
+      if (newsImageRemove) {
+        readFormValues();
+        const data = DataStore.get();
+        const index = Number(newsImageRemove.dataset.index);
+        const imageIndex = Number(newsImageRemove.dataset.imageIndex);
+        if (!Array.isArray(data.news) || !data.news[index]) return;
+
+        const images = getNewsImages(data.news[index]);
+        const imagePath = images[imageIndex] || "";
+        if (!imagePath) return;
+
+        const filename = imagePath
+          .split("/")
+          .pop()
+          ?.split("?")[0]
+          ?.replace(/\.[^/.]+$/, "");
+
+        if (!window.confirm("Wil je deze foto verwijderen?")) return;
+
+        try {
+          if (filename && imagePath.startsWith("/uploads/")) {
+            const response = await fetch(
+              `/api/uploads/photo/${encodeURIComponent(filename)}`,
+              { method: "DELETE" },
+            );
+            if (!response.ok) {
+              const result = await response.json().catch(() => ({}));
+              throw new Error(result.message || "Foto verwijderen mislukt.");
+            }
+          }
+
+          images.splice(imageIndex, 1);
+          setNewsImages(data.news[index], images);
+          await persist(data);
+          renderAdminPanel();
+          const card = qsa(".admin-news-item")[index];
+          if (card?.classList.contains("is-collapsed")) {
+            toggleAdminCollapsible(card);
+          }
+        } catch (error) {
+          console.error(error);
+          setSaveStatus(error.message || "Foto verwijderen mislukt.", "error");
+        }
         return;
       }
 
@@ -3706,6 +3991,7 @@
           newsSection?.removeAttribute("hidden");
           newsEl.innerHTML = visibleItems.map(buildNewsItemHtml).join("");
           setupNewsAccordion(newsEl);
+          initNewsCarousels(newsEl);
           if (newsMore) {
             newsMore.hidden = isNewsArchive || newsItems.length <= NEWS_HOME_LIMIT;
           }
