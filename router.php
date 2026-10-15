@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+require_once __DIR__ . DIRECTORY_SEPARATOR . 'config.php';
+
 // The PHP development server sends every request through this file. Static
 // files are returned to the server; /api/* requests are handled by the API.
 $requestPath = parse_url((string) ($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PATH);
@@ -13,22 +15,6 @@ if ($requestPath === '/data' || strncmp($requestPath, '/data/', 6) === 0
     http_response_code(404);
     exit;
 }
-
-$cleanRoutes = [
-    '/login' => 'login.html',
-    '/admin' => 'admin-gate.php',
-    '/over-ons' => 'pages/over-ons.html',
-    '/inschrijven' => 'pages/inschrijven.html',
-    '/jins' => 'pages/jins.html',
-    '/jongverkenners' => 'pages/jongverkenners.html',
-    '/kapoenen' => 'pages/kapoenen.html',
-    '/tweedehands' => 'pages/tweedehands.html',
-    '/nieuws' => 'pages/nieuws.html',
-    '/uniform' => 'pages/uniform.html',
-    '/verkenners' => 'pages/verkenners.html',
-    '/welpen' => 'pages/welpen.html',
-    '/privacybeleid' => 'pages/privacyverklaring.html',
-];
 
 if ($requestPath === '/index.html') {
     header('Location: /', true, 301);
@@ -70,9 +56,49 @@ if (preg_match('#^/pages/(' . implode('|', $legacyPageNames) . ')\.html$#', $req
     exit;
 }
 
-if (isset($cleanRoutes[$requestPath])) {
-    require __DIR__ . DIRECTORY_SEPARATOR . $cleanRoutes[$requestPath];
+if ($requestPath === '/assets/css/style.css') {
+    require __DIR__ . DIRECTORY_SEPARATOR . 'assets' . DIRECTORY_SEPARATOR . 'css' . DIRECTORY_SEPARATOR . 'style.php';
     exit;
+}
+
+$pageRoutes = [
+    '/' => 'index',
+    '/login' => 'login',
+    '/over-ons' => 'over-ons',
+    '/inschrijven' => 'inschrijven',
+    '/jins' => 'jins',
+    '/jongverkenners' => 'jongverkenners',
+    '/kapoenen' => 'kapoenen',
+    '/tweedehands' => 'tweedehands',
+    '/nieuws' => 'nieuws',
+    '/uniform' => 'uniform',
+    '/verkenners' => 'verkenners',
+    '/welpen' => 'welpen',
+    '/privacybeleid' => 'privacybeleid',
+];
+
+if (isset($pageRoutes[$requestPath])) {
+    $_GET['page'] = $pageRoutes[$requestPath];
+    require __DIR__ . DIRECTORY_SEPARATOR . 'page.php';
+    exit;
+}
+
+if ($requestPath === '/admin') {
+    require __DIR__ . DIRECTORY_SEPARATOR . 'admin-gate.php';
+    exit;
+}
+
+// Revalidate headers for static CSS/JS during local PHP server development.
+if (preg_match('#^/assets/.+\.(css|js)$#', $requestPath) === 1) {
+    $file = __DIR__ . str_replace('/', DIRECTORY_SEPARATOR, $requestPath);
+    if (is_file($file)) {
+        $ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
+        header('Content-Type: ' . ($ext === 'css' ? 'text/css' : 'application/javascript') . '; charset=utf-8');
+        scouts_send_asset_revalidate_headers();
+        header('X-Asset-Version: ' . scouts_asset_version());
+        readfile($file);
+        exit;
+    }
 }
 
 if (strncmp($requestPath, '/api/', 5) !== 0 && $requestPath !== '/api') {

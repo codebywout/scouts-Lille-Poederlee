@@ -14,6 +14,12 @@ const SCOUTS_PHOTO_MAX_EDGE = 2800;
 const SCOUTS_PHOTO_JPEG_QUALITY = 95;
 const SCOUTS_MAX_PDF_UPLOAD_BYTES = 20971520;
 
+/**
+ * Bump this on every deploy so HTML/CSS/JS URLs change and old caches are skipped.
+ * Format: YYYYMMDD-N
+ */
+const SCOUTS_ASSET_VERSION = '20261015-26';
+
 // Best-effort: some hosts allow raising these at runtime.
 @ini_set('upload_max_filesize', '20M');
 @ini_set('post_max_size', '25M');
@@ -143,6 +149,68 @@ function scouts_json_response(array $payload, int $status = 200): never
     header('Content-Type: application/json; charset=utf-8');
     header('Cache-Control: no-store');
     echo json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    exit;
+}
+
+function scouts_asset_version(): string
+{
+    return SCOUTS_ASSET_VERSION;
+}
+
+/** HTML documents: never keep a stale shell that points at old CSS/JS. */
+function scouts_send_html_cache_headers(): void
+{
+    header('Cache-Control: no-cache, no-store, must-revalidate');
+    header('Pragma: no-cache');
+    header('Expires: 0');
+}
+
+/** CSS/JS: always revalidate (304 if unchanged, fresh body if changed). */
+function scouts_send_asset_revalidate_headers(): void
+{
+    header('Cache-Control: no-cache, must-revalidate');
+    header('Pragma: no-cache');
+}
+
+/**
+ * Serve an HTML file with no-store headers and the current asset version
+ * injected into stylesheet/script/image query strings.
+ */
+function scouts_send_html_file(string $absolutePath): never
+{
+    if (!is_file($absolutePath)) {
+        http_response_code(404);
+        header('Content-Type: text/plain; charset=utf-8');
+        echo 'Pagina niet gevonden.';
+        exit;
+    }
+
+    $html = file_get_contents($absolutePath);
+    if ($html === false) {
+        http_response_code(500);
+        header('Content-Type: text/plain; charset=utf-8');
+        echo 'Pagina kon niet worden geladen.';
+        exit;
+    }
+
+    $version = scouts_asset_version();
+    $html = preg_replace_callback(
+        '/\b(href|src)=(["\'])([^"\']+\.(?:css|js|png|jpe?g|webp|gif|svg|ico))(?:\?[^"\']*)?\2/i',
+        static function (array $matches) use ($version): string {
+            $path = $matches[3];
+            // Only version local site assets (not CDNs / external URLs).
+            if (preg_match('#^(https?:)?//#i', $path) === 1) {
+                return $matches[0];
+            }
+            return $matches[1] . '=' . $matches[2] . $path . '?v=' . $version . $matches[2];
+        },
+        $html
+    ) ?? $html;
+
+    header('Content-Type: text/html; charset=utf-8');
+    scouts_send_html_cache_headers();
+    header('X-Asset-Version: ' . $version);
+    echo $html;
     exit;
 }
 

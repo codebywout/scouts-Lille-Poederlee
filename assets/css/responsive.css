@@ -157,27 +157,42 @@
     }
 
     .footer {
-        padding: 48px 6% 22px;
+        padding: 36px 6% 18px;
     }
 
     .footer-main {
         grid-template-columns: 1fr;
-        gap: 30px;
+        gap: 22px;
     }
 
     .footer-brand p {
-        margin-top: 14px;
+        margin-top: 10px;
+        font-size: 13px;
+        max-width: 34ch;
+    }
+
+    .footer-column {
+        gap: 6px;
+    }
+
+    .footer-column > span {
+        margin-bottom: 4px;
+        font-size: 10px;
     }
 
     .footer-column a,
     .footer-column p {
         overflow-wrap: anywhere;
+        font-size: 14px;
+        min-height: 0;
+        line-height: 1.35;
     }
 
     .footer-bottom {
-        margin-top: 32px;
+        margin-top: 22px;
+        padding-top: 14px;
         flex-direction: column;
-        gap: 6px;
+        gap: 4px;
     }
 
     .admin-photo-grid {
@@ -246,7 +261,7 @@
 
     .hero,
     body.home-page .hero {
-        min-height: clamp(440px, 78svh, 620px);
+        min-height: clamp(440px, 78lvh, 620px);
         width: 100%;
         aspect-ratio: auto;
     }
@@ -496,7 +511,7 @@
 
     .hero,
     body.home-page .hero {
-        min-height: clamp(420px, 76svh, 540px);
+        min-height: clamp(420px, 76lvh, 540px);
     }
 
     .hero-content {
@@ -996,24 +1011,6 @@
         line-height: 1.6;
     }
 
-    .footer-column > span {
-        margin-bottom: 8px;
-        font-size: 11px;
-    }
-
-    .footer-column a {
-        min-height: 40px;
-        display: inline-flex;
-        align-items: center;
-        font-size: 15px;
-    }
-
-    .footer-brand p {
-        font-size: 14px;
-        line-height: 1.55;
-        max-width: 36ch;
-    }
-
     .privacy-toc {
         gap: 8px;
     }
@@ -1137,7 +1134,15 @@
     }
 
     .footer {
-        padding-bottom: max(22px, env(safe-area-inset-bottom));
+        padding: 28px 5% max(14px, env(safe-area-inset-bottom));
+    }
+
+    .footer-main {
+        gap: 18px;
+    }
+
+    .footer-bottom {
+        margin-top: 18px;
     }
 }
 

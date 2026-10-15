@@ -40,7 +40,36 @@
       });
   }
 
-  const IMAGE_ASSET_VERSION = "20260930-3";
+  const IMAGE_ASSET_VERSION = "20261015-26";
+
+  function formatLidgeldLabel(amount) {
+    const amountNumber = Number(String(amount || "").replace(",", ".").replace(/[^\d.]/g, ""));
+    if (!Number.isFinite(amountNumber) || amountNumber <= 0) return "";
+    const formatted = amountNumber.toLocaleString("nl-BE", {
+      style: "currency",
+      currency: "EUR",
+      maximumFractionDigits: amountNumber % 1 === 0 ? 0 : 2,
+    });
+    return `(${formatted.replace(/\s/g, "\u00a0")})`;
+  }
+
+  function updateLidgeldLabels(explicitAmount) {
+    let lidgeldText = explicitAmount;
+    if (lidgeldText == null || lidgeldText === "") {
+      try {
+        lidgeldText =
+          DataStore.get()?.pageContent?.inschrijven?.lidgeld ||
+          document.querySelector('[data-page-content="lidgeld"]')?.textContent ||
+          "60";
+      } catch {
+        lidgeldText = "60";
+      }
+    }
+    const label = formatLidgeldLabel(lidgeldText) || "(€\u00a060)";
+    qsa("[data-lidgeld-label]").forEach((el) => {
+      el.textContent = label;
+    });
+  }
 
   function versionStaticImage(src) {
     if (typeof src !== "string" || !src.includes("/assets/images/")) {
@@ -286,10 +315,50 @@
     return amountNumber.toLocaleString("nl-BE", { style: "currency", currency: "EUR" });
   }
 
-  function renderRegistrationPaymentQr({ amount, iban, remittance }) {
+  let qrCodeLoader = null;
+
+  function loadQrCodeLibrary() {
+    if (typeof QRCode !== "undefined") return Promise.resolve();
+    if (qrCodeLoader) return qrCodeLoader;
+    qrCodeLoader = new Promise((resolve, reject) => {
+      const existing = document.querySelector('script[data-qrcode-lib]');
+      if (existing) {
+        existing.addEventListener("load", () => resolve(), { once: true });
+        existing.addEventListener("error", () => reject(new Error("QR laden mislukt")), { once: true });
+        return;
+      }
+      const script = document.createElement("script");
+      script.src = "/assets/js/qrcode.min.js";
+      script.async = true;
+      script.dataset.qrcodeLib = "true";
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error("QR laden mislukt"));
+      document.head.appendChild(script);
+    });
+    return qrCodeLoader;
+  }
+
+  async function renderRegistrationPaymentQr({ amount, iban, remittance }) {
     const container = document.getElementById("registrationPaymentQr");
-    if (!container || typeof QRCode === "undefined") {
-      console.error("QR-bibliotheek of container ontbreekt.");
+    if (!container) {
+      console.error("QR-container ontbreekt.");
+      return;
+    }
+
+    if (!iban) {
+      console.error("Geen rekeningnummer beschikbaar voor de betaal-QR.");
+      return;
+    }
+
+    try {
+      await loadQrCodeLibrary();
+    } catch (error) {
+      console.error(error);
+      return;
+    }
+
+    if (typeof QRCode === "undefined") {
+      console.error("QR-bibliotheek ontbreekt.");
       return;
     }
 
@@ -299,11 +368,6 @@
       amount,
       remittance,
     });
-
-    if (!iban) {
-      console.error("Geen rekeningnummer beschikbaar voor de betaal-QR.");
-      return;
-    }
 
     container.replaceChildren();
     // qrcodejs tekent in een lege container.
@@ -688,7 +752,6 @@
       "(prefers-reduced-motion: reduce)",
     ).matches;
     const isAdmin = document.body.classList.contains("admin-page");
-    const preloadedBackgrounds = new Set();
 
     try {
       sessionStorage.removeItem("page-transition");
@@ -696,105 +759,13 @@
       /* ignore */
     }
 
-    function normalizePath(pathname) {
-      return pathname.replace(/\/+$/, "") || "/";
-    }
-
-    function backgroundForPath(pathname) {
-      const path = normalizePath(pathname);
-      if (path === "/") {
-        return `/assets/images/domein.jpg?v=${IMAGE_ASSET_VERSION}`;
-      }
-      if (path === "/tweedehands") {
-        return `/assets/images/domein3.jpg?v=${IMAGE_ASSET_VERSION}`;
-      }
-      if (path === "/over-ons") {
-        return `/assets/images/domein4.jpg?v=${IMAGE_ASSET_VERSION}`;
-      }
-      if (path === "/uniform") {
-        return `/assets/images/domein5.jpg?v=${IMAGE_ASSET_VERSION}`;
-      }
-      if (
-        path === "/inschrijven" ||
-        path === "/nieuws" ||
-        path === "/kapoenen" ||
-        path === "/welpen" ||
-        path === "/jongverkenners" ||
-        path === "/verkenners" ||
-        path === "/jins"
-      ) {
-        return `/assets/images/domein2.jpg?v=${IMAGE_ASSET_VERSION}`;
-      }
-      return null;
-    }
-
-    function preloadBackground(pathname) {
-      const src = backgroundForPath(pathname);
-      if (!src || preloadedBackgrounds.has(src)) return;
-      preloadedBackgrounds.add(src);
-      const image = new Image();
-      image.src = src;
-    }
-
-    // Soft land only — no full-screen veil (that caused white flashes / double reveal).
+    // Soft land only — no full-screen veil, no background preloads (saves MB on mobile).
     if (!reduceMotion && !isAdmin) {
       document.body.classList.add("page-enter");
       window.setTimeout(() => {
         document.body.classList.remove("page-enter");
       }, 280);
     }
-
-    document.addEventListener(
-      "pointerenter",
-      (event) => {
-        const link = event.target.closest?.("a");
-        if (!link || isAdmin) return;
-        try {
-          const url = new URL(link.href, window.location.href);
-          if (url.origin === window.location.origin) {
-            preloadBackground(url.pathname);
-          }
-        } catch {
-          /* ignore invalid urls */
-        }
-      },
-      true,
-    );
-
-    document.addEventListener("click", (event) => {
-      const link = event.target.closest("a");
-      if (
-        !link ||
-        event.defaultPrevented ||
-        link.target === "_blank" ||
-        event.metaKey ||
-        event.ctrlKey ||
-        event.shiftKey ||
-        event.altKey
-      ) {
-        return;
-      }
-
-      let url;
-      try {
-        url = new URL(link.href, window.location.href);
-      } catch {
-        return;
-      }
-
-      if (url.protocol !== "http:" && url.protocol !== "https:") return;
-
-      const isInternalPage =
-        url.origin === window.location.origin &&
-        url.pathname !== window.location.pathname &&
-        !url.hash &&
-        !link.hasAttribute("download");
-
-      if (!isInternalPage || isAdmin) return;
-
-      // Warm the next background, then navigate immediately — no leave delay.
-      preloadBackground(url.pathname);
-    });
   }
 
   /* ==========================================================
@@ -4158,6 +4129,8 @@
         });
       }
 
+      updateLidgeldLabels(data.pageContent?.inschrijven?.lidgeld);
+
       const branchPhotoNames = {
         "branch-kapoenen": "kapoenen",
         "branch-welpen": "welpen",
@@ -4336,7 +4309,7 @@
                     <div class="agenda-details-inner">
                       <p>${escapeHtml(item.text)}</p>
                       ${link && linkText ? `<a class="agenda-link" href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer">${escapeHtml(linkText)} <span aria-hidden="true">↗</span></a>` : ""}
-                      ${image ? `<img src="${escapeHtml(image)}" alt="${escapeHtml(item.title)}">` : ""}
+                      ${image ? `<img src="${escapeHtml(image)}" alt="${escapeHtml(item.title)}" loading="lazy" decoding="async">` : ""}
                     </div>
                   </div>
                 </details>
