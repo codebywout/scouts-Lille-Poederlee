@@ -6,7 +6,7 @@
     background-color: #0d2419;
     background-image:
         linear-gradient(rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.65)),
-        url("/assets/images/domein2.jpg?v=20261015-28");
+        url("/assets/images/domein2.jpg?v=20261019-16");
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
@@ -51,7 +51,7 @@ body.news-page::before {
     background-color: #0d2419;
     background-image:
         linear-gradient(rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.65)),
-        url("/assets/images/domein2.jpg?v=20261015-28");
+        url("/assets/images/domein2.jpg?v=20261019-16");
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
@@ -60,19 +60,19 @@ body.news-page::before {
 body.secondhand-page::before {
     background-image:
         linear-gradient(rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.65)),
-        url("/assets/images/domein3.jpg?v=20261015-28");
+        url("/assets/images/domein3.jpg?v=20261019-16");
 }
 
 body.about-page::before {
     background-image:
         linear-gradient(rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.65)),
-        url("/assets/images/domein4.jpg?v=20261015-28");
+        url("/assets/images/domein4.jpg?v=20261019-16");
 }
 
 body.uniform-page::before {
     background-image:
         linear-gradient(rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.65)),
-        url("/assets/images/domein5.jpg?v=20261015-28");
+        url("/assets/images/domein5.jpg?v=20261019-16");
 }
 
 .registration-page .page-shell,
@@ -194,7 +194,7 @@ body.uniform-page::before {
 }
 
 .page-over-ons .about-hero {
-    background-image: url("/uploads/over-ons.jpg?v=20261015-28") !important;
+    background-image: url("/uploads/over-ons.jpg?v=20261019-16") !important;
 }
 
 .page-hero {
@@ -203,10 +203,6 @@ body.uniform-page::before {
     overflow: hidden;
     color: #fff;
     background: transparent;
-}
-
-.registration-hero {
-    min-height: 360px;
 }
 
 .page-hero .hero-content {
@@ -782,6 +778,28 @@ body.privacy-page {
     background: rgba(78, 43, 26, 0.04);
 }
 
+.registration-steps li:has(.registration-step-copy) {
+    align-items: start;
+}
+
+.registration-steps li:has(.registration-step-copy) > span {
+    margin-top: 2px;
+}
+
+.registration-step-copy {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+}
+
+.registration-step-note {
+    margin: 0;
+    color: rgba(44, 24, 15, 0.68);
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.45;
+}
+
 .registration-panels.is-current .registration-steps li {
     background: rgba(47, 107, 77, 0.06);
 }
@@ -1002,6 +1020,112 @@ body.privacy-page {
     font-size: 15px;
     font-weight: 600;
     letter-spacing: 0.04em;
+}
+
+.registration-bank-info {
+    overflow: hidden;
+    border-top: 1px solid rgba(78, 43, 26, 0.08);
+    background: rgba(247, 241, 232, 0.55);
+}
+
+.registration-bank-info > summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 52px;
+    padding: 12px 18px;
+    color: var(--scout-brown-deep);
+    font-family: "Montserrat", sans-serif;
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    list-style: none;
+    cursor: pointer;
+    user-select: none;
+}
+
+.registration-bank-info > summary::-webkit-details-marker {
+    display: none;
+}
+
+.registration-bank-info > summary::after {
+    content: "+";
+    flex-shrink: 0;
+    width: 1.5em;
+    color: var(--scout-orange);
+    font-size: 1.25em;
+    font-weight: 700;
+    line-height: 1;
+    text-align: center;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.registration-bank-info.open-anim > summary::after {
+    transform: rotate(135deg);
+}
+
+.registration-bank-info > summary:hover,
+.registration-bank-info > summary:focus-visible {
+    color: var(--scout-brown);
+}
+
+.registration-bank-info > summary:focus-visible {
+    outline: 2px solid var(--scout-brown);
+    outline-offset: -2px;
+}
+
+.registration-bank-content {
+    display: block !important;
+    height: 0;
+    overflow: hidden;
+    opacity: 0;
+    transition:
+        height 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+        opacity 0.22s ease;
+}
+
+.registration-bank-info.open-anim .registration-bank-content {
+    opacity: 1;
+}
+
+.registration-bank-info-body {
+    display: grid;
+    gap: 12px;
+    padding: 0 18px 18px;
+}
+
+.registration-bank-info-body p {
+    margin: 0;
+    color: rgba(44, 24, 15, 0.78);
+    font-size: 14px;
+    line-height: 1.55;
+}
+
+.registration-bank-iban {
+    margin: 0;
+    padding: 14px 16px;
+    border: 1px solid rgba(47, 107, 77, 0.14);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.92);
+    color: var(--scout-brown-deep);
+    font-size: clamp(15px, 3.6vw, 18px);
+    font-weight: 700;
+    line-height: 1.4;
+    text-align: center;
+    user-select: all;
+    -webkit-user-select: all;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .registration-bank-content,
+    .registration-bank-info > summary::after {
+        transition: none;
+    }
+
+    .registration-bank-info.open-anim .registration-bank-content {
+        height: auto;
+    }
 }
 
 @keyframes registration-payment-in {

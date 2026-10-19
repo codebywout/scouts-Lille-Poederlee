@@ -40,7 +40,7 @@
       });
   }
 
-  const IMAGE_ASSET_VERSION = "20261015-29";
+  const IMAGE_ASSET_VERSION = "20261019-16";
 
   function formatLidgeldLabel(amount) {
     const amountNumber = Number(String(amount || "").replace(",", ".").replace(/[^\d.]/g, ""));
@@ -771,55 +771,256 @@
        FAQ accordion
        ========================================================== */
 
-  function closeFaqItem(item) {
-    const content = item.querySelector(".faq-content");
+  function getSmoothDetailsContent(item) {
+    return item.querySelector(".faq-content, .registration-bank-content");
+  }
+
+  function clearSmoothDetailsCloseTimer(item) {
+    if (!item._smoothDetailsCloseTimer) return;
+    window.clearTimeout(item._smoothDetailsCloseTimer);
+    item._smoothDetailsCloseTimer = null;
+  }
+
+  function snapAccordionClosed(item, panel) {
+    const nodes = [item, panel].filter(Boolean);
+    nodes.forEach((node) => {
+      node.style.transition = "none";
+    });
+    void item.offsetHeight;
+    nodes.forEach((node) => {
+      node.style.transition = "";
+    });
+  }
+
+  function closeSmoothDetailsItem(item, { instant = false } = {}) {
+    clearSmoothDetailsCloseTimer(item);
     item.classList.remove("open-anim");
-    content.addEventListener(
-      "transitionend",
-      () => item.removeAttribute("open"),
-      { once: true },
-    );
+
+    if (instant) {
+      item.removeAttribute("open");
+      snapAccordionClosed(item, getSmoothDetailsContent(item));
+      return;
+    }
+
+    // Wait for the CSS close animation (0.35s). Do not use transitionend:
+    // it can fire early and removing [open] then snaps the panel shut.
+    item._smoothDetailsCloseTimer = window.setTimeout(() => {
+      item.removeAttribute("open");
+      item._smoothDetailsCloseTimer = null;
+    }, 360);
   }
 
-  function openFaqItem(item) {
+  function openSmoothDetailsItem(item) {
+    clearSmoothDetailsCloseTimer(item);
     item.setAttribute("open", "");
-    requestAnimationFrame(() => item.classList.add("open-anim"));
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        item.classList.add("open-anim");
+      });
+    });
   }
 
-  function setupFaqAccordion(container) {
-    const faqItems = qsa(".faq-item", container);
-
-    faqItems.forEach((item) => {
+  function setupSmoothDetailsAccordion(
+    items,
+    { exclusive = true, scrollOnOpen = false } = {},
+  ) {
+    items.forEach((item) => {
       const summary = item.querySelector("summary");
-      const content = item.querySelector(".faq-content");
+      const content = getSmoothDetailsContent(item);
       if (!summary || !content) return;
 
       summary.addEventListener("click", (event) => {
         event.preventDefault();
 
         if (item.classList.contains("open-anim")) {
-          closeFaqItem(item);
+          closeSmoothDetailsItem(item);
           return;
         }
 
-        faqItems
-          .filter(
-            (other) => other !== item && other.classList.contains("open-anim"),
-          )
-          .forEach(closeFaqItem);
+        const closing = scrollOnOpen
+          ? collectOtherOpenAccordions(item)
+          : exclusive
+            ? items.filter(
+                (other) =>
+                  other !== item && other.classList.contains("open-anim"),
+              )
+            : [];
 
-        openFaqItem(item);
+        closeOtherOpenAccordions(item, closing);
+        openSmoothDetailsItem(item);
+
+        if (scrollOnOpen) {
+          revealOpenedAccordion(item);
+        }
       });
     });
   }
 
-  function closeAgendaItem(item) {
+  function setupFaqAccordion(container) {
+    setupSmoothDetailsAccordion(qsa(".faq-item", container), {
+      exclusive: true,
+      scrollOnOpen: true,
+    });
+  }
+
+  function setupRegistrationBankInfo() {
+    qsa(".registration-bank-info").forEach((item) => {
+      const summary = item.querySelector("summary");
+      const content = item.querySelector(".registration-bank-content");
+      if (!summary || !content) return;
+
+      const clearCloseTimer = () => {
+        if (!item._bankCloseTimer) return;
+        window.clearTimeout(item._bankCloseTimer);
+        item._bankCloseTimer = null;
+      };
+
+      const setExpanded = (expanded) => {
+        summary.setAttribute("aria-expanded", String(expanded));
+      };
+
+      setExpanded(false);
+
+      summary.addEventListener("click", (event) => {
+        event.preventDefault();
+        clearCloseTimer();
+
+        if (item.classList.contains("open-anim")) {
+          // Lock current height, then animate to 0 for a smooth close.
+          content.style.height = `${content.scrollHeight}px`;
+          void content.offsetHeight;
+          item.classList.remove("open-anim");
+          setExpanded(false);
+          content.style.height = "0px";
+          item._bankCloseTimer = window.setTimeout(() => {
+            item.removeAttribute("open");
+            content.style.height = "";
+            item._bankCloseTimer = null;
+          }, 380);
+          return;
+        }
+
+        item.setAttribute("open", "");
+        setExpanded(true);
+        content.style.height = "0px";
+        void content.offsetHeight;
+        item.classList.add("open-anim");
+        content.style.height = `${content.scrollHeight}px`;
+
+        const onOpenEnd = (event) => {
+          if (event.target !== content || event.propertyName !== "height") return;
+          content.removeEventListener("transitionend", onOpenEnd);
+          if (item.classList.contains("open-anim")) {
+            content.style.height = "auto";
+          }
+        };
+        content.addEventListener("transitionend", onOpenEnd);
+      });
+    });
+  }
+
+  let openedItemScrollTimer = 0;
+
+  function collectOtherOpenAccordions(currentItem) {
+    return [
+      ...qsa(".news-item.is-open"),
+      ...qsa(".agenda-item.is-open"),
+      ...qsa(".faq-item.open-anim"),
+    ].filter((item) => item !== currentItem);
+  }
+
+  // html { scroll-behavior: smooth } would also animate compensation jumps;
+  // force an instant scroll so only the intentional reveal is smooth.
+  function jumpWindowScroll(top) {
+    const root = document.documentElement;
+    const previous = root.style.scrollBehavior;
+    root.style.scrollBehavior = "auto";
+    window.scrollTo(0, Math.max(0, top));
+    void root.offsetHeight;
+    root.style.scrollBehavior = previous;
+  }
+
+  function closeAccordionItem(item, { instant = false } = {}) {
+    if (item.classList.contains("news-item")) {
+      qsa("[data-news-carousel]", item).forEach((carousel) => {
+        carousel._newsCarousel?.stopAutoplay?.();
+      });
+      closeNewsItem(item, { instant });
+      return;
+    }
+
+    if (item.classList.contains("agenda-item")) {
+      closeAgendaItem(item, { instant });
+      return;
+    }
+
+    if (item.classList.contains("faq-item")) {
+      closeSmoothDetailsItem(item, { instant });
+    }
+  }
+
+  // Items above close instantly. Compensate scroll so the clicked item does
+  // not jump, then revealOpenedAccordion smooth-scrolls it to the top.
+  function closeOtherOpenAccordions(currentItem, closingItems) {
+    if (!closingItems.length) return;
+
+    const beforeTop = currentItem.getBoundingClientRect().top;
+    closingItems.forEach((item) => {
+      const above = item.getBoundingClientRect().top < beforeTop - 0.5;
+      closeAccordionItem(item, { instant: above });
+    });
+
+    const afterTop = currentItem.getBoundingClientRect().top;
+    const delta = afterTop - beforeTop;
+    if (Math.abs(delta) > 0.5) {
+      jumpWindowScroll(window.scrollY + delta);
+    }
+  }
+
+  function revealOpenedAccordion(item) {
+    if (!item) return;
+    window.clearTimeout(openedItemScrollTimer);
+
+    const reduceMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+
+    const run = () => {
+      openedItemScrollTimer = 0;
+      if (!item.isConnected) return;
+
+      const margin = parseFloat(getComputedStyle(item).scrollMarginTop) || 24;
+      const top = item.getBoundingClientRect().top;
+      if (top >= margin - 2 && top <= margin + 48) return;
+
+      const target = window.scrollY + top - margin;
+      if (reduceMotion) {
+        jumpWindowScroll(target);
+        return;
+      }
+
+      window.scrollTo({ top: Math.max(0, target), behavior: "smooth" });
+    };
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(run);
+    });
+  }
+
+  function closeAgendaItem(item, { instant = false } = {}) {
     if (item._agendaCloseTimer) {
       clearTimeout(item._agendaCloseTimer);
       item._agendaCloseTimer = null;
     }
 
     item.classList.remove("is-open");
+
+    if (instant) {
+      item.removeAttribute("open");
+      snapAccordionClosed(item, item.querySelector(".agenda-details"));
+      return;
+    }
+
     item._agendaCloseTimer = window.setTimeout(() => {
       item.removeAttribute("open");
       item._agendaCloseTimer = null;
@@ -841,25 +1042,30 @@
           return;
         }
 
-        agendaItems
-          .filter(
-            (other) => other !== item && other.classList.contains("is-open"),
-          )
-          .forEach(closeAgendaItem);
+        const closing = collectOtherOpenAccordions(item);
+        closeOtherOpenAccordions(item, closing);
 
         item.setAttribute("open", "");
         requestAnimationFrame(() => item.classList.add("is-open"));
+        revealOpenedAccordion(item);
       });
     });
   }
 
-  function closeNewsItem(item) {
+  function closeNewsItem(item, { instant = false } = {}) {
     if (item._newsCloseTimer) {
       clearTimeout(item._newsCloseTimer);
       item._newsCloseTimer = null;
     }
 
     item.classList.remove("is-open");
+
+    if (instant) {
+      item.removeAttribute("open");
+      snapAccordionClosed(item, item.querySelector(".news-details"));
+      return;
+    }
+
     item._newsCloseTimer = window.setTimeout(() => {
       item.removeAttribute("open");
       item._newsCloseTimer = null;
@@ -884,16 +1090,8 @@
           return;
         }
 
-        newsItems
-          .filter(
-            (other) => other !== item && other.classList.contains("is-open"),
-          )
-          .forEach((other) => {
-            qsa("[data-news-carousel]", other).forEach((carousel) => {
-              carousel._newsCarousel?.stopAutoplay?.();
-            });
-            closeNewsItem(other);
-          });
+        const closing = collectOtherOpenAccordions(item);
+        closeOtherOpenAccordions(item, closing);
 
         item.setAttribute("open", "");
         requestAnimationFrame(() => {
@@ -902,6 +1100,7 @@
             carousel._newsCarousel?.startAutoplay?.();
           });
         });
+        revealOpenedAccordion(item);
       });
     });
   }
@@ -4162,6 +4361,20 @@
         });
       }
 
+      qsa("[data-format-iban]").forEach((element) => {
+        const raw =
+          element.tagName === "INPUT" || element.tagName === "TEXTAREA"
+            ? element.value
+            : element.textContent;
+        const formatted = formatIban(raw);
+        if (!formatted) return;
+        if (element.tagName === "INPUT" || element.tagName === "TEXTAREA") {
+          element.value = formatted;
+        } else {
+          element.textContent = formatted;
+        }
+      });
+
       updateLidgeldLabels(data.pageContent?.inschrijven?.lidgeld);
 
       const branchPhotoNames = {
@@ -4436,6 +4649,7 @@
     initUniformGuide();
     initPageTransitions();
     setupFaqAccordion(document);
+    setupRegistrationBankInfo();
     initRevealAnimations();
     setupSecondhandScroll();
 
