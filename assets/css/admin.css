@@ -74,12 +74,18 @@ html:has(body.admin-page) {
 }
 
 .admin-tool-icon {
-    display: inline-grid;
-    place-items: center;
-    width: 1.1em;
-    font-size: 14px;
-    line-height: 1;
-    opacity: 0.9;
+    display: inline-block;
+    flex-shrink: 0;
+    width: 15px;
+    height: 15px;
+    opacity: 0.95;
+}
+
+.admin-tool-icon.icon-arrow-left,
+.admin-tool-icon.icon-settings,
+.admin-tool-icon.icon-logout {
+    font-size: 15px !important;
+    background-color: currentColor;
 }
 
 .admin-tool-btn--site {
@@ -2105,7 +2111,8 @@ html:has(body.admin-page) {
     }
 
     .admin-tool-icon {
-        font-size: 15px;
+        width: 15px;
+        height: 15px;
     }
 
     .admin-news-photo-item {
@@ -2719,9 +2726,8 @@ html:has(body.admin-page) {
     border-radius: 10px;
     background: rgba(255, 255, 255, 0.72);
     color: var(--scout-brown);
-    font-size: 14px;
-    font-weight: 700;
-    line-height: 1;
+    font-size: 0;
+    line-height: 0;
     cursor: pointer;
 }
 

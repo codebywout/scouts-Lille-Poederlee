@@ -425,6 +425,13 @@ body.home-page .hero {
     font-size: 14px;
 }
 
+.footer-column a {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
+    width: fit-content;
+}
+
 .footer-column a:hover,
 .footer-column a:focus-visible {
     color: #fff;

@@ -40,7 +40,7 @@
       });
   }
 
-  const IMAGE_ASSET_VERSION = "20261019-22";
+  const IMAGE_ASSET_VERSION = "20261019-26";
 
   function formatLidgeldLabel(amount) {
     const amountNumber = Number(String(amount || "").replace(",", ".").replace(/[^\d.]/g, ""));
@@ -1464,7 +1464,7 @@
                       ${text ? `<p>${escapeHtml(text)}</p>` : ""}
                       ${
                         link && linkText
-                          ? `<a class="news-link" href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer">${escapeHtml(linkText)} <span aria-hidden="true">↗</span></a>`
+                          ? `<a class="news-link" href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer">${escapeHtml(linkText)} <span class="icon-arrow-external" aria-hidden="true"></span></a>`
                           : ""
                       }
                       ${buildNewsCarouselHtml(images, title)}
@@ -2439,11 +2439,11 @@
                         </div>
                         <div class="admin-news-photo-controls">
                           <button type="button" class="admin-news-photo-move" data-news-image-move data-index="${index}" data-image-index="${imageIndex}" data-direction="-1" ${imageIndex === 0 ? "disabled" : ""} aria-label="Foto ${imageIndex + 1} eerder zetten">
-                            <span aria-hidden="true">↑</span>
+                            <span class="icon-arrow-up" aria-hidden="true"></span>
                             <span class="admin-news-photo-move-label">Eerder</span>
                           </button>
                           <button type="button" class="admin-news-photo-move" data-news-image-move data-index="${index}" data-image-index="${imageIndex}" data-direction="1" ${imageIndex === images.length - 1 ? "disabled" : ""} aria-label="Foto ${imageIndex + 1} later zetten">
-                            <span aria-hidden="true">↓</span>
+                            <span class="icon-arrow-down" aria-hidden="true"></span>
                             <span class="admin-news-photo-move-label">Later</span>
                           </button>
                           <button type="button" class="admin-news-photo-remove" data-news-image-remove data-index="${index}" data-image-index="${imageIndex}" aria-label="Foto ${imageIndex + 1} verwijderen">
@@ -2475,8 +2475,8 @@
               </button>
               <div class="admin-item-actions">
                 <div class="admin-reorder-controls" title="Volgorde van dit nieuwsbericht">
-                  <button type="button" class="admin-reorder" data-move="news" data-index="${index}" data-direction="-1" ${index === 0 ? "disabled" : ""} aria-label="Bericht omhoog">↑</button>
-                  <button type="button" class="admin-reorder" data-move="news" data-index="${index}" data-direction="1" ${index === items.length - 1 ? "disabled" : ""} aria-label="Bericht omlaag">↓</button>
+                  <button type="button" class="admin-reorder" data-move="news" data-index="${index}" data-direction="-1" ${index === 0 ? "disabled" : ""} aria-label="Bericht omhoog"><span class="icon-arrow-up" aria-hidden="true"></span></button>
+                  <button type="button" class="admin-reorder" data-move="news" data-index="${index}" data-direction="1" ${index === items.length - 1 ? "disabled" : ""} aria-label="Bericht omlaag"><span class="icon-arrow-down" aria-hidden="true"></span></button>
                 </div>
                 <button type="button" data-remove="news" data-index="${index}">
                   <span class="admin-action-full">Verwijderen</span>
@@ -3061,7 +3061,7 @@
       container.innerHTML = `
                 <section class="admin-card compact-card admin-news-card">
                     <div class="admin-card-head"><h2>Nieuws</h2><button type="button" class="mini-button" data-add="news">+ Nieuws</button></div>
-                    <p class="form-help">De eerste 3 berichten (oranje balk) staan op de homepage. Verplaats met ↑ en ↓. Extra berichten staan op /nieuws.</p>
+                    <p class="form-help">De eerste 3 berichten (oranje balk) staan op de homepage. Verplaats met de pijltjes. Extra berichten staan op /nieuws.</p>
                     <div id="newsEditor" class="admin-list admin-news-list"></div>
                 </section>
             `;
@@ -4469,7 +4469,7 @@
                                     <h3>Maandplanning ${escapeHtml(BRANCH_LABELS[pageName])}</h3>
                                 </div>
                                 <a class="button button-primary download-button document-action-button" href="${escapeHtml(planning)}" target="_blank" rel="noopener" download>
-                                  <span class="button-icon" aria-hidden="true">↓</span>
+                                  <span class="button-icon icon-arrow-down" aria-hidden="true"></span>
                                   <span>${escapeHtml(formatPlanningLabel(planningTitle))}</span>
                                 </a>
                             </div>
@@ -4486,7 +4486,7 @@
                                   .map(
                                     (letter) => `
                                     <a class="button button-ghost-dark download-button document-action-button" href="${escapeHtml(letter.path)}" target="_blank" rel="noopener" download>
-                                        <span class="button-icon" aria-hidden="true">↓</span>
+                                        <span class="button-icon icon-arrow-down" aria-hidden="true"></span>
                                         <span>${escapeHtml(letter.title || "Brief")}</span>
                                     </a>
                                 `,
@@ -4563,7 +4563,7 @@
                   <div class="agenda-details">
                     <div class="agenda-details-inner">
                       <p>${escapeHtml(item.text)}</p>
-                      ${link && linkText ? `<a class="agenda-link" href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer">${escapeHtml(linkText)} <span aria-hidden="true">↗</span></a>` : ""}
+                      ${link && linkText ? `<a class="agenda-link" href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer">${escapeHtml(linkText)} <span class="icon-arrow-external" aria-hidden="true"></span></a>` : ""}
                       ${image ? `<img src="${escapeHtml(image)}" alt="${escapeHtml(item.title)}" loading="lazy" decoding="async">` : ""}
                     </div>
                   </div>
