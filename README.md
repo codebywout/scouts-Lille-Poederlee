@@ -1,112 +1,169 @@
 # Scouts Lille-Poederlee
 
-Website en beheeromgeving voor Scouts Lille-Poederlee. De website bevat informatie over de verschillende takken, activiteiten, inschrijvingen, uniformen, tweedehandsmateriaal en contactgegevens.
+Publieke website en beheeromgeving voor [Scouts Lille-Poederlee](https://scoutslille.be).
 
-## Overzicht
+De site toont takken, nieuws, agenda, inschrijvingen, uniform, tweedehands en contact. Inhoud (teksten, foto’s, events, FAQ) beheer je via een beveiligde admin.
 
-De applicatie bestaat uit:
+## Stack
 
-- een publieke website met HTML-, CSS- en JavaScript-pagina's;
-- een beveiligde adminomgeving voor het beheren van site-inhoud;
-- een PHP API voor authenticatie, sitegegevens en bestandsuploads;
-- een JSON-datastore voor de bewerkbare inhoud;
-- lokale opslag van afbeeldingen en documenten in `uploads/`;
-- optionele integratie met Google Drive voor maandplanningen.
+| Onderdeel | Technologie |
+| --- | --- |
+| Frontend | Statische HTML + CSS + vanilla JS |
+| Backend | PHP 8.1+ (API, sessies, uploads, routing) |
+| Data | JSON in `data/site-data.json` (geen database) |
+| Bestanden | Lokale map `uploads/` |
+| Optioneel | Google Drive voor maandplanningen |
 
-De huidige versie draait volledig op PHP en gebruikt geen Node.js-dependencies of externe package manager.
+Geen Node.js, geen npm-packages, geen build-stap voor de publieke site.
 
 ## Vereisten
 
-- PHP 8.1 of nieuwer;
-- PHP-extensies `session` en `json`;
-- `fileinfo` voor extra uploadvalidatie;
-- `GD` voor het converteren van afbeeldingen naar JPG;
-- schrijfpermissies voor `data/` en `uploads/`.
-
-`fileinfo` en `GD` zijn aanbevolen. De API kan zonder deze optionele extensies werken met de beschikbare validatie- en opslagmogelijkheden.
+- PHP **8.1+**
+- Extensies: `session`, `json`
+- Aanbevolen: `fileinfo` (uploadvalidatie), `GD` (foto’s → JPG, max. 2400px, kwaliteit 90)
+- Schrijfrechten op `data/` en `uploads/`
 
 ## Lokaal starten
 
-1. Maak een lokale `.env` aan met de adminconfiguratie:
+1. Kopieer de voorbeeldconfiguratie:
 
-   ```text
-   SCOUTS_ADMIN_USERNAME=admin
-   SCOUTS_ADMIN_PASSWORD_HASH=<gegenereerde-password-hash>
+   ```powershell
+   Copy-Item .env.example .env
    ```
 
-2. Genereer een password-hash met PHP:
+2. Genereer een password-hash en plak die in `.env`:
 
    ```powershell
    php -r "echo password_hash('KIES-EEN-WACHTWOORD', PASSWORD_DEFAULT), PHP_EOL;"
    ```
 
-3. Start de ingebouwde PHP-server vanuit de projectmap:
+   ```text
+   SCOUTS_ADMIN_USERNAME=admin
+   SCOUTS_ADMIN_PASSWORD_HASH=<gegenereerde-hash>
+   ```
+
+3. Start de server:
 
    ```powershell
    .\start-server.ps1
    ```
 
-   Of handmatig:
+   Of handmatig (zelfde uploadlimieten):
 
    ```powershell
    php -d upload_max_filesize=20M -d post_max_size=25M -d memory_limit=256M -S localhost:8000 router.php
    ```
 
-   Belangrijk: zonder die `-d`-flags blijft PHP vaak op 2 MB uploadlimiet staan, waardoor een foto van bv. 4 MB ten onrechte als “te groot” wordt geweigerd.
+4. Open:
 
-4. Open de website op <http://localhost:8000> en de adminlogin op <http://localhost:8000/login>.
+   - site: <http://localhost:8000>
+   - login: <http://localhost:8000/login>
+   - admin: <http://localhost:8000/admin> (na inloggen)
 
-Gebruik nooit een plaintext wachtwoord in Git of in productie. `.env` en gevoelige configuratiebestanden worden door `.gitignore` uitgesloten.
+Zonder de `-d`-flags weigert PHP vaak foto’s > 2 MB.
 
-## Belangrijke mappen en bestanden
+## Projectstructuur
 
 ```text
-api/                    PHP API-routes
-assets/css/             Stylesheets
-assets/js/              Frontendlogica
-assets/images/          Afbeeldingen en branding
-data/                   Sitegegevens en standaarddata
-pages/                  Publieke subpagina's
-uploads/                Geüploade afbeeldingen en documenten
-admin.html              Admininterface
-admin-gate.php          Adminsessiecontrole
-config.php              Algemene PHP-configuratie
-router.php              Lokale PHP-router
-.htaccess               Apache-beveiliging en API-routing
+api/                 JSON API (login, site-data, uploads)
+assets/css/          Stylesheets (+ style.php voor cache-bust)
+assets/js/           Frontend (site + admin)
+assets/images/       Vaste beelden / branding
+data/                site-data.json + defaults (geheimen gitignored)
+pages/               HTML-subpagina’s
+uploads/             Geüploade foto’s/PDF’s (inhoud gitignored)
+admin.html           Admin-UI
+admin-gate.php       Sessiecheck voor /admin
+config.php           Centrale PHP-config
+page.php             HTML serveren met verse asset-versies
+router.php           Router voor lokale PHP-server
+.htaccess            Apache-routing + beveiliging
+.env.example         Voorbeeldomgeving (kopieer naar .env)
 ```
 
-## API
+## Hoe de site werkt
 
-De belangrijkste routes zijn:
+1. Publieke pagina’s zijn HTML; `page.php` / `.htaccess` injecteren de huidige **asset-versie** (`SCOUTS_ASSET_VERSION` in `config.php`) zodat CSS/JS/beelden vers laden.
+2. Inhoud komt uit `GET /api/site-data` en wordt client-side ingevuld (nieuws, agenda, FAQ, foto’s, …).
+3. Admin wijzigt die data via `POST /api/site-data` en uploadt bestanden naar `uploads/`.
+4. Na een deploy: verhoog `SCOUTS_ASSET_VERSION` (formaat `YYYYMMDD-N`) zodat caches op alle toestellen vernieuwen.
 
-- `GET /api/session` - controleert de huidige sessie;
-- `POST /api/login` - meldt een beheerder aan;
-- `POST /api/logout` - beëindigt de sessie;
-- `GET /api/site-data` - leest de sitegegevens;
-- `POST /api/site-data` - slaat sitegegevens op;
-- `POST /api/site-data/reset` - herstelt de standaardgegevens;
-- `POST /api/uploads/photo` - uploadt een afbeelding;
-- `DELETE /api/uploads/photo/{filename}` - verwijdert een afbeelding.
+## API (kort)
 
-Muterende routes vereisen een geldige adminsessie en origincontrole.
+| Methode | Route | Doel |
+| --- | --- | --- |
+| GET | `/api/session` | Sessiestatus |
+| POST | `/api/login` | Admin login |
+| POST | `/api/logout` | Uitloggen |
+| GET | `/api/site-data` | Site-inhoud lezen |
+| POST | `/api/site-data` | Site-inhoud opslaan |
+| POST | `/api/site-data/reset` | Terug naar defaults |
+| POST | `/api/uploads/photo` | Foto uploaden |
+| DELETE | `/api/uploads/photo/{file}` | Foto verwijderen |
 
-## Productie
+Muterende routes vereisen een geldige adminsessie en origin-controle.
 
-Voor productie kan de PHP-applicatie worden uitgerold naar een Apache/Plesk-hostingomgeving. Zorg daarbij voor:
+## Productie (huidige hosting)
 
-- PHP 8.1 of nieuwer;
-- HTTPS;
-- een uniek adminwachtwoord;
-- correcte schrijfpermissies voor `data/` en `uploads/`;
-- bescherming van `.env`, adminconfiguratie en server-side data;
-- `AllowOverride` wanneer `.htaccess` wordt gebruikt.
+Typisch: Apache / Plesk met PHP 8.1+.
 
-`router.php` is bedoeld voor lokaal gebruik. Op Apache verzorgt `.htaccess` de routing naar de PHP API.
+Checklist:
+
+- [ ] HTTPS aan
+- [ ] `.env` of `auth-config.php` op de server (niet in Git)
+- [ ] Schrijfrechten op `data/` en `uploads/`
+- [ ] `AllowOverride` zodat `.htaccess` werkt
+- [ ] `SCOUTS_ASSET_VERSION` ophogen bij elke release
+- [ ] Uploads en secrets niet publiek bereikbaar (zie `.htaccess`)
+
+`router.php` is alleen voor lokaal. Op Apache doet `.htaccess` de routing.
+
+## Cloudflare (gepland)
+
+**Cloudflare Pages draait geen PHP bij requests.** Admin, API, sessies en uploads hebben PHP (of een vervanger) nodig. Een “alles op Pages dump”-migratie werkt dus niet zonder herbouw.
+
+Aanbevolen stappen op termijn:
+
+### Fase 1 — DNS + CDN (weinig risico)
+
+- Domein naar Cloudflare DNS
+- Proxy (oranje wolk) vóór de huidige PHP-host
+- Winst: SSL, caching van statische assets, DDoS/WAF, snellere edge
+
+Geen codewijziging nodig; PHP blijft op de origin.
+
+### Fase 2 — Hybrid (optioneel)
+
+- Zware beelden / CSS / JS via Cloudflare cache of R2
+- HTML + `/api/*` blijven op de PHP-origin
+- Page Rules / Cache Rules: HTML en `/api` niet agressief cachen; versioned assets wél
+
+### Fase 3 — Volledig op Cloudflare (grote herbouw)
+
+Vervang de PHP-laag, bijvoorbeeld:
+
+| Nu (PHP) | Mogelijk op Cloudflare |
+| --- | --- |
+| `site-data.json` | Workers + KV of D1 |
+| `uploads/` | R2 |
+| Sessies / login | Workers + secure cookies / Access |
+| `page.php` / `.htaccess` | Pages + Functions / `_redirects` |
+
+Pas daarna kan de publieke site op **Cloudflare Pages** (GitHub-koppeling vanaf `main`).
+
+Tot fase 3: behandel Cloudflare als **voordeur**, niet als enige host.
 
 ## Veiligheid
 
-Commit nooit wachtwoorden, API-sleutels, Google-service-accountbestanden, OAuth-tokens of andere productiegeheimen. Controleer uploads en toegangsrechten bij iedere deployment.
+Nooit committen:
+
+- `.env`, `auth-config.php`
+- Google service-account / OAuth JSON
+- Productiewachtwoorden of API-sleutels
+- Inhoud van `uploads/` (staat in `.gitignore`)
+
+Controleer bij elke deploy of `data/` en geheimen niet via HTTP bereikbaar zijn.
 
 ## Licentie
 
-Voeg hier de gewenste projectlicentie toe wanneer deze repository publiek wordt gepubliceerd.
+Interne / groepswebsite. Voeg een expliciete licentie toe als de repository publiek wordt.

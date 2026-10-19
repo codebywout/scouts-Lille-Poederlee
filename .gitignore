@@ -5,9 +5,12 @@ data/.google-oauth.json
 data/google-drive.json
 .sessions/
 .vscode/
+.idea/
 uploads/*
 !uploads/.htaccess
 npm-debug.log*
 .DS_Store
+Thumbs.db
 *.bak
 *.tmp
+*.log
