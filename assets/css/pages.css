@@ -6,7 +6,7 @@
     background-color: #0d2419;
     background-image:
         linear-gradient(rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.65)),
-        url("/assets/images/domein2.jpg?v=20261019-16");
+        url("/assets/images/domein2.jpg?v=20261019-22");
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
@@ -51,7 +51,7 @@ body.news-page::before {
     background-color: #0d2419;
     background-image:
         linear-gradient(rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.65)),
-        url("/assets/images/domein2.jpg?v=20261019-16");
+        url("/assets/images/domein2.jpg?v=20261019-22");
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
@@ -60,19 +60,19 @@ body.news-page::before {
 body.secondhand-page::before {
     background-image:
         linear-gradient(rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.65)),
-        url("/assets/images/domein3.jpg?v=20261019-16");
+        url("/assets/images/domein3.jpg?v=20261019-22");
 }
 
 body.about-page::before {
     background-image:
         linear-gradient(rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.65)),
-        url("/assets/images/domein4.jpg?v=20261019-16");
+        url("/assets/images/domein4.jpg?v=20261019-22");
 }
 
 body.uniform-page::before {
     background-image:
         linear-gradient(rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.65)),
-        url("/assets/images/domein5.jpg?v=20261019-16");
+        url("/assets/images/domein5.jpg?v=20261019-22");
 }
 
 .registration-page .page-shell,
@@ -194,7 +194,7 @@ body.uniform-page::before {
 }
 
 .page-over-ons .about-hero {
-    background-image: url("/uploads/over-ons.jpg?v=20261019-16") !important;
+    background-image: url("/uploads/over-ons.jpg?v=20261019-22") !important;
 }
 
 .page-hero {
@@ -832,6 +832,7 @@ body.privacy-page {
     gap: 10px;
 }
 
+.registration-cta-row,
 .registration-steekkaart-row {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 52px;
@@ -879,6 +880,29 @@ body.privacy-page {
     animation: registration-help-in 0.28s ease;
 }
 
+.registration-info-new .registration-help-toggle {
+    border-color: rgba(211, 138, 45, 0.28);
+    background: rgba(211, 138, 45, 0.1);
+    color: #d38a2d;
+}
+
+.registration-info-new .registration-help-toggle:hover,
+.registration-info-new .registration-help-toggle:focus-visible {
+    background: rgba(211, 138, 45, 0.18);
+    border-color: rgba(211, 138, 45, 0.5);
+}
+
+.registration-info-new .registration-help-toggle.is-open {
+    background: #d38a2d;
+    border-color: #d38a2d;
+    color: #fff;
+}
+
+.registration-info-new .registration-help {
+    border-color: rgba(211, 138, 45, 0.22);
+    background: rgba(255, 248, 238, 0.95);
+}
+
 .registration-help[hidden] {
     display: none;
 }
@@ -918,6 +942,33 @@ body.privacy-page {
     min-height: 52px;
 }
 
+/* CSS arrows: Unicode ↗/↓ render inconsistently on Apple fonts. */
+.registration-actions .icon-arrow-external,
+.registration-actions .icon-arrow-down {
+    display: inline-block;
+    flex-shrink: 0;
+    width: 9px;
+    height: 9px;
+    margin: 0;
+    font-size: 0;
+    line-height: 0;
+    border-right: 2px solid currentColor;
+    border-top: 2px solid currentColor;
+}
+
+.registration-actions .icon-arrow-external {
+    transform: translateY(1px) rotate(45deg);
+}
+
+.registration-actions .icon-arrow-down {
+    width: 8px;
+    height: 8px;
+    border-top: 0;
+    border-bottom: 2px solid currentColor;
+    transform: translateY(-1px) rotate(45deg);
+}
+
+.registration-cta-row .registration-main-cta,
 .registration-steekkaart-row .registration-main-cta {
     width: auto;
 }
@@ -1024,6 +1075,8 @@ body.privacy-page {
 
 .registration-bank-info {
     overflow: hidden;
+    overflow-anchor: none;
+    scroll-margin-top: 24px;
     border-top: 1px solid rgba(78, 43, 26, 0.08);
     background: rgba(247, 241, 232, 0.55);
 }
@@ -1050,19 +1103,26 @@ body.privacy-page {
 }
 
 .registration-bank-info > summary::after {
-    content: "+";
+    content: "";
     flex-shrink: 0;
-    width: 1.5em;
-    color: var(--scout-orange);
-    font-size: 1.25em;
-    font-weight: 700;
-    line-height: 1;
-    text-align: center;
-    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    width: 0.55em;
+    height: 0.55em;
+    margin-right: 0.15em;
+    border-right: 2.5px solid var(--scout-orange);
+    border-bottom: 2.5px solid var(--scout-orange);
+    transform: rotate(45deg);
+    transform-origin: center;
+    transition:
+        transform 0.28s cubic-bezier(0.22, 0.8, 0.24, 1),
+        border-color 0.35s ease;
+}
+
+.registration-choice.is-current .registration-bank-info > summary::after {
+    border-color: #2f6b4d;
 }
 
 .registration-bank-info.open-anim > summary::after {
-    transform: rotate(135deg);
+    transform: translateY(0.15em) rotate(225deg);
 }
 
 .registration-bank-info > summary:hover,

@@ -6,8 +6,8 @@
     <title>Inschrijven | Scouts Lille-Poederlee</title>
     <meta name="description" content="Inschrijven bij Scouts Lille-Poederlee.">
     <link rel="canonical" href="https://scoutslille.be/inschrijven">
-    <link rel="stylesheet" href="../assets/css/style.css?v=20261019-16">
-    <link rel="preload" as="image" href="../assets/images/domein2.jpg?v=20261019-16" fetchpriority="high">
+    <link rel="stylesheet" href="../assets/css/style.css?v=20261019-22">
+    <link rel="preload" as="image" href="../assets/images/domein2.jpg?v=20261019-22" fetchpriority="high">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Montserrat:wght@600;700;800;900&display=swap" rel="stylesheet">
@@ -87,10 +87,7 @@
                             <ol class="registration-steps">
                                 <li>
                                     <span>1</span>
-                                    <div class="registration-step-copy">
-                                        <strong>Word lid bij Scouts en Gidsen Vlaanderen</strong>
-                                        <p class="registration-step-note">Je krijgt een bevestigingsmail dat je aanvraag is toegekomen. Daarin staat dat de groep je terugmailt als de aanvraag verwerkt is, dat klopt niet. Je ontvangt enkel een mail van de groep als er iets mis is.</p>
-                                    </div>
+                                    <strong>Word lid bij Scouts en Gidsen Vlaanderen</strong>
                                 </li>
                                 <li>
                                     <span>2</span>
@@ -100,13 +97,28 @@
                                     <span>3</span>
                                     <div class="registration-step-copy">
                                         <strong>Betaal het lidgeld <span data-lidgeld-label>(€60)</span></strong>
-                                        <p class="registration-step-note">Uw kind is pas verzekerd als het lidgeld is betaald.</p>
+                                        <p class="registration-step-note">Je kind is pas verzekerd als het lidgeld betaald is.</p>
                                     </div>
                                 </li>
                             </ol>
                             <div class="registration-actions">
-                                <a href="https://groepsadmin.scoutsengidsenvlaanderen.be/groepsadmin/frontend/formulier/lidworden/A4306S" class="button button-primary registration-main-cta" target="_blank" rel="noopener noreferrer">Lid worden <span>↗</span></a>
-                                <a href="#inschrijving" class="button button-ghost-dark registration-secondary-cta" data-show-registration>Naar formulier <span>↓</span></a>
+                                <div class="registration-cta-row">
+                                    <a href="https://groepsadmin.scoutsengidsenvlaanderen.be/groepsadmin/frontend/formulier/lidworden/A4306S" class="button button-primary registration-main-cta" target="_blank" rel="noopener noreferrer">Lid worden <span class="icon-arrow-external" aria-hidden="true"></span></a>
+                                    <button
+                                        type="button"
+                                        class="registration-help-toggle"
+                                        data-registration-help
+                                        aria-expanded="false"
+                                        aria-controls="sgv-mail-help"
+                                    >
+                                        ?
+                                        <span class="visually-hidden">Info over de bevestigingsmail</span>
+                                    </button>
+                                </div>
+                                <div class="registration-help" id="sgv-mail-help" hidden>
+                                    <p>Na het indienen krijg je een bevestigingsmail van Scouts en Gidsen Vlaanderen. Daarin kan staan dat de groep je terugmailt,  dat gebeurt bij ons niet. Je hoort alleen van ons als er iets niet klopt.</p>
+                                </div>
+                                <a href="#inschrijving" class="button button-ghost-dark registration-secondary-cta" data-show-registration>Naar formulier <span class="icon-arrow-down" aria-hidden="true"></span></a>
                             </div>
                         </div>
                     </section>
@@ -126,13 +138,13 @@
                                     <span>3</span>
                                     <div class="registration-step-copy">
                                         <strong>Betaal het lidgeld <span data-lidgeld-label>(€60)</span></strong>
-                                        <p class="registration-step-note">Uw kind is pas verzekerd als het lidgeld is betaald.</p>
+                                        <p class="registration-step-note">Je kind is pas verzekerd als het lidgeld betaald is.</p>
                                     </div>
                                 </li>
                             </ol>
                             <div class="registration-actions">
-                                <div class="registration-steekkaart-row">
-                                    <a href="https://groepsadmin.scoutsengidsenvlaanderen.be/groepsadmin/frontend/" class="button button-primary registration-main-cta registration-button-current" target="_blank" rel="noopener noreferrer">Individuele steekkaart <span>↗</span></a>
+                                <div class="registration-cta-row">
+                                    <a href="https://groepsadmin.scoutsengidsenvlaanderen.be/groepsadmin/frontend/" class="button button-primary registration-main-cta registration-button-current" target="_blank" rel="noopener noreferrer">Individuele steekkaart <span class="icon-arrow-external" aria-hidden="true"></span></a>
                                     <button
                                         type="button"
                                         class="registration-help-toggle"
@@ -147,7 +159,7 @@
                                 <div class="registration-help" id="steekkaart-help" hidden>
                                     <p>Log in bij Scouts en Gidsen Vlaanderen met je lidnummer. Weet je je lidnummer niet meer? Stuur dan een mail naar de groepsleiding. Controleer of je gegevens nog kloppen en pas ze aan indien nodig.</p>
                                 </div>
-                                <a href="#inschrijving" class="button button-ghost-dark registration-secondary-cta" data-show-registration>Naar formulier <span>↓</span></a>
+                                <a href="#inschrijving" class="button button-ghost-dark registration-secondary-cta" data-show-registration>Naar formulier <span class="icon-arrow-down" aria-hidden="true"></span></a>
                             </div>
                         </div>
                     </section>
@@ -288,7 +300,7 @@
 </footer>
 
 <script src="../assets/js/qrcode.min.js"></script>
-<script src="../assets/js/script.js?v=20261019-16"></script>
+<script src="../assets/js/script.js?v=20261019-22"></script>
 
 </body>
 </html>

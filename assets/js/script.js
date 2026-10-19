@@ -40,7 +40,7 @@
       });
   }
 
-  const IMAGE_ASSET_VERSION = "20261019-16";
+  const IMAGE_ASSET_VERSION = "20261019-22";
 
   function formatLidgeldLabel(amount) {
     const amountNumber = Number(String(amount || "").replace(",", ".").replace(/[^\d.]/g, ""));
@@ -477,7 +477,9 @@
 
     const liquidColor = (progress, towardCurrent) => {
       const mix = towardCurrent ? progress : 1 - progress;
-      const channels = liquidOrange.map((channel, index) => Math.round(channel + (liquidGreen[index] - channel) * mix));
+      const channels = liquidOrange.map((channel, index) =>
+        Math.round(channel + (liquidGreen[index] - channel) * mix),
+      );
       return `rgb(${channels.join(", ")})`;
     };
 
@@ -517,7 +519,9 @@
       const x = centerX - width / 2;
       const y = centerY - height / 2;
       liquidPath?.setAttribute("d", roundedRectPath(x, y, width, height, Math.min(16, height / 2)));
-      if (liquidPath) liquidPath.style.fill = liquidColor(easeInOutCubic(progress), towardCurrent);
+      if (liquidPath) {
+        liquidPath.style.fill = liquidColor(easeInOutCubic(progress), towardCurrent);
+      }
 
       const activeChoice = progress < 0.42
         ? (towardCurrent ? "new" : "current")
@@ -915,6 +919,11 @@
           }
         };
         content.addEventListener("transitionend", onOpenEnd);
+
+        // After the panel starts opening, bring it into view so IBAN is visible.
+        requestAnimationFrame(() => {
+          revealOpenedAccordion(item);
+        });
       });
     });
   }
