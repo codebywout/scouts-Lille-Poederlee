@@ -52,6 +52,16 @@
     oauthConfigured: false,
     oauthEmail: "",
   };
+  let orphanUploadNames = [];
+  let orphanScanResetTimer = 0;
+  let settingsReturnPage = "home";
+
+  function formatBytes(bytes) {
+    const value = Number(bytes) || 0;
+    if (value < 1024) return `${value} B`;
+    if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`;
+    return `${(value / (1024 * 1024)).toFixed(1)} MB`;
+  }
 
   function setSaveButtonPhase(phase) {
     const button = document.getElementById("saveChanges");
@@ -172,7 +182,18 @@
     } catch (error) {
       console.error(error);
       adminHasUnsavedChanges = true;
-      setSaveStatus("Opslaan mislukt — probeer opnieuw", "error");
+      if (error?.code === "version_conflict") {
+        setSaveStatus(
+          error.message ||
+            "Conflict: herlaad de pagina en probeer opnieuw",
+          "error",
+        );
+        return;
+      }
+      setSaveStatus(
+        error?.message || "Opslaan mislukt — probeer opnieuw",
+        "error",
+      );
     }
   }
 
@@ -492,9 +513,9 @@
     agenda: {
       itemLabel: "Activiteit",
       newItem: {
-        day: "1",
-        month: "SEP",
-        title: "Nieuwe activiteit",
+        day: "",
+        month: "",
+        title: "",
         text: "",
         link: "",
         linkText: "",
@@ -507,17 +528,19 @@
           tag: "input",
           type: "number",
           row: true,
-          default: "1",
+          default: "",
           min: 1,
           max: 31,
           inputmode: "numeric",
+          placeholder: "bv. 25",
         },
         {
           key: "month",
           label: "Maand",
           tag: "select",
           row: true,
-          default: "SEP",
+          default: "",
+          placeholder: "Maand",
           options: [
             "SEP",
             "OKT",
@@ -538,7 +561,8 @@
           label: "Titel",
           tag: "input",
           type: "text",
-          default: "Nieuwe activiteit",
+          default: "",
+          placeholder: "Titel van de activiteit",
         },
         {
           key: "text",
@@ -574,26 +598,29 @@
     },
     faq: {
       itemLabel: "Vraag",
-      newItem: { question: "Nieuwe vraag", answer: "Antwoord..." },
+      newItem: { question: "", answer: "" },
       fields: [
         {
           key: "question",
           label: "Vraag",
           tag: "input",
           type: "text",
-          default: "Nieuwe vraag",
+          default: "",
+          placeholder: "Stel hier je vraag",
         },
         {
           key: "answer",
           label: "Antwoord",
           tag: "textarea",
-          default: "Antwoord...",
+          default: "",
+          placeholder: "Antwoord",
         },
       ],
     },
     news: {
       itemLabel: "Nieuws",
       newItem: {
+        id: "",
         title: "Nieuw bericht",
         date: "",
         summary: "",
@@ -991,20 +1018,22 @@
         return `
                     <label>
                         ${field.label}
-                        <textarea ${attrs}>${value}</textarea>
+                        <textarea ${attrs}${field.placeholder ? ` placeholder="${escapeHtml(field.placeholder)}"` : ""}>${value}</textarea>
                     </label>
                 `;
       }
 
       if (field.tag === "select") {
+        const current = item[field.key] || "";
         return `
                     <label>
                         ${field.label}
                         <select ${attrs}>
+                            <option value="" ${current ? "" : "selected"}${field.placeholder ? "" : " disabled"}>${escapeHtml(field.placeholder || "Kies…")}</option>
                             ${field.options
                               .map(
                                 (option) => `
-                                        <option value="${escapeHtml(option)}" ${item[field.key] === option ? "selected" : ""}>
+                                        <option value="${escapeHtml(option)}" ${current === option ? "selected" : ""}>
                                             ${escapeHtml(option)}
                                         </option>
                                     `,
@@ -1058,7 +1087,14 @@
                                 <span class="admin-collapse-chevron" aria-hidden="true"></span>
                                 <strong>${escapeHtml(
                                   type === "agenda"
-                                    ? `${item.day || ""} ${item.month || ""} · ${item.title || `Event ${index + 1}`}`
+                                    ? (() => {
+                                        const when = [item.day, item.month]
+                                          .filter(Boolean)
+                                          .join(" ");
+                                        const title =
+                                          item.title || `Activiteit ${index + 1}`;
+                                        return when ? `${when} · ${title}` : title;
+                                      })()
                                     : item.question || `Vraag ${index + 1}`,
                                 )}</strong>
                             </button>
@@ -1107,7 +1143,10 @@
 
         if (!items[index]) return;
 
-        let value = input.value.trim() || field.default;
+        let value = input.value.trim();
+        if (value === "" && field.default !== undefined && field.default !== "") {
+          value = field.default;
+        }
         if (type === "agenda" && field.key === "day" && value !== "") {
           value = String(Math.min(31, Math.max(1, Number(value) || 1)));
         }
@@ -1248,25 +1287,79 @@
     const activePage = data.activePage || "home";
 
     if (activePage === "settings") {
+      const driveConnected = Boolean(googleDriveSettings.oauthConfigured);
+      const driveEmail =
+        typeof googleDriveSettings.oauthEmail === "string"
+          ? googleDriveSettings.oauthEmail.trim()
+          : "";
       container.innerHTML = `
-          <section class="admin-card compact-card">
-            <div class="admin-card-head"><h2>Google Drive</h2></div>
-            <div class="admin-fields">
-              <label>
-                Map-ID
-                <input type="text" data-drive-setting="folderId" value="${escapeHtml(googleDriveSettings.folderId)}" placeholder="Drive-map ID" autocomplete="off">
-              </label>
-              <label>
-                OAuth-client (JSON)
-                <input type="file" data-drive-oauth-client accept="application/json,.json">
-              </label>
+          <div class="admin-settings">
+            <header class="admin-settings-intro">
+              <button type="button" class="admin-settings-back" data-page-option="${escapeHtml(settingsReturnPage || "home")}">
+                <span class="icon-arrow-left" aria-hidden="true"></span>
+                Terug naar beheer
+              </button>
+            </header>
+
+            <div class="admin-settings-layout">
+              <section class="admin-card compact-card admin-settings-card admin-settings-card--drive">
+                <div class="admin-card-head">
+                  <h2>Google Drive</h2>
+                  <span class="admin-settings-status ${driveConnected ? "is-ok" : "is-off"}">
+                    ${driveConnected ? "Verbonden" : "Niet verbonden"}
+                  </span>
+                </div>
+                ${
+                  driveEmail
+                    ? `<p class="form-help">${escapeHtml(driveEmail)}</p>`
+                    : ""
+                }
+                <div class="admin-fields">
+                  <label>
+                    Map-ID
+                    <input type="text" data-drive-setting="folderId" value="${escapeHtml(googleDriveSettings.folderId)}" placeholder="Drive-map ID" autocomplete="off">
+                  </label>
+                  <div class="admin-settings-file">
+                    <span class="admin-settings-file-heading">OAuth-client</span>
+                    <label class="document-upload-button document-upload-button--wide admin-settings-file-pick">
+                      <span data-drive-oauth-label>JSON kiezen</span>
+                      <input type="file" data-drive-oauth-client accept="application/json,.json">
+                    </label>
+                  </div>
+                </div>
+                <div class="admin-actions">
+                  <button type="button" class="button button-secondary" data-google-connect>${driveConnected ? "Opnieuw verbinden" : "Verbinden"}</button>
+                  <button type="button" class="button button-ghost-dark" data-google-oauth-reset ${driveConnected ? "" : "hidden"}>Resetten</button>
+                </div>
+              </section>
+
+              <div class="admin-settings-side">
+                <section class="admin-card compact-card admin-settings-card">
+                  <div class="admin-card-head"><h2>Backup</h2></div>
+                  <div class="admin-actions">
+                    <button type="button" class="button button-secondary" data-download-backup>Downloaden</button>
+                    <label class="button button-ghost-dark admin-restore-button">
+                      Terugzetten
+                      <input type="file" id="restoreBackup" accept="application/json,.json" hidden>
+                    </label>
+                  </div>
+                </section>
+
+                <section class="admin-card compact-card admin-settings-card admin-settings-card--orphans">
+                  <div class="admin-card-head"><h2>Uploads opruimen</h2></div>
+                  <div class="admin-actions admin-orphan-actions">
+                    <button type="button" class="button button-secondary admin-orphan-scan" data-orphan-scan>
+                      <span class="admin-orphan-scan-icon" aria-hidden="true"></span>
+                      <span data-orphan-scan-label>Zoeken</span>
+                    </button>
+                    <button type="button" class="button button-ghost-dark" data-orphan-purge hidden>Verwijderen</button>
+                  </div>
+                  <p class="form-help" data-orphan-help></p>
+                  <ul class="admin-orphan-list" data-orphan-list hidden></ul>
+                </section>
+              </div>
             </div>
-            <p class="form-help">${googleDriveSettings.oauthConfigured ? "Verbonden met Google." : "Nog niet verbonden."}</p>
-            <div class="admin-actions">
-              <button type="button" class="button button-secondary" data-google-connect>${googleDriveSettings.oauthConfigured ? "Opnieuw verbinden" : "Verbinden"}</button>
-              <button type="button" class="button button-ghost-dark" data-google-oauth-reset>Resetten</button>
-            </div>
-          </section>
+          </div>
         `;
       return;
     }
@@ -1495,6 +1588,11 @@
   function renderAdminPanel() {
     const data = DataStore.get();
     const activePage = data.activePage || "home";
+    const isSettings = activePage === "settings";
+
+    document.body.classList.toggle("admin-is-settings", isSettings);
+    qs(".page-picker")?.toggleAttribute("hidden", isSettings);
+    qs(".admin-utilities")?.toggleAttribute("hidden", isSettings);
 
     qsa("[data-page-option]").forEach((button) => {
       const isActive = button.dataset.pageOption === activePage;
@@ -1787,8 +1885,6 @@
         markDirtyState(true);
 
       if (event.target.closest("[data-drive-setting]")) markDirtyState(true);
-      if (event.target.closest("[data-drive-oauth-client]"))
-        markDirtyState(true);
 
       const collapsibleItem = event.target.closest(".admin-collapsible-item");
       if (collapsibleItem) {
@@ -1808,12 +1904,13 @@
               ?.value || "";
           const title =
             collapsibleItem.querySelector("[data-field='agenda-title']")
-              ?.value || `Event ${itemIndex + 1}`;
-          summary.textContent = `${day} ${month} · ${title}`;
+              ?.value.trim() || `Activiteit ${itemIndex + 1}`;
+          const when = [day, month].filter(Boolean).join(" ");
+          summary.textContent = when ? `${when} · ${title}` : title;
         } else if (summary && type === "faq") {
           const question =
             collapsibleItem.querySelector("[data-field='faq-question']")
-              ?.value || `Vraag ${itemIndex + 1}`;
+              ?.value.trim() || `Vraag ${itemIndex + 1}`;
           summary.textContent = question;
         } else if (summary && type === "news") {
           const title =
@@ -1876,6 +1973,22 @@
           ).forEach((other) => {
             if (other !== takleiderToggle) other.checked = false;
           });
+        }
+        markDirtyState(true);
+        return;
+      }
+
+      const oauthClientInput = event.target.closest("[data-drive-oauth-client]");
+      if (oauthClientInput) {
+        const file = oauthClientInput.files?.[0];
+        const pick = oauthClientInput.closest(".admin-settings-file-pick");
+        const label = pick?.querySelector("[data-drive-oauth-label]");
+        if (file) {
+          pick?.classList.add("is-selected");
+          if (label) label.textContent = file.name;
+        } else {
+          pick?.classList.remove("is-selected");
+          if (label) label.textContent = "JSON kiezen";
         }
         markDirtyState(true);
         return;
@@ -2375,6 +2488,9 @@
           if (settingsResponse.ok) {
             googleDriveSettings = await settingsResponse.json();
           }
+          if (currentPage && currentPage !== "settings") {
+            settingsReturnPage = currentPage;
+          }
         }
 
         if (adminHasUnsavedChanges) {
@@ -2487,6 +2603,8 @@
           }
           googleDriveSettings.folderId = folderId;
           markDirtyState(false);
+          setSaveStatus("Opgeslagen", "saved");
+          flashSaveButton();
           return;
         }
 
@@ -2571,14 +2689,18 @@
         PageRenderer.updatePageFromData();
       });
 
-    document
-      .getElementById("downloadBackup")
-      ?.addEventListener("click", async () => {
+    document.addEventListener("click", async (event) => {
+      const downloadBackup = event.target.closest(
+        "#downloadBackup, [data-download-backup]",
+      );
+      if (downloadBackup) {
         try {
           const response = await fetch("/api/site-data", { cache: "no-store" });
           if (!response.ok) {
             throw new Error("Backup downloaden mislukt");
           }
+          const version = response.headers.get("X-Scouts-Data-Version");
+          if (version) DataStore.setVersion(version);
           const payload = await response.text();
           const stamp = new Date().toISOString().slice(0, 10);
           const blob = new Blob([payload], { type: "application/json" });
@@ -2595,7 +2717,204 @@
           console.error(error);
           setSaveStatus(error.message || "Backup downloaden mislukt", "error");
         }
-      });
+        return;
+      }
+
+      const scanButton = event.target.closest("[data-orphan-scan]");
+      if (scanButton) {
+        if (scanButton.classList.contains("is-scanning")) return;
+
+        const scanLabel = scanButton.querySelector("[data-orphan-scan-label]");
+        const resetScanButton = () => {
+          window.clearTimeout(orphanScanResetTimer);
+          orphanScanResetTimer = 0;
+          scanButton.classList.remove(
+            "is-clean",
+            "is-clean-pop",
+            "is-clean-out",
+            "is-scanning",
+          );
+          if (scanLabel) scanLabel.textContent = "Zoeken";
+        };
+
+        try {
+          resetScanButton();
+          scanButton.classList.add("is-scanning");
+          if (scanLabel) scanLabel.textContent = "Zoeken...";
+          setSaveStatus("Uploads zoeken...", "saving");
+
+          const response = await fetch("/api/uploads/orphans", {
+            cache: "no-store",
+          });
+          const result = await readResponseJson(response);
+          if (!response.ok) {
+            throw new Error(result.message || "Zoeken mislukt");
+          }
+
+          orphanUploadNames = (result.orphans || []).map((item) => item.name);
+          const help = qs("[data-orphan-help]");
+          const list = qs("[data-orphan-list]");
+          const purgeButton = qs("[data-orphan-purge]");
+          scanButton.classList.remove("is-scanning");
+
+          if (!orphanUploadNames.length) {
+            if (help) help.textContent = "";
+            if (list) {
+              list.hidden = true;
+              list.innerHTML = "";
+            }
+            purgeButton?.setAttribute("hidden", "");
+            scanButton.classList.add("is-clean");
+            if (scanLabel) scanLabel.textContent = "Alles in gebruik";
+            scanButton.classList.remove("is-clean-pop");
+            void scanButton.offsetWidth;
+            scanButton.classList.add("is-clean-pop");
+            setSaveStatus("Alles in gebruik", "saved");
+
+            orphanScanResetTimer = window.setTimeout(() => {
+              scanButton.classList.add("is-clean-out");
+              orphanScanResetTimer = window.setTimeout(() => {
+                resetScanButton();
+              }, 320);
+            }, 2400);
+            return;
+          }
+
+          resetScanButton();
+          if (help) {
+            help.textContent = `${result.count} ongebruikte bestand${result.count === 1 ? "" : "en"} (${formatBytes(result.totalBytes)})`;
+          }
+          if (list) {
+            list.hidden = false;
+            list.innerHTML = (result.orphans || [])
+              .map(
+                (item) =>
+                  `<li>
+                    <label class="admin-orphan-item">
+                      <input type="checkbox" data-orphan-name="${escapeHtml(item.name)}" checked>
+                      <span class="admin-orphan-meta">
+                        <code>${escapeHtml(item.name)}</code>
+                        <span>${escapeHtml(formatBytes(item.size))}</span>
+                      </span>
+                    </label>
+                  </li>`,
+              )
+              .join("");
+          }
+          purgeButton?.removeAttribute("hidden");
+          setSaveStatus("Zoeken klaar", "saved");
+        } catch (error) {
+          console.error(error);
+          resetScanButton();
+          setSaveStatus(error.message || "Zoeken mislukt", "error");
+        }
+        return;
+      }
+
+      const purgeButton = event.target.closest("[data-orphan-purge]");
+      if (purgeButton) {
+        const selected = qsa("[data-orphan-name]:checked")
+          .map((input) => input.getAttribute("data-orphan-name") || "")
+          .filter(Boolean);
+        if (!selected.length) {
+          setSaveStatus("Selecteer minstens één bestand", "error");
+          return;
+        }
+        if (
+          !window.confirm(
+            `${selected.length} bestand${selected.length === 1 ? "" : "en"} definitief van de server verwijderen?\n\nDit kan niet ongedaan gemaakt worden.`,
+          )
+        ) {
+          return;
+        }
+        try {
+          setSaveStatus("Uploads verwijderen...", "saving");
+          const response = await fetch("/api/uploads/orphans/purge", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ names: selected }),
+          });
+          const result = await readResponseJson(response);
+          if (!response.ok) {
+            throw new Error(result.message || "Verwijderen mislukt");
+          }
+          orphanUploadNames = [];
+          const help = qs("[data-orphan-help]");
+          const list = qs("[data-orphan-list]");
+          if (help) {
+            help.textContent =
+              "Geselecteerde bestanden zijn verwijderd. Zoek opnieuw als je nog wilt opruimen.";
+          }
+          if (list) {
+            list.hidden = true;
+            list.innerHTML = "";
+          }
+          purgeButton.setAttribute("hidden", "");
+          setSaveStatus(
+            `${result.deleted || 0} bestand${result.deleted === 1 ? "" : "en"} verwijderd`,
+            "saved",
+          );
+        } catch (error) {
+          console.error(error);
+          setSaveStatus(error.message || "Verwijderen mislukt", "error");
+        }
+      }
+    });
+
+    document.addEventListener("change", async (event) => {
+      const input = event.target.closest("#restoreBackup");
+      if (!input) return;
+
+      const file = input.files?.[0];
+      input.value = "";
+      if (!file) return;
+
+      if (
+        !window.confirm(
+          "Huidige sitegegevens vervangen door deze backup? Dit kan niet ongedaan gemaakt worden.",
+        )
+      ) {
+        return;
+      }
+
+      try {
+        setSaveStatus("Backup terugzetten...", "saving");
+        const text = await file.text();
+        let data;
+        try {
+          data = JSON.parse(text);
+        } catch {
+          throw new Error("Ongeldig JSON-bestand.");
+        }
+        if (!data || typeof data !== "object" || Array.isArray(data)) {
+          throw new Error("Backup bevat geen geldige sitegegevens.");
+        }
+
+        const response = await fetch("/api/site-data/restore", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        });
+        const result = await readResponseJson(response);
+        if (!response.ok) {
+          throw new Error(result.message || "Backup terugzetten mislukt");
+        }
+
+        if (result.version) DataStore.setVersion(result.version);
+        await DataStore.load({ force: true });
+        pendingPlanningUploads.clear();
+        pendingUploadDeletes.length = 0;
+        markDirtyState(false, { announce: false });
+        const fresh = DataStore.get();
+        fresh.activePage = "settings";
+        renderAdminPanel();
+        PageRenderer.updatePageFromData();
+        setSaveStatus("Backup teruggezet", "saved");
+      } catch (error) {
+        console.error(error);
+        setSaveStatus(error.message || "Backup terugzetten mislukt", "error");
+      }
+    });
 
     window.addEventListener("beforeunload", (event) => {
       if (!adminHasUnsavedChanges) return;

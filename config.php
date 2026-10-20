@@ -11,14 +11,16 @@ const SCOUTS_UPLOADS_DIR = SCOUTS_ROOT . DIRECTORY_SEPARATOR . 'uploads';
 const SCOUTS_MAX_UPLOAD_BYTES = 20971520;
 /** Match manually optimized heroes: sharp on retina, light to download. */
 const SCOUTS_PHOTO_MAX_EDGE = 2400;
+const SCOUTS_PHOTO_THUMB_EDGE = 800;
 const SCOUTS_PHOTO_JPEG_QUALITY = 90;
+const SCOUTS_PHOTO_THUMB_JPEG_QUALITY = 82;
 const SCOUTS_MAX_PDF_UPLOAD_BYTES = 20971520;
 
 /**
  * Bump this on every deploy so HTML/CSS/JS URLs change and old caches are skipped.
  * Format: YYYYMMDD-N
  */
-const SCOUTS_ASSET_VERSION = '20261020-21';
+const SCOUTS_ASSET_VERSION = '20261020-34';
 const SCOUTS_LOGIN_ATTEMPTS_FILE = SCOUTS_ROOT . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . '.login-attempts.json';
 const SCOUTS_LOGIN_MAX_ATTEMPTS = 5;
 const SCOUTS_LOGIN_LOCKOUT_SECONDS = 900;
@@ -536,11 +538,103 @@ function scouts_read_site_data(): array
     return scouts_decode_json_file(SCOUTS_DATA_FILE);
 }
 
-function scouts_write_site_data(array $data): void
+function scouts_site_data_version(): string
+{
+    $modifiedAt = filemtime(SCOUTS_DATA_FILE);
+    $fileSize = filesize(SCOUTS_DATA_FILE);
+    if ($modifiedAt === false || $fileSize === false) {
+        throw new RuntimeException('Datastorebestand kan niet worden gelezen.');
+    }
+
+    return sha1($modifiedAt . ':' . $fileSize);
+}
+
+/**
+ * Strip unpublished news for public API responses.
+ *
+ * @param array<string, mixed> $data
+ * @return array<string, mixed>
+ */
+function scouts_public_site_data(array $data): array
+{
+    if (!isset($data['news']) || !is_array($data['news'])) {
+        $data['news'] = [];
+        return $data;
+    }
+
+    $data['news'] = array_values(array_filter(
+        $data['news'],
+        static function ($item): bool {
+            if (!is_array($item)) {
+                return false;
+            }
+            return ($item['published'] ?? true) !== false;
+        }
+    ));
+
+    return $data;
+}
+
+/**
+ * Ensure required top-level shape matches the default datastore.
+ *
+ * @param array<string, mixed> $data
+ */
+function scouts_validate_site_data(array $data): void
 {
     if ($data === []) {
-        throw new InvalidArgumentException('Lege sitegegevens zijn niet toegestaan.');
+        throw new InvalidArgumentException('Ongeldige of lege sitegegevens.');
     }
+
+    $defaults = scouts_decode_json_file(SCOUTS_DEFAULT_DATA_FILE);
+    foreach (array_keys($defaults) as $key) {
+        if (!array_key_exists($key, $data)) {
+            throw new InvalidArgumentException("Verplicht veld ontbreekt: {$key}.");
+        }
+    }
+
+    $arrayKeys = [
+        'pageContent',
+        'agenda',
+        'news',
+        'faq',
+        'contact',
+        'groupLeadership',
+        'branchLeadership',
+        'secondhand',
+        'photos',
+    ];
+    foreach ($arrayKeys as $key) {
+        if (!is_array($data[$key])) {
+            throw new InvalidArgumentException("Veld {$key} moet een object of lijst zijn.");
+        }
+    }
+
+    if (!is_string($data['activePage'] ?? null)) {
+        throw new InvalidArgumentException('Veld activePage moet tekst zijn.');
+    }
+
+    foreach (['agenda', 'news', 'faq', 'groupLeadership', 'secondhand'] as $listKey) {
+        foreach ($data[$listKey] as $index => $item) {
+            if (!is_array($item)) {
+                throw new InvalidArgumentException("Ongeldig item in {$listKey} op positie {$index}.");
+            }
+        }
+    }
+
+    if (!is_array($data['branchLeadership'])) {
+        throw new InvalidArgumentException('Veld branchLeadership moet een object zijn.');
+    }
+    foreach ($data['branchLeadership'] as $branch => $leaders) {
+        if (!is_array($leaders)) {
+            throw new InvalidArgumentException("Leiding voor {$branch} moet een lijst zijn.");
+        }
+    }
+}
+
+function scouts_write_site_data(array $data): void
+{
+    scouts_validate_site_data($data);
 
     json_encode($data, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
     if (!is_dir(dirname(SCOUTS_DATA_FILE)) && !mkdir(dirname(SCOUTS_DATA_FILE), 0755, true)) {
@@ -590,15 +684,152 @@ function scouts_allowed_photo_name(string $filename): bool
 
 function scouts_delete_photo_versions(string $filename): void
 {
-    if (!scouts_allowed_photo_name($filename)) {
+    $basename = strtolower($filename);
+    if (str_ends_with($basename, '-thumb')) {
+        $basename = substr($basename, 0, -6);
+    }
+    if (!scouts_allowed_photo_name($basename)) {
         throw new InvalidArgumentException('Ongeldige bestandsnaam.');
     }
-    foreach (['jpg', 'jpeg', 'png', 'webp', 'gif'] as $extension) {
-        $path = SCOUTS_UPLOADS_DIR . DIRECTORY_SEPARATOR . $filename . '.' . $extension;
-        if (is_file($path) && !unlink($path)) {
-            throw new RuntimeException('Foto kon niet worden verwijderd.');
+
+    foreach ([$basename, $basename . '-thumb'] as $name) {
+        foreach (['jpg', 'jpeg', 'png', 'webp', 'gif'] as $extension) {
+            $path = SCOUTS_UPLOADS_DIR . DIRECTORY_SEPARATOR . $name . '.' . $extension;
+            if (is_file($path) && !unlink($path)) {
+                throw new RuntimeException('Foto kon niet worden verwijderd.');
+            }
         }
     }
+}
+
+/**
+ * @return list<string>
+ */
+function scouts_protected_upload_filenames(): array
+{
+    return [
+        '.htaccess',
+        'htaccess',
+        'privacybeleid.pdf',
+        'privacybeleid.docx',
+        'over-ons.jpg',
+        'kapoenenleiding.jpg',
+        'welpenleiding.jpg',
+        'jongverkennersleiding.jpg',
+        'verkennersleiding.jpg',
+        'jinsleiding.jpg',
+    ];
+}
+
+/**
+ * Collect upload basenames referenced by site-data (and their -thumb siblings).
+ *
+ * @param mixed $value
+ * @return array<string, true>
+ */
+function scouts_collect_referenced_uploads(mixed $value, array &$found = []): array
+{
+    if (is_string($value)) {
+        if (preg_match('#(?:^|/|\\\\)uploads[/\\\\]+([^?\"\'\\s]+)#i', $value, $matches) === 1) {
+            $name = basename(str_replace('\\', '/', $matches[1]));
+            if ($name !== '' && $name !== '.' && $name !== '..') {
+                $found[$name] = true;
+                if (preg_match('/^(.+)-thumb(\.[a-z0-9]+)$/i', $name, $thumb) === 1) {
+                    $found[$thumb[1] . $thumb[2]] = true;
+                } elseif (preg_match('/^(.+)(\.[a-z0-9]+)$/i', $name, $full) === 1) {
+                    $found[$full[1] . '-thumb' . $full[2]] = true;
+                }
+            }
+        }
+        return $found;
+    }
+
+    if (is_array($value)) {
+        foreach ($value as $child) {
+            scouts_collect_referenced_uploads($child, $found);
+        }
+    }
+
+    return $found;
+}
+
+/**
+ * @return list<array{name: string, size: int}>
+ */
+function scouts_list_orphan_uploads(): array
+{
+    if (!is_dir(SCOUTS_UPLOADS_DIR)) {
+        return [];
+    }
+
+    $referenced = scouts_collect_referenced_uploads(scouts_read_site_data());
+    foreach (scouts_protected_upload_filenames() as $protected) {
+        $referenced[$protected] = true;
+        if (preg_match('/^(.+)(\.[a-z0-9]+)$/i', $protected, $parts) === 1) {
+            $referenced[$parts[1] . '-thumb' . $parts[2]] = true;
+        }
+    }
+
+    $orphans = [];
+    $entries = scandir(SCOUTS_UPLOADS_DIR);
+    if ($entries === false) {
+        return [];
+    }
+
+    foreach ($entries as $entry) {
+        if ($entry === '.' || $entry === '..') {
+            continue;
+        }
+        $path = SCOUTS_UPLOADS_DIR . DIRECTORY_SEPARATOR . $entry;
+        if (!is_file($path) || isset($referenced[$entry])) {
+            continue;
+        }
+        $orphans[] = [
+            'name' => $entry,
+            'size' => (int) filesize($path),
+        ];
+    }
+
+    usort(
+        $orphans,
+        static fn (array $left, array $right): int => strcasecmp($left['name'], $right['name'])
+    );
+
+    return $orphans;
+}
+
+/**
+ * @param list<string>|null $names
+ * @return list<string>
+ */
+function scouts_purge_orphan_uploads(?array $names = null): array
+{
+    $orphans = scouts_list_orphan_uploads();
+    $allowed = [];
+    foreach ($orphans as $orphan) {
+        $allowed[$orphan['name']] = true;
+    }
+
+    $targets = $names === null
+        ? array_keys($allowed)
+        : array_values(array_filter(
+            $names,
+            static fn ($name): bool => is_string($name) && isset($allowed[$name])
+        ));
+
+    $deleted = [];
+    foreach ($targets as $name) {
+        $path = SCOUTS_UPLOADS_DIR . DIRECTORY_SEPARATOR . basename($name);
+        if (!is_file($path)) {
+            continue;
+        }
+        if (!unlink($path)) {
+            throw new RuntimeException('Kon ' . $name . ' niet verwijderen.');
+        }
+        $deleted[] = $name;
+    }
+
+    return $deleted;
 }
 
 function scouts_photo_exif_orientation(string $sourcePath): int
@@ -667,10 +898,9 @@ function scouts_photo_apply_orientation($image, int $orientation)
 }
 
 /**
- * Store an uploaded photo (max edge 2400px, JPEG quality 90, progressive).
- * Always re-encodes when GD is available. $width/$height come from the caller
- * after getimagesize validation; GD reads final dimensions from the image.
- * Returns the public path including a cache-buster query.
+ * Store an uploaded photo (max edge 2400px, JPEG quality 90, progressive)
+ * plus a card thumb (max edge 800px). Always re-encodes when GD is available.
+ * Returns the public path of the full image including a cache-buster query.
  */
 function scouts_store_uploaded_photo(string $sourcePath, string $basename, string $mime, int $width, int $height): string
 {
@@ -689,6 +919,8 @@ function scouts_store_uploaded_photo(string $sourcePath, string $basename, strin
 
     $extension = 'jpg';
     $finalPath = SCOUTS_UPLOADS_DIR . DIRECTORY_SEPARATOR . $basename . '.' . $extension;
+    $thumbPath = SCOUTS_UPLOADS_DIR . DIRECTORY_SEPARATOR . $basename . '-thumb.' . $extension;
+    $thumbTemp = null;
 
     try {
         if ($gdAvailable) {
@@ -746,11 +978,43 @@ function scouts_store_uploaded_photo(string $sourcePath, string $basename, strin
                 imagedestroy($canvas);
                 throw new RuntimeException('Afbeelding kon niet worden opgeslagen.');
             }
+
+            $thumbTemp = tempnam(SCOUTS_UPLOADS_DIR, $basename . '-thumb-');
+            if ($thumbTemp !== false && function_exists('imagescale')) {
+                $thumbLongest = max($currentWidth, $currentHeight);
+                if ($thumbLongest > SCOUTS_PHOTO_THUMB_EDGE) {
+                    $thumbScale = SCOUTS_PHOTO_THUMB_EDGE / $thumbLongest;
+                    $thumbWidth = max(1, (int) round($currentWidth * $thumbScale));
+                    $thumbHeight = max(1, (int) round($currentHeight * $thumbScale));
+                    $mode = defined('IMG_BICUBIC') ? IMG_BICUBIC : IMG_BILINEAR_FIXED;
+                    $thumbImage = imagescale($canvas, $thumbWidth, $thumbHeight, $mode);
+                } else {
+                    $thumbImage = $canvas;
+                }
+
+                if ($thumbImage !== false) {
+                    if (function_exists('imageinterlace')) {
+                        imageinterlace($thumbImage, true);
+                    }
+                    if (!imagejpeg($thumbImage, $thumbTemp, SCOUTS_PHOTO_THUMB_JPEG_QUALITY)) {
+                        @unlink($thumbTemp);
+                        $thumbTemp = null;
+                    }
+                    if ($thumbImage !== $canvas) {
+                        imagedestroy($thumbImage);
+                    }
+                } else {
+                    @unlink($thumbTemp);
+                    $thumbTemp = null;
+                }
+            }
+
             imagedestroy($canvas);
         } else {
             $allowed = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp', 'image/gif' => 'gif'];
             $extension = $allowed[$mime] ?? 'jpg';
             $finalPath = SCOUTS_UPLOADS_DIR . DIRECTORY_SEPARATOR . $basename . '.' . $extension;
+            $thumbPath = SCOUTS_UPLOADS_DIR . DIRECTORY_SEPARATOR . $basename . '-thumb.' . $extension;
             if (!copy($sourcePath, $tempFile)) {
                 throw new RuntimeException('Afbeelding kon niet worden opgeslagen.');
             }
@@ -766,15 +1030,35 @@ function scouts_store_uploaded_photo(string $sourcePath, string $basename, strin
             throw new RuntimeException('Afbeelding kon niet leesbaar worden gemaakt.');
         }
 
+        if (is_string($thumbTemp) && is_file($thumbTemp)) {
+            if (is_file($thumbPath)) {
+                @unlink($thumbPath);
+            }
+            if (rename($thumbTemp, $thumbPath)) {
+                @chmod($thumbPath, 0644);
+                $thumbTemp = null;
+            } else {
+                @unlink($thumbTemp);
+                $thumbTemp = null;
+            }
+        }
+
         foreach (['jpg', 'jpeg', 'png', 'webp', 'gif'] as $oldExtension) {
             $oldPath = SCOUTS_UPLOADS_DIR . DIRECTORY_SEPARATOR . $basename . '.' . $oldExtension;
             if ($oldPath !== $finalPath && is_file($oldPath)) {
                 @unlink($oldPath);
             }
+            $oldThumb = SCOUTS_UPLOADS_DIR . DIRECTORY_SEPARATOR . $basename . '-thumb.' . $oldExtension;
+            if ($oldThumb !== $thumbPath && is_file($oldThumb)) {
+                @unlink($oldThumb);
+            }
         }
     } finally {
         if (is_file($tempFile)) {
             @unlink($tempFile);
+        }
+        if (is_string($thumbTemp) && is_file($thumbTemp)) {
+            @unlink($thumbTemp);
         }
     }
 

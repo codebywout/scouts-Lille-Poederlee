@@ -20,6 +20,10 @@ DirectoryIndex page.php
 
 # Fresh HTML shell; versioned CSS/JS (?v=) may be cached long-term.
 <IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+    Header set Referrer-Policy "strict-origin-when-cross-origin"
+    Header set X-Frame-Options "SAMEORIGIN"
+
     <FilesMatch "\.(?:html|htm|php)$">
         Header set Cache-Control "no-cache, no-store, must-revalidate"
         Header set Pragma "no-cache"

@@ -130,7 +130,7 @@
       });
   }
 
-  const IMAGE_ASSET_VERSION = "20261020-21";
+  const IMAGE_ASSET_VERSION = "20261020-34";
 
   function formatLidgeldLabel(amount) {
     const amountNumber = Number(String(amount || "").replace(",", ".").replace(/[^\d.]/g, ""));
@@ -167,6 +167,121 @@
     }
 
     return src.includes("?") ? src : `${src}?v=${IMAGE_ASSET_VERSION}`;
+  }
+
+  function toThumbUrl(src) {
+    if (typeof src !== "string" || !src.trim()) return src;
+    if (!src.includes("/uploads/") || src.includes("-thumb.")) return src;
+    const question = src.indexOf("?");
+    const path = question === -1 ? src : src.slice(0, question);
+    const query = question === -1 ? "" : src.slice(question);
+    const thumbPath = path.replace(/(\.[a-z0-9]+)$/i, "-thumb$1");
+    return thumbPath === path ? src : `${thumbPath}${query}`;
+  }
+
+  function thumbImageHtml(src, { alt = "", className = "" } = {}) {
+    const full = String(src || "").trim();
+    if (!full) return "";
+    const thumb = toThumbUrl(full);
+    const classAttr = className ? ` class="${escapeHtml(className)}"` : "";
+    if (thumb === full) {
+      return `<img${classAttr} src="${escapeHtml(full)}" alt="${escapeHtml(alt)}" loading="lazy" decoding="async">`;
+    }
+    return `<img${classAttr} src="${escapeHtml(thumb)}" alt="${escapeHtml(alt)}" loading="lazy" decoding="async" data-full-src="${escapeHtml(full)}" onerror="this.onerror=null;this.src=this.dataset.fullSrc||'';">`;
+  }
+
+  function slugifyNewsTitle(title, index = 0) {
+    const base = String(title || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 56);
+    return base || `bericht-${index + 1}`;
+  }
+
+  function newsItemAnchorId(item, index = 0) {
+    if (item && typeof item.id === "string" && item.id.trim()) {
+      return item.id.trim().replace(/^#/, "");
+    }
+    return slugifyNewsTitle(item?.title, index);
+  }
+
+  function newsSharePath(anchorId) {
+    return `/nieuws#${anchorId}`;
+  }
+
+  function newsShareUrl(anchorId) {
+    return `${window.location.origin}${newsSharePath(anchorId)}`;
+  }
+
+  function openNewsFromHash() {
+    const raw = window.location.hash.replace(/^#/, "").trim();
+    if (!raw) return;
+    const target =
+      document.getElementById(raw) ||
+      document.getElementById(decodeURIComponent(raw));
+    if (!target?.classList.contains("news-item")) return;
+
+    const summary = target.querySelector(".news-summary");
+    if (summary && !target.classList.contains("is-open") && !target.classList.contains("is-static")) {
+      summary.click();
+    }
+    window.requestAnimationFrame(() => {
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
+
+  function setupNewsShareLinks(container) {
+    if (!container || container._newsShareBound) return;
+    container._newsShareBound = true;
+    container.addEventListener("click", async (event) => {
+      const button = event.target.closest("[data-news-share]");
+      if (!button || !container.contains(button)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      const id = button.getAttribute("data-news-share") || "";
+      if (!id) return;
+
+      const url = newsShareUrl(id);
+      const row = button.closest(".news-share-box");
+      const label = button.querySelector(".news-share-label");
+      const idleText = "Kopieer";
+      const doneText = "Gekopieerd";
+
+      const showCopied = () => {
+        button.classList.add("is-copied");
+        row?.classList.add("is-copied");
+        if (label) label.textContent = doneText;
+        else button.textContent = doneText;
+        window.setTimeout(() => {
+          button.classList.remove("is-copied");
+          row?.classList.remove("is-copied");
+          if (label) label.textContent = idleText;
+          else button.textContent = idleText;
+        }, 2200);
+      };
+
+      try {
+        if (navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(url);
+        } else {
+          const field = document.createElement("textarea");
+          field.value = url;
+          field.setAttribute("readonly", "");
+          field.style.position = "fixed";
+          field.style.opacity = "0";
+          document.body.appendChild(field);
+          field.select();
+          document.execCommand("copy");
+          field.remove();
+        }
+        showCopied();
+      } catch {
+        window.prompt("Kopieer deze link naar het bericht:", url);
+      }
+    });
   }
 
   function refreshStaticImages() {
@@ -1299,11 +1414,27 @@
   function normalizeNewsItems(data) {
     if (!data) return;
     if (!Array.isArray(data.news)) data.news = [];
-    data.news.forEach((item) => {
+    const usedIds = new Set();
+    data.news.forEach((item, index) => {
       if (!item || typeof item !== "object") return;
       if (typeof item.summary !== "string") item.summary = "";
       if (typeof item.published !== "boolean") item.published = true;
       setNewsImages(item, getNewsImages(item));
+
+      let id =
+        typeof item.id === "string" ? item.id.trim().replace(/^#/, "") : "";
+      if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/i.test(id)) {
+        id = slugifyNewsTitle(item.title, index);
+      }
+      id = id.toLowerCase();
+      let unique = id;
+      let suffix = 2;
+      while (usedIds.has(unique)) {
+        unique = `${id}-${suffix}`;
+        suffix += 1;
+      }
+      usedIds.add(unique);
+      item.id = unique;
     });
   }
 
@@ -1606,7 +1737,7 @@
     qsa("[data-news-carousel]", container).forEach(setupNewsCarousel);
   }
 
-  function buildNewsItemHtml(item) {
+  function buildNewsItemHtml(item, index = 0) {
     const images = getNewsImages(item);
     const date = typeof item.date === "string" ? item.date.trim() : "";
     const title = typeof item.title === "string" ? item.title.trim() : "";
@@ -1620,8 +1751,20 @@
         : "";
     const linkText =
       typeof item.linkText === "string" ? item.linkText.trim() : "";
+    const anchorId = newsItemAnchorId(item, index);
     const hasDetails = Boolean(text || images.length || (link && linkText));
     const teaser = summary || (!hasDetails && text ? text : "");
+    const sharePath = newsSharePath(anchorId);
+    const shareHtml = `
+                      <div class="news-share-row">
+                        <p class="news-share-caption">Deel dit bericht</p>
+                        <div class="news-share-box">
+                          <code class="news-share-url" title="${escapeHtml(sharePath)}">${escapeHtml(sharePath)}</code>
+                          <button type="button" class="news-share" data-news-share="${escapeHtml(anchorId)}" aria-label="Kopieer deelbare link ${escapeHtml(sharePath)}">
+                            <span class="news-share-label">Kopieer</span>
+                          </button>
+                        </div>
+                      </div>`;
     const detailsHtml = hasDetails
       ? `
                   <div class="news-details">
@@ -1632,6 +1775,7 @@
                           ? `<a class="news-link" href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer">${escapeHtml(linkText)} <span class="icon-arrow-external" aria-hidden="true"></span></a>`
                           : ""
                       }
+                      ${shareHtml}
                       ${buildNewsCarouselHtml(images, title)}
                     </div>
                   </div>
@@ -1639,11 +1783,11 @@
       : "";
 
     const thumb = images[0]
-      ? `<span class="news-thumb" aria-hidden="true"><img src="${escapeHtml(images[0])}" alt="" loading="lazy" decoding="async"></span>`
+      ? `<span class="news-thumb" aria-hidden="true">${thumbImageHtml(images[0])}</span>`
       : "";
 
     return `
-                <details class="news-item${images.length ? " has-news-image" : ""}${hasDetails ? "" : " is-static"}">
+                <details id="${escapeHtml(anchorId)}" class="news-item${images.length ? " has-news-image" : ""}${hasDetails ? "" : " is-static"}">
                   <summary class="news-summary">
                     ${thumb}
                     <div class="news-copy">
@@ -1804,7 +1948,20 @@
 
   const DataStore = {
     _cache: null,
+    _version: null,
     _saveQueue: Promise.resolve(),
+
+    _readVersion(response) {
+      const header = response.headers.get("X-Scouts-Data-Version");
+      if (header) return header.trim();
+      const etag = response.headers.get("ETag");
+      if (!etag) return null;
+      return etag
+        .replace(/^W\//, "")
+        .trim()
+        .replace(/"/g, "")
+        .replace(/-[ap]$/, "");
+    },
 
     async load({ force = false } = {}) {
       if (this._cache && !force) return this._cache;
@@ -1817,6 +1974,7 @@
         throw new Error("Kon gegevens niet laden");
       }
 
+      this._version = this._readVersion(response);
       this._cache = await response.json();
       normalizeNewsItems(this._cache);
       normalizeBranchLeadership(this._cache);
@@ -1831,21 +1989,58 @@
       return this._cache;
     },
 
+    getVersion() {
+      return this._version;
+    },
+
+    setVersion(version) {
+      this._version = version || null;
+    },
+
     async save(data) {
       // Elke save wacht tot de vorige save volledig klaar is.
       this._saveQueue = this._saveQueue.then(async () => {
+        const headers = {
+          "Content-Type": "application/json",
+        };
+        if (this._version) {
+          headers["If-Match"] = this._version;
+        }
+
         const response = await fetch("/api/site-data", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers,
           body: JSON.stringify(data),
         });
 
-        if (!response.ok) {
-          throw new Error("Kon gegevens niet opslaan");
+        if (response.status === 409) {
+          const result = await response.json().catch(() => ({}));
+          const error = new Error(
+            result.message ||
+              "Iemand anders heeft ondertussen opgeslagen. Herlaad en probeer opnieuw.",
+          );
+          error.code = "version_conflict";
+          throw error;
         }
 
+        if (response.status === 428) {
+          const result = await response.json().catch(() => ({}));
+          const error = new Error(
+            result.message ||
+              "Ontbrekende versiecontrole. Herlaad de pagina en probeer opnieuw.",
+          );
+          error.code = "missing_version";
+          throw error;
+        }
+
+        if (!response.ok) {
+          const result = await response.json().catch(() => ({}));
+          throw new Error(result.message || "Kon gegevens niet opslaan");
+        }
+
+        const result = await response.json().catch(() => ({}));
+        this._version =
+          result.version || this._readVersion(response) || this._version;
         this._cache = data;
         return data;
       });
@@ -2210,12 +2405,16 @@
           if (newsMore) newsMore.hidden = true;
         } else {
           newsSection?.removeAttribute("hidden");
-          newsEl.innerHTML = visibleItems.map(buildNewsItemHtml).join("");
+          newsEl.innerHTML = visibleItems
+            .map((item, index) => buildNewsItemHtml(item, index))
+            .join("");
           setupNewsAccordion(newsEl);
           initNewsCarousels(newsEl);
+          setupNewsShareLinks(newsEl);
           if (newsMore) {
             newsMore.hidden = isNewsArchive || newsItems.length <= NEWS_HOME_LIMIT;
           }
+          openNewsFromHash();
         }
       }
 
@@ -2235,7 +2434,7 @@
                 const linkText =
                   typeof item.linkText === "string" ? item.linkText.trim() : "";
                 const thumb = image
-                  ? `<span class="agenda-thumb" aria-hidden="true"><img src="${escapeHtml(image)}" alt="" loading="lazy" decoding="async"></span>`
+                  ? `<span class="agenda-thumb" aria-hidden="true">${thumbImageHtml(image)}</span>`
                   : "";
                 return `
                 <details class="agenda-item ${image ? "has-agenda-image" : ""}">
@@ -2316,7 +2515,12 @@
             (item) => `
                         <article class="secondhand-item">
                             <div class="secondhand-item-image">
-                                <img src="${escapeHtml(versionStaticImage(item.image || "../assets/images/domein.jpg"))}" alt="${escapeHtml(item.title)}">
+                                ${thumbImageHtml(
+                                  versionStaticImage(
+                                    item.image || "../assets/images/domein.jpg",
+                                  ),
+                                  { alt: item.title || "" },
+                                )}
                             </div>
                             <div class="secondhand-item-content">
                                 <span class="eyebrow">${escapeHtml(item.category)}</span>
@@ -2377,6 +2581,8 @@
     setupRegistrationBankInfo();
     initRevealAnimations();
     setupSecondhandScroll();
+
+    window.addEventListener("hashchange", openNewsFromHash);
 
     try {
       if (document.body.classList.contains("admin-page")) {

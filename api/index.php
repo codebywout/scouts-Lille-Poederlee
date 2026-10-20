@@ -10,16 +10,20 @@ $method = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
 
 try {
     if ($route === 'site-data' && $method === 'GET') {
+        scouts_start_session();
         $modifiedAt = filemtime(SCOUTS_DATA_FILE);
-        $fileSize = filesize(SCOUTS_DATA_FILE);
-        if ($modifiedAt === false || $fileSize === false) {
+        if ($modifiedAt === false) {
             throw new RuntimeException('Datastorebestand kan niet worden gelezen.');
         }
 
-        $etag = '"' . sha1($modifiedAt . ':' . $fileSize) . '"';
+        $isAdmin = scouts_session_is_admin();
+        $version = scouts_site_data_version();
+        $etag = '"' . $version . ($isAdmin ? '-a' : '-p') . '"';
         header('Content-Type: application/json; charset=utf-8');
-        header('Cache-Control: no-cache, must-revalidate');
+        header('Cache-Control: no-store');
         header('ETag: ' . $etag);
+        header('X-Scouts-Data-Version: ' . $version);
+        header('Vary: Cookie');
         header('Last-Modified: ' . gmdate('D, d M Y H:i:s', $modifiedAt) . ' GMT');
 
         $clientEtags = array_map(
@@ -31,8 +35,13 @@ try {
             exit;
         }
 
+        $data = scouts_read_site_data();
+        if (!$isAdmin) {
+            $data = scouts_public_site_data($data);
+        }
+
         $json = json_encode(
-            scouts_read_site_data(),
+            $data,
             JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
         );
         if ($json === false) {
@@ -265,18 +274,58 @@ try {
         scouts_require_admin();
         scouts_require_same_origin();
         $data = scouts_request_json();
-        if ($data === []) {
-            scouts_json_response(['message' => 'Ongeldige of lege sitegegevens.'], 400);
+        try {
+            scouts_validate_site_data($data);
+        } catch (InvalidArgumentException $error) {
+            scouts_json_response(['message' => $error->getMessage()], 400);
+        }
+
+        $currentVersion = scouts_site_data_version();
+        $ifMatch = trim((string) ($_SERVER['HTTP_IF_MATCH'] ?? ''), " \t\"");
+        if ($ifMatch === '') {
+            scouts_json_response([
+                'message' => 'Ontbrekende versiecontrole. Herlaad de pagina en probeer opnieuw.',
+                'code' => 'missing_version',
+            ], 428);
+        }
+        if (!hash_equals($currentVersion, $ifMatch)) {
+            scouts_json_response([
+                'message' => 'Iemand anders heeft ondertussen opgeslagen. Herlaad en probeer opnieuw.',
+                'code' => 'version_conflict',
+                'version' => $currentVersion,
+            ], 409);
+        }
+
+        scouts_write_site_data($data);
+        $newVersion = scouts_site_data_version();
+        header('X-Scouts-Data-Version: ' . $newVersion);
+        header('ETag: "' . $newVersion . '-a"');
+        scouts_json_response(['success' => true, 'version' => $newVersion]);
+    }
+
+    if ($route === 'site-data/restore' && $method === 'POST') {
+        scouts_require_admin();
+        scouts_require_same_origin();
+        $data = scouts_request_json();
+        try {
+            scouts_validate_site_data($data);
+        } catch (InvalidArgumentException $error) {
+            scouts_json_response(['message' => $error->getMessage()], 400);
         }
         scouts_write_site_data($data);
-        scouts_json_response(['success' => true]);
+        $newVersion = scouts_site_data_version();
+        header('X-Scouts-Data-Version: ' . $newVersion);
+        header('ETag: "' . $newVersion . '-a"');
+        scouts_json_response(['success' => true, 'version' => $newVersion]);
     }
 
     if ($route === 'site-data/reset' && $method === 'POST') {
         scouts_require_admin();
         scouts_require_same_origin();
         scouts_write_site_data(scouts_decode_json_file(SCOUTS_DEFAULT_DATA_FILE));
-        scouts_json_response(['success' => true]);
+        $newVersion = scouts_site_data_version();
+        header('X-Scouts-Data-Version: ' . $newVersion);
+        scouts_json_response(['success' => true, 'version' => $newVersion]);
     }
 
     if ($route === 'uploads/photo' && $method === 'POST') {
@@ -502,6 +551,36 @@ try {
             scouts_json_response(['message' => 'Document kon niet worden verwijderd.'], 500);
         }
         scouts_json_response(['success' => true]);
+    }
+
+    if ($route === 'uploads/orphans' && $method === 'GET') {
+        scouts_require_admin();
+        $orphans = scouts_list_orphan_uploads();
+        $totalBytes = 0;
+        foreach ($orphans as $orphan) {
+            $totalBytes += (int) ($orphan['size'] ?? 0);
+        }
+        scouts_json_response([
+            'count' => count($orphans),
+            'totalBytes' => $totalBytes,
+            'orphans' => $orphans,
+        ]);
+    }
+
+    if ($route === 'uploads/orphans/purge' && $method === 'POST') {
+        scouts_require_admin();
+        scouts_require_same_origin();
+        $body = scouts_request_json();
+        $names = null;
+        if (isset($body['names']) && is_array($body['names'])) {
+            $names = $body['names'];
+        }
+        $deleted = scouts_purge_orphan_uploads($names);
+        scouts_json_response([
+            'success' => true,
+            'deleted' => count($deleted),
+            'names' => $deleted,
+        ]);
     }
 
     scouts_json_response(['message' => 'Not found'], 404);

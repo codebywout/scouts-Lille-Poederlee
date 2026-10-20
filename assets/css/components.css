@@ -113,6 +113,20 @@
     transform: translateY(-2px);
 }
 
+.button-secondary {
+    background: rgba(211, 138, 45, 0.12);
+    border-color: rgba(211, 138, 45, 0.48);
+    color: var(--scout-brown);
+    font-size: 13px;
+}
+
+.button-secondary:hover,
+.button-secondary:focus-visible {
+    background: rgba(211, 138, 45, 0.22);
+    border-color: rgba(211, 138, 45, 0.72);
+    color: var(--scout-orange);
+}
+
 .button-primary {
     background: linear-gradient(135deg, var(--scout-orange), #c1791a);
     border-color: var(--scout-orange);
@@ -161,6 +175,14 @@
 .button-ghost-dark {
     border-color: rgba(78, 43, 26, 0.18);
     background: rgba(78, 43, 26, 0.04);
+    color: var(--scout-brown);
+    font-size: 13px;
+}
+
+.button-ghost-dark:hover,
+.button-ghost-dark:focus-visible {
+    background: rgba(78, 43, 26, 0.09);
+    border-color: rgba(78, 43, 26, 0.3);
 }
 
 .button-white {

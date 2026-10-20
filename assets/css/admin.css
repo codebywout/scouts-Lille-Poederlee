@@ -415,6 +415,7 @@ html:has(body.admin-page) {
 }
 
 .document-upload-button {
+    position: relative;
     border: 1px solid rgba(211, 138, 45, 0.42);
     background: rgba(211, 138, 45, 0.12);
     color: var(--scout-brown);
@@ -1798,8 +1799,189 @@ html:has(body.admin-page) {
 
 .admin-utilities {
     display: flex;
+    flex-wrap: wrap;
+    align-items: center;
     justify-content: flex-end;
+    gap: 12px 18px;
     margin: -4px 0 18px;
+}
+
+.admin-utilities[hidden],
+.page-picker[hidden] {
+    display: none;
+}
+
+.admin-settings {
+    grid-column: 1 / -1;
+    display: grid;
+    gap: 14px;
+    width: 100%;
+    max-width: 980px;
+}
+
+.admin-settings-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+    gap: 14px;
+    align-items: start;
+}
+
+.admin-settings-side {
+    display: grid;
+    gap: 14px;
+    min-width: 0;
+}
+
+@media (max-width: 820px) {
+    .admin-settings-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+.admin-settings-intro {
+    display: grid;
+    gap: 10px;
+    margin: 0 2px 2px;
+}
+
+.admin-settings-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    width: fit-content;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: rgba(78, 43, 26, 0.72);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.admin-settings-back:hover,
+.admin-settings-back:focus-visible {
+    color: var(--scout-orange);
+}
+
+.admin-settings-back .icon-arrow-left {
+    font-size: 14px;
+}
+
+.admin-settings-intro h2 {
+    margin: 0;
+    font-family: "Montserrat", sans-serif;
+    font-size: clamp(1.45rem, 2vw, 1.75rem);
+    font-weight: 800;
+    line-height: 1.15;
+    color: var(--scout-brown, #4e2b1a);
+}
+
+.admin-settings-status {
+    flex: 0 0 auto;
+    padding: 5px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
+.admin-settings-status.is-ok {
+    background: rgba(46, 125, 50, 0.12);
+    color: #2e7d32;
+}
+
+.admin-settings-status.is-off {
+    background: rgba(78, 43, 26, 0.08);
+    color: rgba(78, 43, 26, 0.7);
+}
+
+.admin-settings-card .admin-actions {
+    margin: 0 18px 12px;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.admin-settings-card .admin-actions .button,
+.admin-settings-card .admin-actions .admin-restore-button {
+    min-height: 42px;
+    padding: 10px 16px;
+    gap: 8px;
+    font-size: 13px;
+    line-height: 1.2;
+    box-shadow: none;
+}
+
+.admin-settings-card .admin-actions .button span,
+.admin-settings-card .admin-actions .admin-restore-button {
+    font-size: 13px;
+}
+
+.admin-settings-card .admin-actions .button:hover,
+.admin-settings-card .admin-actions .button:focus-visible,
+.admin-settings-card .admin-actions .admin-restore-button:hover,
+.admin-settings-card .admin-actions .admin-restore-button:focus-visible {
+    transform: translateY(-1px);
+}
+
+.admin-settings-card .admin-actions .button-secondary {
+    flex: 1 1 auto;
+}
+
+.admin-settings-card .admin-actions .button-ghost-dark,
+.admin-settings-card .admin-actions .admin-restore-button {
+    flex: 1 1 auto;
+}
+
+.admin-settings-card .admin-fields {
+    margin: 0 18px 12px;
+}
+
+.admin-settings-card .form-help {
+    margin-top: 0;
+}
+
+.admin-settings-card .form-help:empty {
+    display: none;
+}
+
+.admin-settings-file {
+    display: grid;
+    gap: 8px;
+}
+
+.admin-settings-file-heading {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--scout-brown, #4e2b1a);
+}
+
+.admin-settings-file-pick {
+    width: 100%;
+    max-width: 100%;
+    margin-top: 0;
+    min-height: 42px;
+    padding: 10px 14px;
+    justify-content: flex-start;
+    overflow: hidden;
+}
+
+.admin-settings-file-pick [data-drive-oauth-label] {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.admin-settings-file-pick.is-selected {
+    border-color: rgba(46, 125, 50, 0.4);
+    background: rgba(46, 125, 50, 0.1);
+    color: #2e7d32;
+}
+
+.admin-grid:has(.admin-settings) {
+    grid-template-columns: minmax(0, 1fr);
 }
 
 .admin-utility-link {
@@ -1818,6 +2000,195 @@ html:has(body.admin-page) {
 .admin-utility-link:hover,
 .admin-utility-link:focus-visible {
     color: var(--scout-orange);
+}
+
+.admin-restore-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.admin-orphan-actions {
+    align-items: stretch;
+}
+
+.admin-orphan-actions [data-orphan-purge] {
+    border-color: rgba(160, 60, 40, 0.28);
+    background: rgba(160, 60, 40, 0.06);
+    color: #8a3428;
+}
+
+.admin-orphan-actions [data-orphan-purge]:hover,
+.admin-orphan-actions [data-orphan-purge]:focus-visible {
+    border-color: rgba(160, 60, 40, 0.42);
+    background: rgba(160, 60, 40, 0.12);
+    color: #742b22;
+}
+
+.admin-orphan-scan {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    overflow: hidden;
+    min-width: 0;
+    transition:
+        background 0.35s ease,
+        border-color 0.35s ease,
+        color 0.35s ease,
+        box-shadow 0.35s ease,
+        transform 0.35s ease,
+        opacity 0.32s ease;
+}
+
+.admin-orphan-scan-icon {
+    display: none;
+    flex: 0 0 auto;
+    box-sizing: border-box;
+}
+
+.admin-orphan-scan.is-scanning {
+    cursor: progress;
+    pointer-events: none;
+    opacity: 0.92;
+}
+
+.admin-orphan-scan.is-scanning .admin-orphan-scan-icon {
+    display: block;
+    width: 12px;
+    height: 12px;
+    border: 2px solid rgba(78, 43, 26, 0.22);
+    border-top-color: currentColor;
+    border-radius: 50%;
+    animation: planning-upload-spin 0.75s linear infinite;
+}
+
+.admin-orphan-scan.is-clean,
+.admin-orphan-scan.is-clean:hover,
+.admin-orphan-scan.is-clean:focus-visible {
+    border-color: #1d6d4a;
+    background: #1d6d4a;
+    color: #fff;
+    box-shadow: 0 8px 18px rgba(29, 109, 74, 0.22);
+    transform: none;
+}
+
+.admin-orphan-scan.is-clean .admin-orphan-scan-icon {
+    display: grid;
+    place-items: center;
+    width: 1.05em;
+    height: 1.05em;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.22);
+    font-size: 12px;
+    line-height: 1;
+}
+
+.admin-orphan-scan.is-clean .admin-orphan-scan-icon::before {
+    content: "✓";
+    font-size: 11px;
+    font-weight: 800;
+}
+
+.admin-orphan-scan.is-clean-pop {
+    animation: orphan-scan-clean 0.55s cubic-bezier(0.2, 0.85, 0.3, 1.2);
+}
+
+.admin-orphan-scan.is-clean-out {
+    opacity: 0.55;
+    transform: scale(0.98);
+    box-shadow: none;
+}
+
+.admin-orphan-scan [data-orphan-scan-label] {
+    display: inline-block;
+    font-size: 13px !important;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+@keyframes orphan-scan-clean {
+    0% {
+        transform: scale(0.96);
+        box-shadow: 0 0 0 0 rgba(29, 109, 74, 0.35);
+    }
+    55% {
+        transform: scale(1.04);
+        box-shadow: 0 0 0 12px rgba(29, 109, 74, 0);
+    }
+    100% {
+        transform: scale(1);
+        box-shadow: 0 8px 18px rgba(29, 109, 74, 0.28);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .admin-orphan-scan,
+    .admin-orphan-scan.is-clean-pop,
+    .admin-orphan-scan.is-clean-out,
+    .admin-orphan-scan [data-orphan-scan-label],
+    .admin-orphan-scan.is-scanning .admin-orphan-scan-icon {
+        animation: none;
+        transition: none;
+    }
+}
+
+.admin-orphan-list {
+    list-style: none;
+    margin: 0 18px 16px;
+    padding: 0;
+    display: grid;
+    gap: 8px;
+}
+
+.admin-orphan-list[hidden] {
+    display: none;
+}
+
+.admin-orphan-list li {
+    margin: 0;
+    padding: 0;
+    border: 1px solid rgba(78, 43, 26, 0.1);
+    border-radius: 10px;
+    background: rgba(247, 241, 232, 0.55);
+    font-size: 13px;
+}
+
+.admin-orphan-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin: 0;
+    padding: 10px 12px;
+    cursor: pointer;
+}
+
+.admin-orphan-item input {
+    margin-top: 3px;
+    flex: 0 0 auto;
+}
+
+.admin-orphan-meta {
+    display: flex;
+    flex: 1 1 auto;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px 12px;
+    min-width: 0;
+}
+
+.admin-orphan-list code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12px;
+    word-break: break-all;
+}
+
+.admin-orphan-meta > span {
+    color: rgba(78, 43, 26, 0.62);
+    font-weight: 600;
+    white-space: nowrap;
 }
 
 .save-row {
