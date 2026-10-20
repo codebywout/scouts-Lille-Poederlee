@@ -14,6 +14,96 @@
       .replace(/'/g, "&#039;");
   }
 
+  // Longest labels first so "Jongverkenners" wins over "Verkenners".
+  const FAQ_INTERNAL_LINKS = [
+    ["Jongverkenners", "/jongverkenners"],
+    ["Privacybeleid", "/privacybeleid"],
+    ["Tweedehands", "/tweedehands"],
+    ["Inschrijven", "/inschrijven"],
+    ["Verkenners", "/verkenners"],
+    ["Kapoenen", "/kapoenen"],
+    ["Over ons", "/over-ons"],
+    ["Praktisch", "/#praktisch"],
+    ["Planning", "/#planning"],
+    ["Uniform", "/uniform"],
+    ["Welpen", "/welpen"],
+    ["Nieuws", "/nieuws"],
+    ["Takken", "/#takken"],
+    ["Jins", "/jins"],
+  ];
+
+  function escapeRegExp(value) {
+    return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  }
+
+  function createFaqAnchor(href, label) {
+    const link = document.createElement("a");
+    link.href = href;
+    link.textContent = label;
+    if (/^https?:\/\//i.test(href)) {
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+    }
+    return link;
+  }
+
+  /** Escape FAQ text, then auto-link known site pages and http(s) URLs. */
+  function formatFaqAnswerHtml(text) {
+    const root = document.createElement("p");
+    root.textContent = String(text ?? "");
+
+    // Case-sensitive labels so "inschrijven" (werkwoord) stays plain text.
+    const phrasePattern = new RegExp(
+      `\\b(?:${FAQ_INTERNAL_LINKS.map(([label]) => escapeRegExp(label)).join("|")})\\b`,
+      "g",
+    );
+    const urlPattern = /\bhttps?:\/\/[^\s<]+/gi;
+    const combined = new RegExp(
+      `(?:${phrasePattern.source})|(?:${urlPattern.source})`,
+      "g",
+    );
+
+    const labelToHref = new Map(FAQ_INTERNAL_LINKS);
+
+    const textNodes = [];
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    while (walker.nextNode()) textNodes.push(walker.currentNode);
+
+    textNodes.forEach((node) => {
+      const value = node.nodeValue || "";
+      combined.lastIndex = 0;
+      if (!combined.test(value)) return;
+
+      const fragment = document.createDocumentFragment();
+      let lastIndex = 0;
+      combined.lastIndex = 0;
+      let match;
+      while ((match = combined.exec(value))) {
+        if (match.index > lastIndex) {
+          fragment.append(document.createTextNode(value.slice(lastIndex, match.index)));
+        }
+        const token = match[0];
+        if (/^https?:\/\//i.test(token)) {
+          const href = token.replace(/[.,);:!?]+$/u, "");
+          const trailing = token.slice(href.length);
+          fragment.append(createFaqAnchor(href, href));
+          if (trailing) fragment.append(document.createTextNode(trailing));
+        } else {
+          const href = labelToHref.get(token);
+          if (href) fragment.append(createFaqAnchor(href, token));
+          else fragment.append(document.createTextNode(token));
+        }
+        lastIndex = match.index + token.length;
+      }
+      if (lastIndex < value.length) {
+        fragment.append(document.createTextNode(value.slice(lastIndex)));
+      }
+      node.parentNode?.replaceChild(fragment, node);
+    });
+
+    return root.innerHTML;
+  }
+
   function debounce(fn, wait = 150) {
     let timeoutId;
     return (...args) => {
@@ -40,7 +130,7 @@
       });
   }
 
-  const IMAGE_ASSET_VERSION = "20261020-14";
+  const IMAGE_ASSET_VERSION = "20261020-21";
 
   function formatLidgeldLabel(amount) {
     const amountNumber = Number(String(amount || "").replace(",", ".").replace(/[^\d.]/g, ""));
@@ -184,6 +274,21 @@
     AUG: 12,
   };
 
+  const AGENDA_CALENDAR_MONTH = {
+    SEP: 8,
+    OKT: 9,
+    NOV: 10,
+    DEC: 11,
+    JAN: 0,
+    FEB: 1,
+    MAA: 2,
+    APR: 3,
+    MEI: 4,
+    JUN: 5,
+    JUL: 6,
+    AUG: 7,
+  };
+
   function sortAgendaItems(items) {
     return (Array.isArray(items) ? items : [])
       .map((item, index) => ({ item, index }))
@@ -206,6 +311,29 @@
   function sortAgendaInPlace(items) {
     const sortedItems = sortAgendaItems(items);
     items.splice(0, items.length, ...sortedItems);
+  }
+
+  function agendaItemDate(item, now = new Date()) {
+    const monthKey = String(item?.month || "").toUpperCase();
+    const calendarMonth = AGENDA_CALENDAR_MONTH[monthKey];
+    const day = Number(item?.day);
+    if (calendarMonth === undefined || !Number.isFinite(day) || day < 1) {
+      return null;
+    }
+
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const seasonStartYear =
+      today.getMonth() >= 8 ? today.getFullYear() : today.getFullYear() - 1;
+    const year = calendarMonth >= 8 ? seasonStartYear : seasonStartYear + 1;
+    return new Date(year, calendarMonth, day);
+  }
+
+  function filterUpcomingAgendaItems(items, now = new Date()) {
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    return sortAgendaItems(items).filter((item) => {
+      const date = agendaItemDate(item, now);
+      return !date || date >= today;
+    });
   }
 
   /* ==========================================================
@@ -1174,8 +1302,15 @@
     data.news.forEach((item) => {
       if (!item || typeof item !== "object") return;
       if (typeof item.summary !== "string") item.summary = "";
+      if (typeof item.published !== "boolean") item.published = true;
       setNewsImages(item, getNewsImages(item));
     });
+  }
+
+  function getPublishedNewsItems(items) {
+    return (Array.isArray(items) ? items : []).filter(
+      (item) => item && item.published !== false,
+    );
   }
 
   function padTwoDigits(value) {
@@ -2060,7 +2195,7 @@
       const newsEl = qs(".news-list");
       const newsMore = qs(".news-more");
       if (newsEl) {
-        const newsItems = Array.isArray(data.news) ? data.news : [];
+        const newsItems = getPublishedNewsItems(data.news);
         const isNewsArchive = document.body.classList.contains("news-page");
         const visibleItems = isNewsArchive
           ? newsItems
@@ -2086,21 +2221,23 @@
 
       const agendaEl = qs(".agenda");
       if (agendaEl) {
-        agendaEl.innerHTML = sortAgendaItems(data.agenda)
-          .map((item) => {
-            const image =
-              typeof item.image === "string" ? item.image.trim() : "";
-            const link =
-              typeof item.link === "string" &&
-              /^(https?:\/\/|mailto:)/i.test(item.link.trim())
-                ? item.link.trim()
-                : "";
-            const linkText =
-              typeof item.linkText === "string" ? item.linkText.trim() : "";
-            const thumb = image
-              ? `<span class="agenda-thumb" aria-hidden="true"><img src="${escapeHtml(image)}" alt="" loading="lazy" decoding="async"></span>`
-              : "";
-            return `
+        const upcomingAgenda = filterUpcomingAgendaItems(data.agenda);
+        agendaEl.innerHTML = upcomingAgenda.length
+          ? upcomingAgenda
+              .map((item) => {
+                const image =
+                  typeof item.image === "string" ? item.image.trim() : "";
+                const link =
+                  typeof item.link === "string" &&
+                  /^(https?:\/\/|mailto:)/i.test(item.link.trim())
+                    ? item.link.trim()
+                    : "";
+                const linkText =
+                  typeof item.linkText === "string" ? item.linkText.trim() : "";
+                const thumb = image
+                  ? `<span class="agenda-thumb" aria-hidden="true"><img src="${escapeHtml(image)}" alt="" loading="lazy" decoding="async"></span>`
+                  : "";
+                return `
                 <details class="agenda-item ${image ? "has-agenda-image" : ""}">
                   <summary class="agenda-summary">
                     <div class="agenda-date">
@@ -2121,8 +2258,9 @@
                   </div>
                 </details>
               `;
-          })
-          .join("");
+              })
+              .join("")
+          : `<p class="agenda-empty">Er staan momenteel geen activiteiten gepland.</p>`;
         setupAgendaAccordion(agendaEl);
       }
 
@@ -2134,7 +2272,7 @@
                         <details class="faq-item">
                             <summary>${escapeHtml(item.question)}</summary>
                             <div class="faq-content">
-                                <div class="faq-content-inner"><p>${escapeHtml(item.answer)}</p></div>
+                                <div class="faq-content-inner"><p>${formatFaqAnswerHtml(item.answer)}</p></div>
                             </div>
                         </details>
                     `,
@@ -2206,6 +2344,7 @@
     DataStore,
     sortAgendaInPlace,
     normalizeNewsItems,
+    getPublishedNewsItems,
     getNewsImages,
     setNewsImages,
     NEWS_IMAGES_MAX,

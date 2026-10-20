@@ -216,13 +216,34 @@ try {
         if ($username === '' || $password === '') {
             scouts_json_response(['message' => 'Vul zowel gebruikersnaam als wachtwoord in.'], 400);
         }
+
+        $lockRemaining = scouts_login_lock_remaining_seconds();
+        if ($lockRemaining > 0) {
+            $minutes = (int) ceil($lockRemaining / 60);
+            scouts_json_response([
+                'message' => $minutes <= 1
+                    ? 'Te veel mislukte pogingen. Probeer over een minuut opnieuw.'
+                    : "Te veel mislukte pogingen. Probeer over {$minutes} minuten opnieuw.",
+            ], 429);
+        }
+
         if (scouts_admin_username() === '' || scouts_admin_password_hash() === '') {
             error_log('Scouts admin credentials are not configured.');
             scouts_json_response(['message' => 'Beheerlogin is niet geconfigureerd.'], 500);
         }
         if (!hash_equals(scouts_admin_username(), $username) || !password_verify($password, scouts_admin_password_hash())) {
+            $lockAfterFail = scouts_login_record_failure();
+            if ($lockAfterFail > 0) {
+                $minutes = (int) ceil($lockAfterFail / 60);
+                scouts_json_response([
+                    'message' => $minutes <= 1
+                        ? 'Te veel mislukte pogingen. Probeer over een minuut opnieuw.'
+                        : "Te veel mislukte pogingen. Probeer over {$minutes} minuten opnieuw.",
+                ], 429);
+            }
             scouts_json_response(['message' => 'Ongeldige gebruikersnaam of wachtwoord.'], 401);
         }
+        scouts_login_clear_failures();
         session_regenerate_id(true);
         $_SESSION['user'] = ['username' => scouts_admin_username()];
         scouts_json_response(['success' => true, 'redirectTo' => '/admin']);

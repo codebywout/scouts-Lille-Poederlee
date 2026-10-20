@@ -520,6 +520,14 @@ body.home-page .hero {
     text-underline-offset: 3px;
 }
 
+.agenda-empty {
+    margin: 0;
+    max-width: 42ch;
+    color: rgba(78, 43, 26, 0.72);
+    font-size: 15px;
+    line-height: 1.6;
+}
+
 .agenda-details-inner img {
     display: block;
     width: min(100%, 420px);
@@ -606,6 +614,18 @@ body.home-page .hero {
     padding: 0 22px 20px;
     color: var(--gray);
     max-width: 780px;
+}
+
+.faq-content-inner a {
+    color: var(--scout-brown);
+    font-weight: 700;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.faq-content-inner a:hover,
+.faq-content-inner a:focus-visible {
+    color: var(--scout-orange);
 }
 
 .faq-item summary:hover {

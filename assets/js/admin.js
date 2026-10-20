@@ -17,6 +17,7 @@
     DataStore,
     sortAgendaInPlace,
     normalizeNewsItems,
+    getPublishedNewsItems,
     getNewsImages,
     setNewsImages,
     NEWS_IMAGES_MAX,
@@ -176,13 +177,21 @@
   }
 
   const photoEditorConfig = [
-    { key: "aboutHero", label: "Foto Over ons" },
-    { key: "branches.kapoenen", label: "Foto Kapoenen" },
-    { key: "branches.welpen", label: "Foto Welpen" },
-    { key: "branches.jongverkenners", label: "Foto Jongverkenners" },
-    { key: "branches.verkenners", label: "Foto Verkenners" },
-    { key: "branches.jins", label: "Foto Jins" },
+    { key: "aboutHero", label: "Over ons" },
+    { key: "branches.kapoenen", label: "Kapoenen" },
+    { key: "branches.welpen", label: "Welpen" },
+    { key: "branches.jongverkenners", label: "Jongverkenners" },
+    { key: "branches.verkenners", label: "Verkenners" },
+    { key: "branches.jins", label: "Jins" },
   ];
+
+  const BRANCH_LABELS = {
+    kapoenen: "Kapoenen",
+    welpen: "Welpen",
+    jongverkenners: "Jongverkenners",
+    verkenners: "Verkenners",
+    jins: "Jins",
+  };
 
   function getPhotoValue(data, key) {
     return (
@@ -301,7 +310,7 @@
                 <div class="document-add-box">
                     <div class="document-add-fields">
                         <label class="document-title-field">
-                            <input class="document-title-input" type="text" data-letter-title-new="${branch}" placeholder="Naam van de brief" autocomplete="off">
+                            <input class="document-title-input" type="text" data-letter-title-new="${branch}" placeholder="Naam brief" autocomplete="off">
                         </label>
                         <label class="document-upload-button">PDF kiezen
                         <input type="file" accept="application/pdf,.pdf" data-letter-upload="${branch}" disabled>
@@ -472,21 +481,21 @@
   }
 
   const pageFieldConfig = {
-    "over-ons": [{ key: "intro", label: "Introductietekst", type: "textarea" }],
+    "over-ons": [{ key: "intro", label: "Tekst", type: "textarea" }],
     inschrijven: [
-      { key: "lidgeld", label: "Lidgeld", type: "number" },
+      { key: "lidgeld", label: "Lidgeld (€)", type: "number" },
       { key: "rekeningnummer", label: "Rekeningnummer", type: "text" },
     ],
   };
 
   const listEditorConfig = {
     agenda: {
-      itemLabel: "Event",
+      itemLabel: "Activiteit",
       newItem: {
         day: "1",
         month: "SEP",
         title: "Nieuwe activiteit",
-        text: "Beschrijving...",
+        text: "",
         link: "",
         linkText: "",
         image: "",
@@ -535,7 +544,8 @@
           key: "text",
           label: "Tekst",
           tag: "textarea",
-          default: "Beschrijving...",
+          default: "",
+          placeholder: "Beschrijving",
         },
         {
           key: "linkText",
@@ -543,7 +553,7 @@
           tag: "input",
           type: "text",
           default: "",
-          placeholder: "Tekst van de link",
+          placeholder: "bv. Inschrijven",
         },
         {
           key: "link",
@@ -592,6 +602,7 @@
         images: [],
         link: "",
         linkText: "",
+        published: false,
       },
       fields: [
         {
@@ -603,25 +614,25 @@
         },
         {
           key: "date",
-          label: "Datum of periode",
+          label: "Datum",
           tag: "input",
           type: "text",
           default: "",
-          placeholder: "Bijvoorbeeld Maart 2026",
+          placeholder: "bv. Maart 2026",
         },
         {
           key: "summary",
           label: "Korte intro",
           tag: "textarea",
           default: "",
-          placeholder: "Korte tekst die zichtbaar is voor het uitklappen",
+          placeholder: "Zichtbaar vóór het openklappen",
         },
         {
           key: "text",
-          label: "Volledige tekst",
+          label: "Tekst",
           tag: "textarea",
           default: "",
-          placeholder: "De rest van het bericht...",
+          placeholder: "Volledige berichttekst",
         },
         {
           key: "linkText",
@@ -629,7 +640,7 @@
           tag: "input",
           type: "text",
           default: "",
-          placeholder: "Tekst van de link",
+          placeholder: "bv. Meer info",
         },
         {
           key: "link",
@@ -684,14 +695,21 @@
 
     if (!items.length) {
       container.innerHTML =
-        `<p class="admin-news-empty">Nog geen nieuwsberichten. Klik op + Nieuws om te beginnen.</p>`;
+        `<p class="admin-news-empty">Nog geen berichten.</p>`;
       return;
     }
+
+    const homeIndexes = new Set(
+      getPublishedNewsItems(items)
+        .slice(0, NEWS_HOME_LIMIT)
+        .map((item) => items.indexOf(item)),
+    );
 
     container.innerHTML = items
       .map((item, index) => {
         const images = getNewsImages(item);
-        const isHome = index < NEWS_HOME_LIMIT;
+        const isPublished = item.published !== false;
+        const isHome = isPublished && homeIndexes.has(index);
         const title = item.title || `Nieuws ${index + 1}`;
         const thumbs = images
           .map(
@@ -720,21 +738,22 @@
           .join("");
         const addPhotoHtml =
           images.length >= NEWS_IMAGES_MAX
-            ? `<p class="admin-news-photos-limit">Maximum van ${NEWS_IMAGES_MAX} foto's bereikt.</p>`
+            ? `<p class="admin-news-photos-limit">Maximum ${NEWS_IMAGES_MAX} foto's.</p>`
             : `<label class="admin-news-photo-add">
-                        <span class="admin-news-photo-plus" aria-hidden="true">ï¼‹</span>
-                        <strong>Foto's toevoegen</strong>
-                        <small>Max. ${NEWS_IMAGES_MAX} · JPG, PNG of WebP</small>
+                        <span class="admin-news-photo-plus" aria-hidden="true"></span>
+                        <strong>Foto toevoegen</strong>
+                        <small>Max. ${NEWS_IMAGES_MAX}</small>
                         <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple data-news-image-upload data-index="${index}">
                       </label>`;
         return `
-          <article class="admin-item admin-collapsible-item admin-news-item is-collapsed${isHome ? " is-home-news" : ""}">
+          <article class="admin-item admin-collapsible-item admin-news-item is-collapsed${isHome ? " is-home-news" : ""}${isPublished ? "" : " is-draft-news"}">
             <div class="admin-item-head">
               <button type="button" class="admin-collapse-toggle" data-collapse-toggle aria-expanded="false">
                 <span class="admin-collapse-chevron" aria-hidden="true"></span>
                 <span class="admin-news-summary">
                   <strong>${escapeHtml(title)}</strong>
                   <span class="admin-news-summary-date"${item.date ? "" : " hidden"}>${escapeHtml(item.date || "")}</span>
+                  <span class="admin-news-status">${isPublished ? "Zichtbaar" : "Concept"}</span>
                 </span>
               </button>
               <div class="admin-item-actions">
@@ -761,28 +780,33 @@
                     </div>
                   </div>
                   <div class="admin-news-fields">
+                    <label class="admin-news-publish${isPublished ? " is-on" : ""}">
+                      <span class="admin-news-publish-copy">Zichtbaar op website</span>
+                      <span class="admin-news-publish-switch" aria-hidden="true"></span>
+                      <input type="checkbox" data-field="news-published" data-index="${index}"${isPublished ? " checked" : ""}>
+                    </label>
                     <div class="admin-news-field-row">
                       <label>
                         <span>Titel</span>
-                        <input type="text" data-field="news-title" data-index="${index}" value="${escapeHtml(item.title || "")}" placeholder="Titel van het bericht">
+                        <input type="text" data-field="news-title" data-index="${index}" value="${escapeHtml(item.title || "")}" placeholder="Titel">
                       </label>
                       <label>
-                        <span>Datum of periode</span>
-                        <input type="text" data-field="news-date" data-index="${index}" value="${escapeHtml(item.date || "")}" placeholder="Bijvoorbeeld Maart 2026">
+                        <span>Datum</span>
+                        <input type="text" data-field="news-date" data-index="${index}" value="${escapeHtml(item.date || "")}" placeholder="bv. Maart 2026">
                       </label>
                     </div>
                     <label>
                       <span>Korte intro</span>
-                      <textarea data-field="news-summary" data-index="${index}" rows="2" placeholder="Zichtbaar vóór het uitklappen">${escapeHtml(item.summary || "")}</textarea>
+                      <textarea data-field="news-summary" data-index="${index}" rows="2" placeholder="Zichtbaar vóór het openklappen">${escapeHtml(item.summary || "")}</textarea>
                     </label>
                     <label>
-                      <span>Volledige tekst</span>
-                      <textarea data-field="news-text" data-index="${index}" rows="4" placeholder="De rest van het bericht...">${escapeHtml(item.text || "")}</textarea>
+                      <span>Tekst</span>
+                      <textarea data-field="news-text" data-index="${index}" rows="4" placeholder="Volledige berichttekst">${escapeHtml(item.text || "")}</textarea>
                     </label>
                     <div class="admin-news-field-row">
                       <label>
                         <span>Linktekst</span>
-                        <input type="text" data-field="news-linkText" data-index="${index}" value="${escapeHtml(item.linkText || "")}" placeholder="Tekst van de link">
+                        <input type="text" data-field="news-linkText" data-index="${index}" value="${escapeHtml(item.linkText || "")}" placeholder="bv. Meer info">
                       </label>
                       <label>
                         <span>Link</span>
@@ -835,9 +859,8 @@
                                         `
                                     : `
                                             <label class="admin-secondhand-photo-empty">
-                                                <span class="admin-secondhand-photo-plus">ï¼‹</span>
+                                                <span class="admin-secondhand-photo-plus"></span>
                                                 <strong>Foto toevoegen</strong>
-                                                <small>Klik om een foto te kiezen</small>
 
                                                 <input
                                                     type="file"
@@ -955,8 +978,8 @@
                           item.image
                             ? `<img src="${escapeHtml(item.image)}" alt="Foto van ${escapeHtml(item.title || item.question || "item")}" loading="lazy">
                                <span class="admin-agenda-photo-actions">
-                                 <span class="admin-agenda-photo-change">Nieuwe foto kiezen<input type="file" accept="${field.accept}" data-list-image-upload="${type}" data-index="${index}"></span>
-                                 <button type="button" class="admin-agenda-photo-remove" data-list-image-remove="${type}" data-index="${index}">Foto verwijderen</button>
+                                 <span class="admin-agenda-photo-change">Vervangen<input type="file" accept="${field.accept}" data-list-image-upload="${type}" data-index="${index}"></span>
+                                 <button type="button" class="admin-agenda-photo-remove" data-list-image-remove="${type}" data-index="${index}">Verwijderen</button>
                                </span>`
                             : `<span class="admin-agenda-photo-change">Foto toevoegen<input type="file" accept="${field.accept}" data-list-image-upload="${type}" data-index="${index}"></span>`
                         }
@@ -1130,8 +1153,8 @@
                         <button type="button" class="leadership-remove" data-remove="${type}" data-index="${index}">Verwijderen</button>
                     </div>
                     <div class="leadership-fields">
-                        <label><span>Naam</span><input type="text" data-field="leadership-name" data-type="${type}" data-index="${index}" value="${escapeHtml(item.name)}" placeholder="Naam van de leider"></label>
-                        <label><span>Telefoonnummer</span><input type="tel" data-field="leadership-phone" data-type="${type}" data-index="${index}" value="${escapeHtml(item.phone)}" placeholder="Telefoonnummer"></label>
+                        <label><span>Naam</span><input type="text" data-field="leadership-name" data-type="${type}" data-index="${index}" value="${escapeHtml(item.name)}" placeholder="Naam"></label>
+                        <label><span>Telefoon</span><input type="tel" data-field="leadership-phone" data-type="${type}" data-index="${index}" value="${escapeHtml(item.phone)}" placeholder="04xx xx xx xx"></label>
                     </div>
                 </article>
             `;
@@ -1164,7 +1187,7 @@
                                         <div class="admin-photo-overlay">
                                             <label class="admin-photo-change">
                                                 <span class="admin-photo-change-icon">↻</span>
-                                                <span>Nieuwe foto kiezen</span>
+                                                <span>Vervangen</span>
                                                 <input
                                                     type="file"
                                                     accept="image/jpeg,image/png,image/webp,image/gif"
@@ -1175,8 +1198,8 @@
                                     `
                                 : `
                                         <label class="admin-photo-empty">
-                                            <div class="admin-photo-empty-icon">ï¼‹</div>
-                                            <strong>Geen foto</strong>
+                                            <div class="admin-photo-empty-icon"></div>
+                                            <strong>Foto toevoegen</strong>
 
                                             <input
                                                 type="file"
@@ -1230,18 +1253,18 @@
             <div class="admin-card-head"><h2>Google Drive</h2></div>
             <div class="admin-fields">
               <label>
-                ID van de leidingsmap
-                <input type="text" data-drive-setting="folderId" value="${escapeHtml(googleDriveSettings.folderId)}" placeholder="Bijvoorbeeld 1AbC..." autocomplete="off">
+                Map-ID
+                <input type="text" data-drive-setting="folderId" value="${escapeHtml(googleDriveSettings.folderId)}" placeholder="Drive-map ID" autocomplete="off">
               </label>
               <label>
-                Google OAuth-client JSON
+                OAuth-client (JSON)
                 <input type="file" data-drive-oauth-client accept="application/json,.json">
               </label>
             </div>
-            <p class="form-help">OAuth: ${googleDriveSettings.oauthConfigured ? "verbonden" : "nog niet verbonden"}</p>
+            <p class="form-help">${googleDriveSettings.oauthConfigured ? "Verbonden met Google." : "Nog niet verbonden."}</p>
             <div class="admin-actions">
-              <button type="button" class="button button-secondary" data-google-connect>${googleDriveSettings.oauthConfigured ? "Google-account opnieuw verbinden" : "Google-account verbinden"}</button>
-              <button type="button" class="button button-ghost-dark" data-google-oauth-reset>OAuth-client resetten</button>
+              <button type="button" class="button button-secondary" data-google-connect>${googleDriveSettings.oauthConfigured ? "Opnieuw verbinden" : "Verbinden"}</button>
+              <button type="button" class="button button-ghost-dark" data-google-oauth-reset>Resetten</button>
             </div>
           </section>
         `;
@@ -1253,7 +1276,7 @@
       container.innerHTML = `
                 <section class="admin-card compact-card admin-news-card">
                     <div class="admin-card-head"><h2>Nieuws</h2><button type="button" class="mini-button" data-add="news">+ Nieuws</button></div>
-                    <p class="form-help">De eerste 3 berichten (oranje balk) staan op de homepage. Verplaats met de pijltjes. Extra berichten staan op /nieuws.</p>
+                    <p class="form-help">De eerste 3 zichtbare berichten staan op de homepage.</p>
                     <div id="newsEditor" class="admin-list admin-news-list"></div>
                 </section>
             `;
@@ -1264,21 +1287,21 @@
     if (activePage === "home") {
       container.innerHTML = `
                 <section class="admin-card compact-card">
-                    <div class="admin-card-head"><h2>Planning</h2><button type="button" class="mini-button" data-add="agenda">+ Event</button></div>
+                    <div class="admin-card-head"><h2>Planning</h2><button type="button" class="mini-button" data-add="agenda">+ Activiteit</button></div>
                     <div id="agendaEditor" class="admin-list"></div>
                 </section>
                 <section class="admin-card compact-card">
-                    <div class="admin-card-head"><h2>Praktische vragen</h2><button type="button" class="mini-button" data-add="faq">+ Vraag</button></div>
+                    <div class="admin-card-head"><h2>Veelgestelde vragen</h2><button type="button" class="mini-button" data-add="faq">+ Vraag</button></div>
                     <div id="faqEditor" class="admin-list"></div>
                 </section>
                 <section class="admin-card compact-card">
                     <div class="admin-card-head">
-                        <h2>Contactgegevens</h2>
+                        <h2>Contact</h2>
                     </div>
 
                     <div class="admin-fields">
                         <label>
-                            E-mailadres
+                            E-mail
                             <input
                                 type="email"
                                 data-contact-field="email"
@@ -1305,7 +1328,7 @@
     if (activePage === "photos") {
       container.innerHTML = `
                 <section class="admin-card compact-card admin-photos-card">
-                    <div class="admin-card-head"><h2>Foto's beheren</h2></div>
+                    <div class="admin-card-head"><h2>Foto's</h2></div>
                     <div id="photoEditor" class="admin-photo-grid"></div>
                 </section>
             `;
@@ -1350,7 +1373,7 @@
     if (activePage === "secondhand") {
       container.innerHTML = `
                 <section class="admin-card compact-card">
-                    <div class="admin-card-head"><h2>Tweedehandsitems</h2><button type="button" class="mini-button" data-add="secondhand">+ Item</button></div>
+                    <div class="admin-card-head"><h2>Tweedehands</h2><button type="button" class="mini-button" data-add="secondhand">+ Item</button></div>
                     <div id="secondhandEditor" class="admin-list"></div>
                 </section>
             `;
@@ -1361,7 +1384,7 @@
     if (activePage in data.branchLeadership) {
       container.innerHTML = `
                 <section class="admin-card compact-card">
-                    <div class="admin-card-head"><h2>Leiding ${activePage}</h2><button type="button" class="mini-button" data-add="branchLeadership:${activePage}">+ Leider</button></div>
+                    <div class="admin-card-head"><h2>Leiding ${BRANCH_LABELS[activePage] || activePage}</h2><button type="button" class="mini-button" data-add="branchLeadership:${activePage}">+ Leider</button></div>
                     <div id="branchLeadershipEditor" class="admin-list"></div>
                 </section>
                 ${renderPlanningEditor(data, activePage)}
@@ -1600,6 +1623,10 @@
     if (data.activePage === "news") {
       if (!Array.isArray(data.news)) data.news = [];
       readListFields(data.news, "news");
+      qsa("[data-field='news-published']").forEach((input) => {
+        const index = Number(input.dataset.index);
+        if (data.news[index]) data.news[index].published = input.checked;
+      });
       normalizeNewsItems(data);
       return data;
     }
@@ -1808,6 +1835,36 @@
     });
 
     document.addEventListener("change", async (event) => {
+      const newsPublishToggle = event.target.closest(
+        "[data-field='news-published']",
+      );
+      if (newsPublishToggle) {
+        const index = Number(newsPublishToggle.dataset.index);
+        const data = DataStore.get();
+        if (data.news?.[index]) {
+          data.news[index].published = newsPublishToggle.checked;
+        }
+        markDirtyState(true);
+        const article = newsPublishToggle.closest(".admin-news-item");
+        const publishLabel = newsPublishToggle.closest(".admin-news-publish");
+        const status = article?.querySelector(".admin-news-status");
+        if (status) {
+          status.textContent = newsPublishToggle.checked
+            ? "Zichtbaar"
+            : "Concept";
+        }
+        publishLabel?.classList.toggle("is-on", newsPublishToggle.checked);
+        article?.classList.toggle("is-draft-news", !newsPublishToggle.checked);
+        const publishedIndexes = getPublishedNewsItems(data.news || [])
+          .slice(0, NEWS_HOME_LIMIT)
+          .map((item) => (data.news || []).indexOf(item));
+        const homeSet = new Set(publishedIndexes);
+        qsa(".admin-news-item").forEach((item, itemIndex) => {
+          item.classList.toggle("is-home-news", homeSet.has(itemIndex));
+        });
+        return;
+      }
+
       const takleiderToggle = event.target.closest(
         "[data-field='leadership-takleider']",
       );
@@ -2059,7 +2116,7 @@
 
       const googleOAuthReset = event.target.closest("[data-google-oauth-reset]");
       if (googleOAuthReset) {
-        if (!window.confirm("Wil je de Google OAuth-client en koppeling resetten? Daarna moet je een nieuw clientbestand uploaden en opnieuw verbinden.")) {
+        if (!window.confirm("Google-koppeling resetten? Daarna opnieuw verbinden.")) {
           return;
         }
         try {
@@ -2090,7 +2147,7 @@
 
       const planningRemove = event.target.closest("[data-planning-remove]");
       if (planningRemove) {
-        if (!window.confirm("Wil je deze maandplanning echt verwijderen?")) {
+        if (!window.confirm("Maandplanning verwijderen?")) {
           return;
         }
 
@@ -2111,7 +2168,7 @@
 
       const letterRemove = event.target.closest("[data-letter-remove]");
       if (letterRemove) {
-        if (!window.confirm("Wil je deze brief echt verwijderen?")) return;
+        if (!window.confirm("Brief verwijderen?")) return;
 
         try {
           await removeLetter(
@@ -2214,7 +2271,7 @@
           ?.split("?")[0]
           ?.replace(/\.[^/.]+$/, "");
 
-        if (!window.confirm("Wil je deze foto verwijderen?")) return;
+        if (!window.confirm("Foto verwijderen?")) return;
 
         try {
           if (filename && imagePath.startsWith("/uploads/")) {
@@ -2258,7 +2315,7 @@
           ?.split("?")[0]
           ?.replace(/\.[^/.]+$/, "");
 
-        if (!window.confirm("Wil je deze foto verwijderen?")) return;
+        if (!window.confirm("Foto verwijderen?")) return;
 
         try {
           if (filename && imagePath.startsWith("/uploads/")) {
@@ -2290,13 +2347,13 @@
 
         if (adminHasUnsavedChanges) {
           const leave = window.confirm(
-            "Er zijn onopgeslagen wijzigingen. Die gaan verloren als je naar een andere pagina gaat. Toch verdergaan?",
+            "Onopgeslagen wijzigingen gaan verloren. Toch verdergaan?",
           );
           if (!leave) return;
         }
 
         if (targetPage === "settings") {
-          const password = window.prompt("Voer het instellingenwachtwoord in:");
+          const password = window.prompt("Wachtwoord voor instellingen:");
           if (!password) return;
           const unlockResponse = await fetch(
             "/api/google-drive/settings/unlock",
@@ -2356,15 +2413,15 @@
       if (removeTarget) {
         const removeType = removeTarget.dataset.remove;
         const confirmation = {
-          agenda: "Wil je dit event echt verwijderen?",
-          news: "Wil je dit nieuwsbericht echt verwijderen?",
-          faq: "Wil je deze praktische vraag echt verwijderen?",
-          secondhand: "Wil je dit tweedehandsitem echt verwijderen?",
-          groupLeadership: "Wil je deze groepsleider echt verwijderen?",
+          agenda: "Deze activiteit verwijderen?",
+          news: "Dit bericht verwijderen?",
+          faq: "Deze vraag verwijderen?",
+          secondhand: "Dit item verwijderen?",
+          groupLeadership: "Deze groepsleider verwijderen?",
         };
         const message = removeType.startsWith("branchLeadership:")
-          ? "Wil je deze leider echt verwijderen?"
-          : confirmation[removeType] || "Wil je dit item echt verwijderen?";
+          ? "Deze leider verwijderen?"
+          : confirmation[removeType] || "Dit item verwijderen?";
         if (!window.confirm(message)) return;
         markDirtyState(true);
         await removeEntry(removeType, Number(removeTarget.dataset.index));
@@ -2387,7 +2444,7 @@
           )
         ) {
           setSaveStatus(
-            "Vul een linktekst in voor elk event met een link.",
+            "Vul een linktekst in bij elke activiteit met een link.",
             "error",
           );
           return;

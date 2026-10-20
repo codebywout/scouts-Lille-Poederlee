@@ -102,12 +102,8 @@ body.uniform-page::before {
     animation: none;
 }
 
-.branch-page .page-shell {
-    padding-bottom: clamp(96px, 12vw, 160px);
-}
-
 .branch-page .page-main {
-    padding-bottom: clamp(48px, 7vw, 88px);
+    padding-bottom: 32px;
 }
 
 .error-page .page-shell {
@@ -296,7 +292,6 @@ body.uniform-page::before {
 
 .branch-page .document-resource-grid {
     grid-template-columns: minmax(0, 520px);
-    margin-top: 8px;
 }
 
 .branch-page .document-resource-grid:has(> :nth-child(2)) {

@@ -261,3 +261,60 @@ function scouts_render_share_meta_tags(string $page): string
     <meta name="twitter:image" content="{$image}">
 HTML;
 }
+
+function scouts_render_json_ld(): string
+{
+    $email = 'groepsleidingscoutslille@gmail.com';
+    $address = 'Zagerijstraat 29, 2275 Lille';
+    $street = 'Zagerijstraat 29';
+    $postalCode = '2275';
+    $locality = 'Lille';
+
+    try {
+        $data = scouts_read_site_data();
+        $contact = is_array($data['contact'] ?? null) ? $data['contact'] : [];
+        if (is_string($contact['email'] ?? null) && trim($contact['email']) !== '') {
+            $email = trim($contact['email']);
+        }
+        if (is_string($contact['address'] ?? null) && trim($contact['address']) !== '') {
+            $address = trim($contact['address']);
+            if (preg_match('/^(.+?),\\s*(\\d{4})\\s+(.+)$/u', $address, $matches) === 1) {
+                $street = trim($matches[1]);
+                $postalCode = trim($matches[2]);
+                $locality = trim($matches[3]);
+            }
+        }
+    } catch (Throwable) {
+        // Keep fallback contact details.
+    }
+
+    $payload = [
+        '@context' => 'https://schema.org',
+        '@type' => 'LocalBusiness',
+        'name' => 'Scouts Lille-Poederlee',
+        'url' => 'https://scoutslille.be/',
+        'email' => $email,
+        'image' => 'https://scoutslille.be/assets/images/scouts.png',
+        'address' => [
+            '@type' => 'PostalAddress',
+            'streetAddress' => $street,
+            'postalCode' => $postalCode,
+            'addressLocality' => $locality,
+            'addressCountry' => 'BE',
+        ],
+        'sameAs' => [
+            'https://www.facebook.com/scoutslille',
+            'https://www.instagram.com/scoutslille/',
+        ],
+    ];
+
+    $json = json_encode(
+        $payload,
+        JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS
+    );
+    if ($json === false) {
+        return '';
+    }
+
+    return "    <script type=\"application/ld+json\">{$json}</script>";
+}

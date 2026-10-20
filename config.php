@@ -18,7 +18,10 @@ const SCOUTS_MAX_PDF_UPLOAD_BYTES = 20971520;
  * Bump this on every deploy so HTML/CSS/JS URLs change and old caches are skipped.
  * Format: YYYYMMDD-N
  */
-const SCOUTS_ASSET_VERSION = '20261020-14';
+const SCOUTS_ASSET_VERSION = '20261020-21';
+const SCOUTS_LOGIN_ATTEMPTS_FILE = SCOUTS_ROOT . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . '.login-attempts.json';
+const SCOUTS_LOGIN_MAX_ATTEMPTS = 5;
+const SCOUTS_LOGIN_LOCKOUT_SECONDS = 900;
 
 // Best-effort: some hosts allow raising these at runtime.
 @ini_set('upload_max_filesize', '20M');
@@ -152,6 +155,170 @@ function scouts_json_response(array $payload, int $status = 200): never
     exit;
 }
 
+function scouts_client_ip(): string
+{
+    $candidates = [
+        (string) ($_SERVER['HTTP_CF_CONNECTING_IP'] ?? ''),
+        (string) ($_SERVER['HTTP_X_FORWARDED_FOR'] ?? ''),
+        (string) ($_SERVER['REMOTE_ADDR'] ?? ''),
+    ];
+
+    foreach ($candidates as $candidate) {
+        $ip = trim(explode(',', $candidate)[0]);
+        if ($ip !== '' && filter_var($ip, FILTER_VALIDATE_IP)) {
+            return $ip;
+        }
+    }
+
+    return 'unknown';
+}
+
+/**
+ * @return array{attempts: int, first_at: int, locked_until: int}
+ */
+function scouts_login_attempts_for_ip(string $ip): array
+{
+    $defaults = ['attempts' => 0, 'first_at' => 0, 'locked_until' => 0];
+    if (!is_file(SCOUTS_LOGIN_ATTEMPTS_FILE)) {
+        return $defaults;
+    }
+
+    $raw = file_get_contents(SCOUTS_LOGIN_ATTEMPTS_FILE);
+    if ($raw === false || trim($raw) === '') {
+        return $defaults;
+    }
+
+    try {
+        $all = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
+    } catch (Throwable) {
+        return $defaults;
+    }
+
+    if (!is_array($all) || !is_array($all[$ip] ?? null)) {
+        return $defaults;
+    }
+
+    $entry = $all[$ip];
+    return [
+        'attempts' => max(0, (int) ($entry['attempts'] ?? 0)),
+        'first_at' => max(0, (int) ($entry['first_at'] ?? 0)),
+        'locked_until' => max(0, (int) ($entry['locked_until'] ?? 0)),
+    ];
+}
+
+/**
+ * @param array{attempts: int, first_at: int, locked_until: int}|null $entry
+ */
+function scouts_login_attempts_write(string $ip, ?array $entry): void
+{
+    $dir = dirname(SCOUTS_LOGIN_ATTEMPTS_FILE);
+    if (!is_dir($dir) && !mkdir($dir, 0755, true) && !is_dir($dir)) {
+        return;
+    }
+
+    $handle = fopen(SCOUTS_LOGIN_ATTEMPTS_FILE, 'c+');
+    if ($handle === false) {
+        return;
+    }
+
+    try {
+        if (!flock($handle, LOCK_EX)) {
+            return;
+        }
+
+        rewind($handle);
+        $raw = stream_get_contents($handle);
+        $all = [];
+        if (is_string($raw) && trim($raw) !== '') {
+            try {
+                $decoded = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
+                if (is_array($decoded)) {
+                    $all = $decoded;
+                }
+            } catch (Throwable) {
+                $all = [];
+            }
+        }
+
+        $now = time();
+        foreach ($all as $key => $value) {
+            if (!is_array($value)) {
+                unset($all[$key]);
+                continue;
+            }
+            $lockedUntil = (int) ($value['locked_until'] ?? 0);
+            $firstAt = (int) ($value['first_at'] ?? 0);
+            if ($lockedUntil > 0 && $lockedUntil < $now - 3600) {
+                unset($all[$key]);
+            } elseif ($lockedUntil <= 0 && $firstAt > 0 && $firstAt < $now - 3600) {
+                unset($all[$key]);
+            }
+        }
+
+        if ($entry === null) {
+            unset($all[$ip]);
+        } else {
+            $all[$ip] = [
+                'attempts' => max(0, (int) ($entry['attempts'] ?? 0)),
+                'first_at' => max(0, (int) ($entry['first_at'] ?? 0)),
+                'locked_until' => max(0, (int) ($entry['locked_until'] ?? 0)),
+            ];
+        }
+
+        $json = json_encode($all, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        if ($json === false) {
+            return;
+        }
+
+        ftruncate($handle, 0);
+        rewind($handle);
+        fwrite($handle, $json);
+        fflush($handle);
+    } finally {
+        flock($handle, LOCK_UN);
+        fclose($handle);
+    }
+}
+
+function scouts_login_lock_remaining_seconds(string $ip = ''): int
+{
+    $ip = $ip !== '' ? $ip : scouts_client_ip();
+    $entry = scouts_login_attempts_for_ip($ip);
+    $remaining = $entry['locked_until'] - time();
+    return $remaining > 0 ? $remaining : 0;
+}
+
+function scouts_login_record_failure(string $ip = ''): int
+{
+    $ip = $ip !== '' ? $ip : scouts_client_ip();
+    $now = time();
+    $entry = scouts_login_attempts_for_ip($ip);
+
+    if ($entry['locked_until'] > $now) {
+        return $entry['locked_until'] - $now;
+    }
+
+    if ($entry['first_at'] <= 0 || $now - $entry['first_at'] > SCOUTS_LOGIN_LOCKOUT_SECONDS) {
+        $entry = ['attempts' => 0, 'first_at' => $now, 'locked_until' => 0];
+    }
+
+    $entry['attempts']++;
+    if ($entry['attempts'] >= SCOUTS_LOGIN_MAX_ATTEMPTS) {
+        $entry['locked_until'] = $now + SCOUTS_LOGIN_LOCKOUT_SECONDS;
+        $entry['attempts'] = 0;
+        $entry['first_at'] = $now;
+    }
+
+    scouts_login_attempts_write($ip, $entry);
+    return max(0, $entry['locked_until'] - $now);
+}
+
+function scouts_login_clear_failures(string $ip = ''): void
+{
+    $ip = $ip !== '' ? $ip : scouts_client_ip();
+    scouts_login_attempts_write($ip, null);
+}
+
 function scouts_asset_version(): string
 {
     return SCOUTS_ASSET_VERSION;
@@ -240,6 +407,12 @@ function scouts_send_html_file(string $absolutePath, ?string $pageId = null): ne
         if (!str_contains($html, 'property="og:title"')) {
             $shareTags = scouts_render_share_meta_tags($resolvedPage);
             $html = preg_replace('/<\/head>/i', $shareTags . "\n</head>", $html, 1) ?? $html;
+        }
+        if (!str_contains($html, 'application/ld+json')) {
+            $jsonLd = scouts_render_json_ld();
+            if ($jsonLd !== '') {
+                $html = preg_replace('/<\/head>/i', $jsonLd . "\n</head>", $html, 1) ?? $html;
+            }
         }
     }
 
