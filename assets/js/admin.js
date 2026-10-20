@@ -1128,8 +1128,29 @@
     const toggle = item?.querySelector("[data-collapse-toggle]");
     if (!item || !toggle) return;
 
-    const isOpening = item.classList.toggle("is-collapsed");
-    toggle.setAttribute("aria-expanded", String(!isOpening));
+    const willOpen = item.classList.contains("is-collapsed");
+
+    if (willOpen) {
+      const scope = item.parentElement || document;
+      const siblings = item.classList.contains("admin-news-item")
+        ? qsa(".admin-news-item", scope)
+        : qsa(".admin-collapsible-item", scope);
+
+      siblings.forEach((other) => {
+        if (other === item || other.classList.contains("is-collapsed")) return;
+        other.classList.add("is-collapsed");
+        other
+          .querySelector("[data-collapse-toggle]")
+          ?.setAttribute("aria-expanded", "false");
+      });
+
+      item.classList.remove("is-collapsed");
+      toggle.setAttribute("aria-expanded", "true");
+      return;
+    }
+
+    item.classList.add("is-collapsed");
+    toggle.setAttribute("aria-expanded", "false");
   }
 
   function readListFields(items, type) {

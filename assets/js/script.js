@@ -130,7 +130,7 @@
       });
   }
 
-  const IMAGE_ASSET_VERSION = "20261020-34";
+  const IMAGE_ASSET_VERSION = "20261020-45";
 
   function formatLidgeldLabel(amount) {
     const amountNumber = Number(String(amount || "").replace(",", ".").replace(/[^\d.]/g, ""));
@@ -1769,13 +1769,15 @@
       ? `
                   <div class="news-details">
                     <div class="news-details-inner">
-                      ${text ? `<p>${escapeHtml(text)}</p>` : ""}
-                      ${
-                        link && linkText
-                          ? `<a class="news-link" href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer">${escapeHtml(linkText)} <span class="icon-arrow-external" aria-hidden="true"></span></a>`
-                          : ""
-                      }
-                      ${shareHtml}
+                      <div class="news-details-copy">
+                        ${text ? `<p>${escapeHtml(text)}</p>` : ""}
+                        ${
+                          link && linkText
+                            ? `<a class="news-link" href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer">${escapeHtml(linkText)} <span class="icon-arrow-external" aria-hidden="true"></span></a>`
+                            : ""
+                        }
+                        ${shareHtml}
+                      </div>
                       ${buildNewsCarouselHtml(images, title)}
                     </div>
                   </div>
@@ -1862,25 +1864,20 @@
     if (!secondhandScroll) return;
 
     const items = qsa(".secondhand-item", secondhandScroll);
+    const itemsSection = secondhandScroll.closest(".secondhand-items");
+    if (itemsSection) itemsSection.hidden = false;
 
     if (items.length === 0) {
       secondhandScroll.innerHTML = `
                 <div class="secondhand-empty">
                     <h3>Geen items beschikbaar</h3>
-                    <p>
-                        Neem later zeker nog eens een kijkje!
-                    </p>
+                    <p>Neem later zeker nog eens een kijkje!</p>
                 </div>
             `;
-
       buttons.forEach((button) => {
         button.hidden = true;
       });
-
-      if (status) {
-        status.hidden = true;
-      }
-
+      if (status) status.hidden = true;
       return;
     }
 
@@ -2085,11 +2082,15 @@
     data.photos.monthlyPlanning[branch] = value;
   }
 
-  function formatPlanningLabel(title) {
-    const months = String(title || "")
-      .split(/[_\s]+/)
+  function planningMonthsFromTitle(title) {
+    return String(title || "")
+      .split(/[_\s,-]+/)
       .map((part) => part.trim().toLowerCase())
       .filter((month) => PLANNING_MONTHS.includes(month));
+  }
+
+  function formatPlanningLabel(title) {
+    const months = planningMonthsFromTitle(title);
     const label = months.length
       ? months.join(", ")
       : String(title || "")
@@ -2098,6 +2099,32 @@
           .trim();
     if (!label) return "Maandplanning";
     return label.charAt(0).toUpperCase() + label.slice(1);
+  }
+
+  function slugifyDownloadPart(value) {
+    return String(value || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+  }
+
+  function buildPlanningDownloadName(branch, title) {
+    const branchPart =
+      slugifyDownloadPart(BRANCH_LABELS[branch] || branch) || "tak";
+    const months = planningMonthsFromTitle(title);
+    const monthPart = months.length
+      ? months.map((month) => slugifyDownloadPart(month)).join("-")
+      : slugifyDownloadPart(formatPlanningLabel(title)) || "planning";
+    return `maandplanning-${branchPart}-${monthPart}.pdf`;
+  }
+
+  function buildLetterDownloadName(branch, title) {
+    const branchPart =
+      slugifyDownloadPart(BRANCH_LABELS[branch] || branch) || "tak";
+    const titlePart = slugifyDownloadPart(title) || "brief";
+    return `brief-${branchPart}-${titlePart}.pdf`;
   }
 
   function getMonthlyPlanningTitle(data, branch) {
@@ -2345,14 +2372,24 @@
         const resourceCards = [];
         if (planning) {
           const planningTitle = getMonthlyPlanningTitle(data, pageName);
+          const planningLabel = formatPlanningLabel(planningTitle);
+          const planningFile = buildPlanningDownloadName(
+            pageName,
+            planningTitle,
+          );
           resourceCards.push(`
                             <div class="page-card planning-download-card">
                                 <div class="planning-download-header">
                                     <h3>Maandplanning ${escapeHtml(BRANCH_LABELS[pageName])}</h3>
                                 </div>
-                                <a class="button button-primary download-button document-action-button" href="${escapeHtml(planning)}" target="_blank" rel="noopener" download>
-                                  <span class="button-icon icon-arrow-down" aria-hidden="true"></span>
-                                  <span>${escapeHtml(formatPlanningLabel(planningTitle))}</span>
+                                <a class="planning-download-button" href="${escapeHtml(planning)}" target="_blank" rel="noopener" download="${escapeHtml(planningFile)}" aria-label="Download maandplanning ${escapeHtml(planningLabel)}">
+                                  <span class="planning-download-button-icon" aria-hidden="true">
+                                    <span class="icon-arrow-down"></span>
+                                  </span>
+                                  <span class="planning-download-button-copy">
+                                    <strong>Download PDF</strong>
+                                    <span>${escapeHtml(planningLabel)}</span>
+                                  </span>
                                 </a>
                             </div>
                         `);
@@ -2364,16 +2401,29 @@
                                 <div class="planning-download-header">
                                     <h3>Brieven ${escapeHtml(BRANCH_LABELS[pageName])}</h3>
                                 </div>
-                                ${letters
-                                  .map(
-                                    (letter) => `
-                                    <a class="button button-ghost-dark download-button document-action-button" href="${escapeHtml(letter.path)}" target="_blank" rel="noopener" download>
-                                        <span class="button-icon icon-arrow-down" aria-hidden="true"></span>
-                                        <span>${escapeHtml(letter.title || "Brief")}</span>
+                                <div class="branch-letters-list">
+                                  ${letters
+                                    .map((letter) => {
+                                      const letterTitle =
+                                        letter.title || "Brief";
+                                      const letterFile = buildLetterDownloadName(
+                                        pageName,
+                                        letterTitle,
+                                      );
+                                      return `
+                                    <a class="planning-download-button planning-download-button--letter" href="${escapeHtml(letter.path)}" target="_blank" rel="noopener" download="${escapeHtml(letterFile)}" aria-label="Download brief ${escapeHtml(letterTitle)}">
+                                      <span class="planning-download-button-icon" aria-hidden="true">
+                                        <span class="icon-arrow-down"></span>
+                                      </span>
+                                      <span class="planning-download-button-copy">
+                                        <strong>Download PDF</strong>
+                                        <span>${escapeHtml(letterTitle)}</span>
+                                      </span>
                                     </a>
-                                `,
-                                  )
-                                  .join("")}
+                                  `;
+                                    })
+                                    .join("")}
+                                </div>
                             </div>
                         `);
         }
@@ -2400,7 +2450,10 @@
           if (isNewsArchive) newsSection?.removeAttribute("hidden");
           else newsSection?.setAttribute("hidden", "");
           newsEl.innerHTML = isNewsArchive
-            ? `<p class="news-empty">Er zijn nog geen nieuwsberichten.</p>`
+            ? `<div class="news-empty" role="status">
+                    <h3>Er zijn nog geen nieuwsberichten</h3>
+                    <p>Neem later zeker nog eens een kijkje!</p>
+                </div>`
             : "";
           if (newsMore) newsMore.hidden = true;
         } else {
@@ -2515,18 +2568,14 @@
             (item) => `
                         <article class="secondhand-item">
                             <div class="secondhand-item-image">
-                                ${thumbImageHtml(
-                                  versionStaticImage(
-                                    item.image || "../assets/images/domein.jpg",
-                                  ),
-                                  { alt: item.title || "" },
-                                )}
+                                <img src="${escapeHtml(versionStaticImage(item.image || "../assets/images/domein.jpg"))}" alt="${escapeHtml(item.title || "")}" loading="lazy" decoding="async">
                             </div>
                             <div class="secondhand-item-content">
-                                <span class="eyebrow">${escapeHtml(item.category)}</span>
+                                <span class="secondhand-item-category">${escapeHtml(item.category || "Materiaal")}</span>
+                                <h3>${escapeHtml(item.title || "Tweedehands item")}</h3>
                                 <p class="secondhand-item-info">${escapeHtml(item.size || item.info || "")}</p>
                                 <div class="secondhand-item-bottom">
-                                    <strong>€${escapeHtml(item.price)}</strong>
+                                    <strong>€${escapeHtml(String(item.price || "").replace(/^€\s*/, ""))}</strong>
                                 </div>
                             </div>
                         </article>

@@ -320,17 +320,16 @@
 
     .page-hero,
     .registration-hero,
+    .news-hero,
     .secondhand-hero {
         min-height: 0;
     }
 
-    .page-hero .hero-content,
-    .secondhand-hero .page-hero-content {
+    .page-hero .hero-content {
         padding: clamp(92px, 16vw, 124px) max(20px, 6%) clamp(42px, 9vw, 68px);
     }
 
-    .page-hero .hero-content h1,
-    .secondhand-hero h1 {
+    .page-hero .hero-content h1 {
         max-width: 100%;
         font-size: clamp(34px, 10vw, 58px);
         line-height: 0.98;
@@ -338,7 +337,6 @@
     }
 
     .page-hero .hero-content p,
-    .secondhand-hero p,
     .about-hero-copy p,
     .section-heading p {
         max-width: 100%;
@@ -384,8 +382,25 @@
     }
 
     .document-resource-grid .document-action-button {
-        margin-top: 12px;
+        margin-top: 0;
         justify-content: flex-start;
+    }
+
+    .planning-download-button {
+        min-height: 58px;
+        padding: 10px 12px;
+        gap: 12px;
+    }
+
+    .planning-download-button-icon {
+        width: 36px;
+        height: 36px;
+        flex-basis: 36px;
+        border-radius: 10px;
+    }
+
+    .planning-download-button-copy strong {
+        font-size: 14px;
     }
 
     .about-hero {
@@ -600,31 +615,14 @@
     }
 
     .secondhand-empty {
-        width: min(100%, 520px);
-        min-height: 180px;
-        margin-inline: auto;
-        align-items: flex-start;
-        justify-content: flex-start;
-        padding: 24px 18px;
-        text-align: left;
+        width: 100%;
+        padding: 28px 20px;
+        border-radius: 18px;
     }
 
     .secondhand-empty p {
-        max-width: none;
-    }
-
-    .secondhand-scroll:has(.secondhand-empty) {
-        justify-content: center;
-        gap: 0;
-        overflow: hidden;
-        margin-inline: 0;
-        padding-inline: 0;
-    }
-
-    .secondhand-scroll:has(.secondhand-empty) .secondhand-empty {
-        width: min(calc(100% - 20px), 520px);
-        flex: 0 1 auto;
-        margin-inline: auto;
+        font-size: 14px;
+        max-width: 32ch;
     }
 
     .secondhand-scroll-button[hidden] {
@@ -1087,14 +1085,12 @@
         font-size: 16px;
     }
 
-    .page-hero .hero-content h1,
-    .secondhand-hero h1 {
+    .page-hero .hero-content h1 {
         font-size: clamp(30px, 9.5vw, 42px);
         letter-spacing: -1px;
     }
 
-    .page-hero .hero-content p,
-    .secondhand-hero p {
+    .page-hero .hero-content p {
         font-size: 15px;
         line-height: 1.55;
     }

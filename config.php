@@ -20,7 +20,7 @@ const SCOUTS_MAX_PDF_UPLOAD_BYTES = 20971520;
  * Bump this on every deploy so HTML/CSS/JS URLs change and old caches are skipped.
  * Format: YYYYMMDD-N
  */
-const SCOUTS_ASSET_VERSION = '20261020-34';
+const SCOUTS_ASSET_VERSION = '20261020-52';
 const SCOUTS_LOGIN_ATTEMPTS_FILE = SCOUTS_ROOT . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . '.login-attempts.json';
 const SCOUTS_LOGIN_MAX_ATTEMPTS = 5;
 const SCOUTS_LOGIN_LOCKOUT_SECONDS = 900;

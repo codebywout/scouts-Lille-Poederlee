@@ -303,6 +303,15 @@ body.uniform-page::before {
     box-shadow: 0 18px 40px rgba(0, 0, 0, 0.18);
 }
 
+.branch-page .planning-download-card .document-action-button {
+    margin-top: 0;
+}
+
+.branch-page .branch-letters-card {
+    display: grid;
+    gap: 16px;
+}
+
 @media (max-width: 760px) {
     .branch-page .page-hero .hero-content {
         grid-template-columns: 1fr;
@@ -1430,26 +1439,9 @@ body.privacy-page {
     font-weight: 800;
 }
 
-.news-hero {
-    min-height: 0;
-    display: flex;
-    align-items: flex-end;
-}
-
-.news-hero .page-hero-content {
-    width: min(var(--max-width), 100%);
-    margin: 0 auto;
-    padding: 128px 5% 28px;
-}
-
-.news-hero h1 {
-    max-width: 680px;
+.news-hero .hero-content h1,
+.secondhand-hero .hero-content h1 {
     margin-bottom: 0;
-    color: #fff;
-    font-family: "Montserrat", sans-serif;
-    font-size: clamp(48px, 7vw, 88px);
-    line-height: 0.94;
-    letter-spacing: -3px;
 }
 
 .news-page .news-archive {
@@ -1481,21 +1473,41 @@ body.privacy-page {
 }
 
 .news-page .news-archive .news-details-inner p,
-.news-page .news-archive .news-teaser,
-.news-page .news-archive .news-empty {
+.news-page .news-archive .news-details-copy > p,
+.news-page .news-archive .news-teaser {
     color: rgba(78, 43, 26, 0.72);
 }
 
-@media (max-width: 800px) {
-    .news-hero .page-hero-content {
-        padding: 112px 5% 22px;
-    }
+.news-page .news-archive:has(.news-empty) {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: clamp(240px, 36vw, 320px);
+    padding: 48px 36px;
+}
 
+.news-page .news-archive .news-list:has(.news-empty) {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+}
+
+.news-page .news-archive .news-empty {
+    padding: 0;
+}
+
+@media (max-width: 800px) {
     .news-page .news-archive {
         width: min(100% - 24px, var(--max-width));
         margin-bottom: 28px;
         padding: 14px;
         border-radius: 20px;
+    }
+
+    .news-page .news-archive:has(.news-empty) {
+        min-height: 220px;
+        padding: 40px 22px;
     }
 
     .news-page .news-archive .news-list {
@@ -2025,120 +2037,64 @@ body.privacy-page {
     margin-top: 6px;
 }
 
-.secondhand-hero {
-    min-height: 400px;
-    display: flex;
-    align-items: flex-end;
-}
-
-.secondhand-hero .page-hero-content {
-    width: min(var(--max-width), 100%);
-    margin: 0 auto;
-    padding: 100px 5% 60px;
-}
-
-.secondhand-hero h1 {
-    max-width: 680px;
-    margin-bottom: 18px;
-    color: #fff;
-    font-family: "Montserrat", sans-serif;
-    font-size: clamp(48px, 7vw, 88px);
-    line-height: 0.94;
-    letter-spacing: -3px;
-}
-
-.secondhand-hero p {
-    max-width: 620px;
-    color: rgba(255, 255, 255, 0.82);
-    font-size: clamp(18px, 2vw, 22px);
-}
-
-.secondhand-hero .hero-actions {
-    display: flex;
-    gap: 12px;
-    flex-wrap: wrap;
-    margin-top: 28px;
-}
 
 .secondhand-intro,
-.secondhand-process {
+.secondhand-process,
+.secondhand-items {
     max-width: var(--max-width);
-    margin: 0 auto;
-    padding: 84px 5% 0;
+    margin-left: auto;
+    margin-right: auto;
 }
 
-.section-heading {
-    max-width: 720px;
-    margin-bottom: 32px;
-}
-
-.section-heading h2 {
-    margin-bottom: 16px;
-}
-
-.section-heading p {
-    max-width: 650px;
-    color: var(--gray);
-    font-size: 18px;
-}
-
-.secondhand-categories {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 18px;
-}
-
-.secondhand-categories .story-card {
-    min-height: 250px;
-    border-radius: 18px;
-    padding: 26px 24px;
-}
-
-.story-card-icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 48px;
-    height: 48px;
-    margin-bottom: 12px;
-    border-radius: 14px;
-    background: rgba(211, 138, 45, 0.14);
-    font-size: 24px;
+.secondhand-process,
+.secondhand-items {
+    padding-left: 5%;
+    padding-right: 5%;
 }
 
 .secondhand-process {
+    padding-top: 4px;
     padding-bottom: 100px;
 }
 
 .secondhand-layout {
     display: grid;
-    grid-template-columns: 1.15fr 0.85fr;
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.9fr);
     gap: 18px;
     align-items: stretch;
 }
 
-.secondhand-feature-card,
 .secondhand-checklist {
-    border-radius: 18px;
+    display: grid;
+    align-content: start;
+    gap: 12px;
 }
 
-.secondhand-feature-card {
-    background: linear-gradient(135deg, rgba(255,255,255,0.96), rgba(247, 234, 212, 0.86));
+.secondhand-checklist h3 {
+    margin: 0;
+    font-size: clamp(1.05rem, 1.5vw, 1.25rem);
+    line-height: 1.3;
+    letter-spacing: -0.01em;
 }
 
-.secondhand-feature-card h3 {
-    max-width: 480px;
-    font-size: clamp(28px, 3vw, 42px);
+.secondhand-checklist > .eyebrow {
+    margin: 0 0 2px;
+    font-size: clamp(0.95rem, 1.4vw, 1.15rem);
+    letter-spacing: 0.04em;
+    line-height: 1.3;
+    color: var(--scout-brown, #4e2b1a);
 }
 
-.secondhand-feature-card .button {
-    margin-top: 10px;
+.secondhand-checklist > p {
+    margin: 0;
+    font-size: 15px;
+    line-height: 1.65;
 }
 
 .secondhand-steps {
     display: grid;
-    gap: 20px;
-    margin: 18px 0 0;
+    gap: 14px;
+    margin: 2px 0 0;
     padding: 0;
     list-style: none;
     counter-reset: secondhand-step;
@@ -2146,44 +2102,66 @@ body.privacy-page {
 
 .secondhand-steps li {
     display: grid;
-    grid-template-columns: 34px 1fr;
+    grid-template-columns: 32px minmax(0, 1fr);
     column-gap: 12px;
+    row-gap: 3px;
+    align-items: start;
+    padding: 12px 0 0;
+    border-top: 1px solid rgba(78, 43, 26, 0.08);
     counter-increment: secondhand-step;
+}
+
+.secondhand-steps li:first-child {
+    border-top: 0;
+    padding-top: 0;
 }
 
 .secondhand-steps li::before {
     content: counter(secondhand-step);
     display: grid;
     place-items: center;
-    width: 34px;
-    height: 34px;
+    grid-row: 1 / span 2;
+    width: 32px;
+    height: 32px;
+    margin-top: 1px;
     border-radius: 50%;
     background: var(--scout-forest);
     color: #fff;
+    font-size: 12px;
     font-weight: 800;
 }
 
-.secondhand-steps strong,
+.secondhand-steps strong {
+    grid-column: 2;
+    color: var(--scout-brown);
+    font-size: 14px;
+    line-height: 1.35;
+}
+
 .secondhand-steps span {
     grid-column: 2;
-}
-
-.secondhand-steps strong {
-    color: var(--scout-brown);
-}
-
-.secondhand-steps span {
-    color: var(--gray);
-    font-size: 14px;
+    color: rgba(78, 43, 26, 0.68);
+    font-size: 13.5px;
+    line-height: 1.55;
 }
 
 .secondhand-note {
-    margin-top: 18px;
+    margin-top: 16px;
     padding: 16px 18px;
+    border: 1px solid rgba(255, 255, 255, 0.38);
     border-left: 3px solid var(--scout-orange);
-    background: rgba(255,255,255,0.56);
-    color: var(--gray);
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.62);
+    color: rgba(78, 43, 26, 0.72);
     font-size: 14px;
+    line-height: 1.55;
+    box-shadow: 0 18px 40px rgba(46, 26, 18, 0.08);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+
+.secondhand-note strong {
+    color: var(--scout-brown, #4e2b1a);
 }
 
 /* =========================================
@@ -2192,6 +2170,59 @@ body.privacy-page {
 
 .secondhand-items {
     overflow: hidden;
+    padding-top: 8px;
+    padding-bottom: 20px;
+}
+
+.secondhand-items[hidden] {
+    display: none;
+}
+
+.secondhand-scroll:has(.secondhand-empty) {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 0;
+    padding: 4px 0 12px;
+    overflow: hidden;
+    scroll-snap-type: none;
+}
+
+.secondhand-scroll:has(.secondhand-empty)::after {
+    display: none;
+}
+
+.secondhand-empty {
+    width: min(100%, 520px);
+    margin: 0 auto;
+    padding: 36px 28px;
+    display: grid;
+    gap: 10px;
+    justify-items: center;
+    text-align: center;
+    background: rgba(255, 255, 255, 0.62);
+    border: 1px solid rgba(255, 255, 255, 0.38);
+    border-radius: 26px;
+    box-shadow: 0 18px 40px rgba(46, 26, 18, 0.08);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+
+.secondhand-empty h3 {
+    margin: 0;
+    font-family: "Montserrat", sans-serif;
+    font-size: clamp(1.15rem, 2.2vw, 1.4rem);
+    font-weight: 800;
+    line-height: 1.2;
+    color: var(--scout-brown, #4e2b1a);
+}
+
+.secondhand-empty p {
+    margin: 0;
+    max-width: 34ch;
+    color: rgba(78, 43, 26, 0.68);
+    font-size: 15px;
+    line-height: 1.55;
 }
 
 .secondhand-scroll-wrapper {
@@ -2201,18 +2232,18 @@ body.privacy-page {
 
 .secondhand-scroll {
     display: flex;
-    gap: 24px;
+    gap: 20px;
     overflow-x: auto;
     overflow-y: hidden;
-    padding: 10px 4px 28px;
-    
+    padding: 8px 4px 24px;
+
     scroll-snap-type: x mandatory;
     scroll-behavior: smooth;
     overscroll-behavior-x: contain;
     -webkit-overflow-scrolling: touch;
 
     scrollbar-width: none;
-    margin: 0 50px;
+    margin: 0 52px;
 }
 
 .secondhand-scroll::-webkit-scrollbar {
@@ -2230,27 +2261,33 @@ body.privacy-page {
     z-index: 2;
     display: grid;
     place-items: center;
-    width: 42px;
-    height: 42px;
-    border: 1px solid rgba(78, 43, 26, 0.16);
+    width: 44px;
+    height: 44px;
+    border: 1px solid rgba(78, 43, 26, 0.12);
     border-radius: 50%;
-    background: rgba(255, 255, 255, 0.94);
+    background: rgba(255, 252, 247, 0.96);
     color: var(--scout-brown);
-    box-shadow: 0 8px 18px rgba(46, 26, 18, 0.14);
+    box-shadow: 0 10px 22px rgba(46, 26, 18, 0.16);
     cursor: pointer;
     transform: translateY(-50%);
-    transition: opacity 0.2s ease, transform 0.2s ease, background 0.2s ease;
+    transition:
+        opacity 0.2s ease,
+        transform 0.2s ease,
+        background 0.2s ease,
+        border-color 0.2s ease;
 }
 
 .secondhand-scroll-button:hover:not(:disabled),
 .secondhand-scroll-button:focus-visible:not(:disabled) {
-    background: var(--scout-orange-soft);
+    background: #fff;
+    border-color: rgba(211, 138, 45, 0.45);
+    color: var(--scout-orange);
     transform: translateY(-50%) scale(1.05);
 }
 
 .secondhand-scroll-button:disabled {
     cursor: default;
-    opacity: 0.35;
+    opacity: 0.28;
 }
 
 .secondhand-scroll-button-prev {
@@ -2258,36 +2295,42 @@ body.privacy-page {
 }
 
 .secondhand-scroll-button-next {
-    right: 0px;
+    right: 0;
 }
 
-/* Kaart */
+.secondhand-scroll-button[hidden] {
+    display: none !important;
+}
+
 .secondhand-item {
-    flex: 0 0 320px;
+    flex: 0 0 300px;
     scroll-snap-align: start;
-
-    background: #fff;
-    border-radius: 22px;
+    display: grid;
+    grid-template-rows: auto 1fr;
+    background: rgba(255, 255, 255, 0.62);
+    border: 1px solid rgba(255, 255, 255, 0.38);
+    border-radius: 26px;
     overflow: hidden;
-
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
-
+    box-shadow: 0 18px 40px rgba(46, 26, 18, 0.08);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
     transition:
         transform 0.25s ease,
+        background 0.25s ease,
         box-shadow 0.25s ease;
 }
 
 .secondhand-item:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 14px 35px rgba(0, 0, 0, 0.12);
+    transform: translateY(-3px);
+    background: rgba(255, 255, 255, 0.7);
+    box-shadow: 0 22px 45px rgba(46, 26, 18, 0.11);
 }
 
-/* Afbeelding */
 .secondhand-item-image {
     width: 100%;
-    height: 230px;
+    height: 210px;
     overflow: hidden;
-    background: #eee9df;
+    background: linear-gradient(145deg, #eee9df, #e4d8c4);
 }
 
 .secondhand-item-image img {
@@ -2295,41 +2338,62 @@ body.privacy-page {
     height: 100%;
     display: block;
     object-fit: cover;
-
-    transition: transform 0.4s ease;
+    transition: transform 0.45s ease;
 }
 
 .secondhand-item:hover .secondhand-item-image img {
-    transform: scale(1.04);
+    transform: scale(1.05);
 }
 
-/* Inhoud */
 .secondhand-item-content {
-    padding: 22px;
+    display: grid;
+    align-content: start;
+    gap: 8px;
+    padding: 18px 18px 20px;
+}
+
+.secondhand-item-category {
+    display: inline-flex;
+    width: fit-content;
+    margin: 0;
+    padding: 5px 9px;
+    border-radius: 999px;
+    background: rgba(211, 138, 45, 0.12);
+    color: var(--scout-brown, #4e2b1a);
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
 }
 
 .secondhand-item-content h3 {
-    margin: 6px 0 7px;
+    margin: 0;
+    font-family: "Montserrat", sans-serif;
+    font-size: 1.12rem;
+    font-weight: 800;
+    line-height: 1.25;
+    color: var(--scout-brown, #4e2b1a);
 }
 
 .secondhand-item-info {
     margin: 0;
-    opacity: 0.7;
-    font-size: 0.95rem;
+    color: rgba(78, 43, 26, 0.62);
+    font-size: 0.92rem;
+    line-height: 1.4;
 }
 
-/* Prijs + knop */
 .secondhand-item-bottom {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-
-    margin-top: 22px;
+    justify-content: flex-start;
+    margin-top: 10px;
 }
 
 .secondhand-item-bottom strong {
     font-family: "Montserrat", sans-serif;
-    font-size: 1.3rem;
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: var(--scout-brown, #4e2b1a);
 }
 
 .secondhand-item-bottom a {
@@ -2375,17 +2439,25 @@ body.privacy-page {
     }
 }
 
+@media (max-width: 900px) {
+    .secondhand-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
 @media (max-width: 760px) {
-    .secondhand-hero {
-        min-height: 560px;
+    .secondhand-process,
+    .secondhand-items {
+        padding-left: 6%;
+        padding-right: 6%;
     }
 
-    .secondhand-hero .page-hero-content {
-        padding: 140px 6% 48px;
+    .secondhand-checklist {
+        padding: 22px 18px;
     }
 
-    .secondhand-hero h1 {
-        letter-spacing: -2px;
+    .secondhand-scroll {
+        margin-inline: 0;
     }
 
     .secondhand-intro,
