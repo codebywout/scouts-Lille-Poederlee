@@ -288,13 +288,16 @@ function scouts_render_json_ld(): string
         // Keep fallback contact details.
     }
 
+    $logoUrl = 'https://scoutslille.be/assets/images/scouts.png';
+
     $payload = [
         '@context' => 'https://schema.org',
         '@type' => 'LocalBusiness',
         'name' => 'Scouts Lille-Poederlee',
         'url' => 'https://scoutslille.be/',
         'email' => $email,
-        'image' => 'https://scoutslille.be/assets/images/scouts.png',
+        'logo' => $logoUrl,
+        'image' => $logoUrl,
         'address' => [
             '@type' => 'PostalAddress',
             'streetAddress' => $street,

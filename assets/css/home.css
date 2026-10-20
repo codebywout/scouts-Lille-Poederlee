@@ -344,7 +344,7 @@ body.home-page .hero {
     position: relative;
     z-index: 1;
     display: grid;
-    grid-template-columns: 88px minmax(0, 1fr);
+    grid-template-columns: auto minmax(0, 1fr);
     gap: 14px 16px;
     align-items: center;
     cursor: pointer;
@@ -353,7 +353,7 @@ body.home-page .hero {
 }
 
 .agenda-summary:has(.agenda-thumb) {
-    grid-template-columns: 88px minmax(0, 1fr) 84px;
+    grid-template-columns: auto minmax(0, 1fr) 84px;
 }
 
 .agenda-summary::-webkit-details-marker {
@@ -406,7 +406,36 @@ body.home-page .hero {
     box-sizing: border-box;
 }
 
-.agenda-date strong {
+.agenda-date.is-range {
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: auto;
+    min-width: 118px;
+    aspect-ratio: auto;
+    min-height: 88px;
+    padding: 10px 12px;
+}
+
+.agenda-date-part {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+}
+
+.agenda-date-sep {
+    flex: 0 0 auto;
+    width: 10px;
+    height: 2px;
+    border-radius: 999px;
+    background: rgba(211, 138, 45, 0.7);
+}
+
+.agenda-date strong,
+.agenda-date-part strong {
     display: block;
     font-family: "Montserrat", sans-serif;
     font-size: 26px;
@@ -414,13 +443,25 @@ body.home-page .hero {
     color: var(--scout-brown);
 }
 
-.agenda-date span {
+.agenda-date.is-range .agenda-date-part strong {
+    font-size: 22px;
+    letter-spacing: -0.02em;
+}
+
+.agenda-date > span,
+.agenda-date-part > span {
     margin-top: 6px;
     font-size: 11px;
     font-weight: 800;
     letter-spacing: 1.5px;
     color: var(--scout-orange);
     text-transform: uppercase;
+}
+
+.agenda-date.is-range .agenda-date-part > span {
+    margin-top: 5px;
+    font-size: 10px;
+    letter-spacing: 1.1px;
 }
 
 .agenda-body {
@@ -965,13 +1006,13 @@ body.home-page .hero {
     }
 
     .agenda-summary {
-        grid-template-columns: 64px minmax(0, 1fr);
+        grid-template-columns: auto minmax(0, 1fr);
         gap: 12px;
         padding-right: 28px;
     }
 
     .agenda-summary:has(.agenda-thumb) {
-        grid-template-columns: 64px minmax(0, 1fr) 56px;
+        grid-template-columns: auto minmax(0, 1fr) 56px;
     }
 
     .agenda-date {
@@ -980,14 +1021,36 @@ body.home-page .hero {
         padding: 8px 6px;
     }
 
-    .agenda-date strong {
+    .agenda-date.is-range {
+        width: auto;
+        min-width: 96px;
+        min-height: 64px;
+        gap: 6px;
+        padding: 8px 9px;
+    }
+
+    .agenda-date strong,
+    .agenda-date-part strong {
         font-size: 22px;
     }
 
-    .agenda-date span {
+    .agenda-date.is-range .agenda-date-part strong {
+        font-size: 18px;
+    }
+
+    .agenda-date > span,
+    .agenda-date-part > span {
         margin-top: 5px;
         font-size: 10px;
         letter-spacing: 1.2px;
+    }
+
+    .agenda-date.is-range .agenda-date-part > span {
+        font-size: 9px;
+    }
+
+    .agenda-date-sep {
+        width: 8px;
     }
 
     .agenda-body {
@@ -1423,14 +1486,14 @@ body.home-page .hero {
     }
 
     .agenda-summary {
-        grid-template-columns: 58px minmax(0, 1fr);
+        grid-template-columns: auto minmax(0, 1fr);
         gap: 10px;
         padding-right: 26px;
     }
 
     .agenda-summary:has(.agenda-thumb),
     .news-summary:has(.news-thumb) {
-        grid-template-columns: 58px minmax(0, 1fr);
+        grid-template-columns: auto minmax(0, 1fr);
     }
 
     .agenda-thumb,
@@ -1444,14 +1507,36 @@ body.home-page .hero {
         border-radius: 11px;
     }
 
-    .agenda-date strong {
+    .agenda-date.is-range {
+        width: auto;
+        min-width: 88px;
+        min-height: 58px;
+        gap: 5px;
+        padding: 7px 8px;
+    }
+
+    .agenda-date strong,
+    .agenda-date-part strong {
         font-size: 20px;
     }
 
-    .agenda-date span {
+    .agenda-date.is-range .agenda-date-part strong {
+        font-size: 16px;
+    }
+
+    .agenda-date > span,
+    .agenda-date-part > span {
         margin-top: 4px;
         font-size: 9px;
         letter-spacing: 1px;
+    }
+
+    .agenda-date.is-range .agenda-date-part > span {
+        font-size: 8px;
+    }
+
+    .agenda-date-sep {
+        width: 7px;
     }
 
     .agenda-body h3,

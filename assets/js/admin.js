@@ -515,6 +515,8 @@
       newItem: {
         day: "",
         month: "",
+        endDay: "",
+        endMonth: "",
         title: "",
         text: "",
         link: "",
@@ -528,6 +530,7 @@
           tag: "input",
           type: "number",
           row: true,
+          dateGroup: "start",
           default: "",
           min: 1,
           max: 31,
@@ -539,6 +542,43 @@
           label: "Maand",
           tag: "select",
           row: true,
+          dateGroup: "start",
+          default: "",
+          placeholder: "Maand",
+          options: [
+            "SEP",
+            "OKT",
+            "NOV",
+            "DEC",
+            "JAN",
+            "FEB",
+            "MAA",
+            "APR",
+            "MEI",
+            "JUN",
+            "JUL",
+            "AUG",
+          ],
+        },
+        {
+          key: "endDay",
+          label: "Dag",
+          tag: "input",
+          type: "number",
+          row: true,
+          dateGroup: "end",
+          default: "",
+          min: 1,
+          max: 31,
+          inputmode: "numeric",
+          placeholder: "bv. 3",
+        },
+        {
+          key: "endMonth",
+          label: "Maand",
+          tag: "select",
+          row: true,
+          dateGroup: "end",
           default: "",
           placeholder: "Maand",
           options: [
@@ -1060,10 +1100,53 @@
             `;
     };
 
+    const agendaDateGroups = [
+      {
+        id: "start",
+        title: "Startdatum",
+        hint: "",
+      },
+      {
+        id: "end",
+        title: "Einddatum (optioneel)",
+      },
+    ];
+
     container.innerHTML = items
       .map((item, index) => {
-        const rowHtml = rowFields.length
-          ? `
+        const rowHtml =
+          type === "agenda" && rowFields.length
+            ? `
+                        <div class="admin-agenda-dates">
+                            ${agendaDateGroups
+                              .map((group) => {
+                                const groupFields = rowFields.filter(
+                                  (field) => field.dateGroup === group.id,
+                                );
+                                if (!groupFields.length) return "";
+                                return `
+                                  <div class="admin-agenda-date-group">
+                                    <div class="admin-agenda-date-heading">
+                                      <strong>${escapeHtml(group.title)}</strong>
+                                      ${
+                                        group.hint
+                                          ? `<span>${escapeHtml(group.hint)}</span>`
+                                          : ""
+                                      }
+                                    </div>
+                                    <div class="admin-item-row admin-agenda-date-row">
+                                      ${groupFields
+                                        .map((f) => fieldHtml(f, item, index))
+                                        .join("")}
+                                    </div>
+                                  </div>
+                                `;
+                              })
+                              .join("")}
+                        </div>
+                    `
+            : rowFields.length
+              ? `
                         <div
                             class="admin-item-row"
                             style="display:grid; grid-template-columns:1fr 1fr; gap:12px;"
@@ -1073,7 +1156,7 @@
                               .join("")}
                         </div>
                     `
-          : "";
+              : "";
 
         const restHtml = restFields
           .map((f) => fieldHtml(f, item, index))
@@ -1088,9 +1171,16 @@
                                 <strong>${escapeHtml(
                                   type === "agenda"
                                     ? (() => {
-                                        const when = [item.day, item.month]
+                                        const start = [item.day, item.month]
                                           .filter(Boolean)
                                           .join(" ");
+                                        const end = [item.endDay, item.endMonth]
+                                          .filter(Boolean)
+                                          .join(" ");
+                                        const when =
+                                          start && end && end !== start
+                                            ? `${start} – ${end}`
+                                            : start;
                                         const title =
                                           item.title || `Activiteit ${index + 1}`;
                                         return when ? `${when} · ${title}` : title;
@@ -1168,7 +1258,11 @@
         if (value === "" && field.default !== undefined && field.default !== "") {
           value = field.default;
         }
-        if (type === "agenda" && field.key === "day" && value !== "") {
+        if (
+          type === "agenda" &&
+          (field.key === "day" || field.key === "endDay") &&
+          value !== ""
+        ) {
           value = String(Math.min(31, Math.max(1, Number(value) || 1)));
         }
         items[index][field.key] = value;
@@ -1842,7 +1936,9 @@
     renderAdminPanel();
 
     document.addEventListener("input", (event) => {
-      const dayInput = event.target.closest("[data-field='agenda-day']");
+      const dayInput = event.target.closest(
+        "[data-field='agenda-day'], [data-field='agenda-endDay']",
+      );
       if (dayInput) {
         dayInput.value = dayInput.value.replace(/[^0-9]/g, "");
         if (dayInput.value !== "") {
@@ -1923,10 +2019,19 @@
           const month =
             collapsibleItem.querySelector("[data-field='agenda-month']")
               ?.value || "";
+          const endDay =
+            collapsibleItem.querySelector("[data-field='agenda-endDay']")
+              ?.value || "";
+          const endMonth =
+            collapsibleItem.querySelector("[data-field='agenda-endMonth']")
+              ?.value || "";
           const title =
             collapsibleItem.querySelector("[data-field='agenda-title']")
               ?.value.trim() || `Activiteit ${itemIndex + 1}`;
-          const when = [day, month].filter(Boolean).join(" ");
+          const start = [day, month].filter(Boolean).join(" ");
+          const end = [endDay, endMonth].filter(Boolean).join(" ");
+          const when =
+            start && end && end !== start ? `${start} – ${end}` : start;
           summary.textContent = when ? `${when} · ${title}` : title;
         } else if (summary && type === "faq") {
           const question =

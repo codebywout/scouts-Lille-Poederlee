@@ -480,6 +480,46 @@ html:has(body.admin-page) {
     white-space: nowrap;
 }
 
+.admin-agenda-dates {
+    display: grid;
+    gap: 12px;
+}
+
+.admin-agenda-date-group {
+    display: grid;
+    gap: 8px;
+    padding: 12px;
+    border: 1px solid rgba(78, 43, 26, 0.1);
+    border-radius: 14px;
+    background: rgba(255, 252, 247, 0.72);
+}
+
+.admin-agenda-date-heading {
+    display: grid;
+    gap: 2px;
+}
+
+.admin-agenda-date-heading strong {
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--scout-brown, #4e2b1a);
+}
+
+.admin-agenda-date-heading span {
+    color: rgba(78, 43, 26, 0.62);
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.4;
+}
+
+.admin-agenda-date-row {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+    gap: 12px !important;
+    width: 100%;
+    min-width: 0;
+}
+
 .admin-agenda-photo-field {
     display: grid;
     gap: 8px;

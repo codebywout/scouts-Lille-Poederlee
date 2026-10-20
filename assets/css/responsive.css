@@ -549,7 +549,7 @@
     }
 
     .agenda-summary {
-        grid-template-columns: 66px minmax(0, 1fr);
+        grid-template-columns: auto minmax(0, 1fr);
         gap: 10px;
     }
 
@@ -568,11 +568,20 @@
         padding-inline: 6px;
     }
 
-    .agenda-date strong {
+    .agenda-date.is-range {
+        width: auto;
+        min-width: 96px;
+        gap: 6px;
+        padding-inline: 8px;
+    }
+
+    .agenda-date strong,
+    .agenda-date-part strong {
         white-space: nowrap;
     }
 
-    .agenda-date span {
+    .agenda-date > span,
+    .agenda-date-part > span {
         margin-top: 6px;
         font-size: 10px;
         white-space: nowrap;

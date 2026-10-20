@@ -428,25 +428,96 @@
     items.splice(0, items.length, ...sortedItems);
   }
 
-  function agendaItemDate(item, now = new Date()) {
-    const monthKey = String(item?.month || "").toUpperCase();
+  function agendaSeasonStartYear(now = new Date()) {
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    return today.getMonth() >= 8 ? today.getFullYear() : today.getFullYear() - 1;
+  }
+
+  function agendaPartsToDate(dayValue, monthValue, now = new Date()) {
+    const monthKey = String(monthValue || "").toUpperCase();
     const calendarMonth = AGENDA_CALENDAR_MONTH[monthKey];
-    const day = Number(item?.day);
+    const day = Number(dayValue);
     if (calendarMonth === undefined || !Number.isFinite(day) || day < 1) {
       return null;
     }
 
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const seasonStartYear =
-      today.getMonth() >= 8 ? today.getFullYear() : today.getFullYear() - 1;
+    const seasonStartYear = agendaSeasonStartYear(now);
     const year = calendarMonth >= 8 ? seasonStartYear : seasonStartYear + 1;
     return new Date(year, calendarMonth, day);
+  }
+
+  function agendaItemDate(item, now = new Date()) {
+    return agendaPartsToDate(item?.day, item?.month, now);
+  }
+
+  function agendaItemHasRange(item) {
+    const endDay = Number(item?.endDay);
+    const endMonth = String(item?.endMonth || "").trim();
+    if (!endMonth || !Number.isFinite(endDay) || endDay < 1) return false;
+    const startDay = String(item?.day || "").trim();
+    const startMonth = String(item?.month || "")
+      .trim()
+      .toUpperCase();
+    return !(
+      String(endDay) === startDay && endMonth.toUpperCase() === startMonth
+    );
+  }
+
+  function agendaItemEndDate(item, now = new Date()) {
+    const start = agendaItemDate(item, now);
+    if (!agendaItemHasRange(item)) return start;
+
+    let end = agendaPartsToDate(item.endDay, item.endMonth, now);
+    if (start && end && end < start) {
+      end = new Date(end.getFullYear() + 1, end.getMonth(), end.getDate());
+    }
+    return end || start;
+  }
+
+  function formatAgendaDateParts(item) {
+    const day = String(item?.day || "").trim();
+    const month = String(item?.month || "").trim().toUpperCase();
+    if (!agendaItemHasRange(item)) {
+      return { day, month, isRange: false };
+    }
+
+    return {
+      day,
+      month,
+      endDay: String(item.endDay || "").trim(),
+      endMonth: String(item.endMonth || "").trim().toUpperCase(),
+      isRange: true,
+    };
+  }
+
+  function buildAgendaDateHtml(item) {
+    const parts = formatAgendaDateParts(item);
+    if (!parts.isRange) {
+      return `
+                    <div class="agenda-date">
+                      <strong>${escapeHtml(parts.day)}</strong>
+                      <span>${escapeHtml(parts.month)}</span>
+                    </div>`;
+    }
+
+    return `
+                    <div class="agenda-date is-range" aria-label="${escapeHtml(parts.day)} ${escapeHtml(parts.month)} tot ${escapeHtml(parts.endDay)} ${escapeHtml(parts.endMonth)}">
+                      <span class="agenda-date-part">
+                        <strong>${escapeHtml(parts.day)}</strong>
+                        <span>${escapeHtml(parts.month)}</span>
+                      </span>
+                      <span class="agenda-date-sep" aria-hidden="true"></span>
+                      <span class="agenda-date-part">
+                        <strong>${escapeHtml(parts.endDay)}</strong>
+                        <span>${escapeHtml(parts.endMonth)}</span>
+                      </span>
+                    </div>`;
   }
 
   function filterUpcomingAgendaItems(items, now = new Date()) {
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     return sortAgendaItems(items).filter((item) => {
-      const date = agendaItemDate(item, now);
+      const date = agendaItemEndDate(item, now);
       return !date || date >= today;
     });
   }
@@ -2492,10 +2563,7 @@
                 return `
                 <details class="agenda-item ${image ? "has-agenda-image" : ""}">
                   <summary class="agenda-summary">
-                    <div class="agenda-date">
-                      <strong>${escapeHtml(item.day)}</strong>
-                      <span>${escapeHtml(item.month)}</span>
-                    </div>
+                    ${buildAgendaDateHtml(item)}
                     <div class="agenda-body">
                       <h3>${escapeHtml(item.title)}</h3>
                     </div>
