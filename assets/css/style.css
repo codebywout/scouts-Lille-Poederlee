@@ -1,7 +1,7 @@
-@import url("base.css?v=20261020-4");
-@import url("layout.css?v=20261020-4");
-@import url("components.css?v=20261020-4");
-@import url("home.css?v=20261020-4");
-@import url("pages.css?v=20261020-4");
-@import url("admin.css?v=20261020-4");
-@import url("responsive.css?v=20261020-4");
+/* Fallback when style.php is not routed. Prefer /assets/css/style.css via style.php. */
+@import url("base.css");
+@import url("layout.css");
+@import url("components.css");
+@import url("home.css");
+@import url("pages.css");
+@import url("responsive.css");

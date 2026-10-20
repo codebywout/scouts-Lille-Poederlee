@@ -75,6 +75,7 @@ $pageRoutes = [
     '/verkenners' => 'verkenners',
     '/welpen' => 'welpen',
     '/privacybeleid' => 'privacybeleid',
+    '/404' => '404',
 ];
 
 if (isset($pageRoutes[$requestPath])) {
@@ -85,6 +86,11 @@ if (isset($pageRoutes[$requestPath])) {
 
 if ($requestPath === '/admin') {
     require __DIR__ . DIRECTORY_SEPARATOR . 'admin-gate.php';
+    exit;
+}
+
+if ($requestPath === '/sitemap.xml') {
+    require __DIR__ . DIRECTORY_SEPARATOR . 'sitemap.php';
     exit;
 }
 
@@ -102,7 +108,11 @@ if (preg_match('#^/assets/.+\.(css|js)$#', $requestPath) === 1) {
 }
 
 if (strncmp($requestPath, '/api/', 5) !== 0 && $requestPath !== '/api') {
-    return false;
+    $localFile = __DIR__ . str_replace('/', DIRECTORY_SEPARATOR, $requestPath);
+    if ($requestPath !== '/' && is_file($localFile)) {
+        return false;
+    }
+    scouts_send_not_found();
 }
 
 $_GET['route'] = trim(substr($requestPath, 5), '/');

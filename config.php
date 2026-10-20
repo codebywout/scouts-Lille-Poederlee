@@ -18,7 +18,7 @@ const SCOUTS_MAX_PDF_UPLOAD_BYTES = 20971520;
  * Bump this on every deploy so HTML/CSS/JS URLs change and old caches are skipped.
  * Format: YYYYMMDD-N
  */
-const SCOUTS_ASSET_VERSION = '20261020-4';
+const SCOUTS_ASSET_VERSION = '20261020-14';
 
 // Best-effort: some hosts allow raising these at runtime.
 @ini_set('upload_max_filesize', '20M');
@@ -165,18 +165,30 @@ function scouts_send_html_cache_headers(): void
     header('Expires: 0');
 }
 
-/** CSS/JS: always revalidate (304 if unchanged, fresh body if changed). */
+/**
+ * CSS/JS: long-cache when versioned via ?v= (HTML always bumps that query).
+ * Callers that stream dynamic CSS/JS without a stable version should override.
+ */
 function scouts_send_asset_revalidate_headers(): void
 {
-    header('Cache-Control: no-cache, must-revalidate');
-    header('Pragma: no-cache');
+    header('Cache-Control: public, max-age=31536000, immutable');
+}
+
+/** Serve the styled 404 page (always with HTTP 404). */
+function scouts_send_not_found(): never
+{
+    http_response_code(404);
+    scouts_send_html_file(
+        SCOUTS_ROOT . DIRECTORY_SEPARATOR . 'pages' . DIRECTORY_SEPARATOR . '404.html',
+        '404'
+    );
 }
 
 /**
  * Serve an HTML file with no-store headers and the current asset version
  * injected into stylesheet/script/image query strings.
  */
-function scouts_send_html_file(string $absolutePath): never
+function scouts_send_html_file(string $absolutePath, ?string $pageId = null): never
 {
     if (!is_file($absolutePath)) {
         http_response_code(404);
@@ -193,16 +205,60 @@ function scouts_send_html_file(string $absolutePath): never
         exit;
     }
 
+    $resolvedPage = $pageId;
+    if ($resolvedPage === null) {
+        $base = strtolower(basename($absolutePath));
+        $resolvedPage = match ($base) {
+            'index.html' => 'index',
+            'admin.html' => 'admin',
+            'login.html' => 'login',
+            'privacyverklaring.html' => 'privacybeleid',
+            default => preg_replace('/\.html$/', '', $base) ?: 'index',
+        };
+    }
+
+    $isPublicChrome = !in_array($resolvedPage, ['admin', 'login'], true);
+    if ($isPublicChrome) {
+        require_once SCOUTS_ROOT . DIRECTORY_SEPARATOR . 'includes' . DIRECTORY_SEPARATOR . 'site-chrome.php';
+
+        $assetPrefix = str_contains(str_replace('\\', '/', $absolutePath), '/pages/')
+            ? '../assets/'
+            : 'assets/';
+        $chromeOptions = [
+            'page' => $resolvedPage,
+            'asset_prefix' => $assetPrefix,
+            'home_hash_prefix' => '/#',
+        ];
+
+        if (str_contains($html, '<!--SITE_HEADER-->')) {
+            $html = str_replace('<!--SITE_HEADER-->', scouts_render_site_header($chromeOptions), $html);
+        }
+        if (str_contains($html, '<!--SITE_FOOTER-->')) {
+            $html = str_replace('<!--SITE_FOOTER-->', scouts_render_site_footer($chromeOptions), $html);
+        }
+
+        if (!str_contains($html, 'property="og:title"')) {
+            $shareTags = scouts_render_share_meta_tags($resolvedPage);
+            $html = preg_replace('/<\/head>/i', $shareTags . "\n</head>", $html, 1) ?? $html;
+        }
+    }
+
     $version = scouts_asset_version();
     $html = preg_replace_callback(
-        '/\b(href|src)=(["\'])([^"\']+\.(?:css|js|png|jpe?g|webp|gif|svg|ico))(?:\?[^"\']*)?\2/i',
+        '/\b(href|src)=(["\'])([^"\'?]+\.(?:css|js|png|jpe?g|webp|gif|svg|ico))(?:\?([^"\']*))?\2/i',
         static function (array $matches) use ($version): string {
             $path = $matches[3];
             // Only version local site assets (not CDNs / external URLs).
             if (preg_match('#^(https?:)?//#i', $path) === 1) {
                 return $matches[0];
             }
-            return $matches[1] . '=' . $matches[2] . $path . '?v=' . $version . $matches[2];
+            $query = [];
+            if (!empty($matches[4])) {
+                parse_str(str_replace('&amp;', '&', $matches[4]), $query);
+            }
+            // Keep params like bundle=admin; always refresh cache buster.
+            $query['v'] = $version;
+            return $matches[1] . '=' . $matches[2] . $path . '?' . http_build_query($query) . $matches[2];
         },
         $html
     ) ?? $html;

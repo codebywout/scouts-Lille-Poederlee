@@ -9,4 +9,4 @@ if (!scouts_session_is_admin()) {
     exit;
 }
 
-scouts_send_html_file(__DIR__ . DIRECTORY_SEPARATOR . 'admin.html');
+scouts_send_html_file(__DIR__ . DIRECTORY_SEPARATOR . 'admin.html', 'admin');

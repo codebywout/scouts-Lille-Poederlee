@@ -18,7 +18,7 @@ DirectoryIndex page.php
     php_value memory_limit 256M
 </IfModule>
 
-# Always prefer a fresh HTML shell; CSS/JS must revalidate.
+# Fresh HTML shell; versioned CSS/JS (?v=) may be cached long-term.
 <IfModule mod_headers.c>
     <FilesMatch "\.(?:html|htm|php)$">
         Header set Cache-Control "no-cache, no-store, must-revalidate"
@@ -26,8 +26,7 @@ DirectoryIndex page.php
         Header set Expires "0"
     </FilesMatch>
     <FilesMatch "\.(?:css|js)$">
-        Header set Cache-Control "no-cache, must-revalidate"
-        Header set Pragma "no-cache"
+        Header set Cache-Control "public, max-age=31536000, immutable"
     </FilesMatch>
 </IfModule>
 
@@ -36,9 +35,11 @@ RewriteRule ^api/(.*)$ api/index.php?route=$1 [QSA,END]
 
 # Dynamic CSS entrypoint so @import URLs always carry the current asset version.
 RewriteRule ^assets/css/style\.css$ assets/css/style.php [END,QSA]
+RewriteRule ^sitemap\.xml$ sitemap.php [END]
 
 RewriteRule ^login/?$ page.php?page=login [END,QSA]
 RewriteRule ^admin/?$ admin-gate.php [END]
+RewriteRule ^404/?$ page.php?page=404 [END,QSA]
 RewriteRule ^index\.html$ / [R=301,END]
 RewriteRule ^admin/index\.html$ /admin [R=301,END]
 RewriteRule ^admin\.html$ /admin [R=301,END]
@@ -53,9 +54,16 @@ RewriteRule ^(over-ons|inschrijven|jins|jongverkenners|kapoenen|nieuws|tweedehan
 RewriteRule ^(over-ons|inschrijven|jins|jongverkenners|kapoenen|nieuws|tweedehands|uniform|verkenners|welpen)/?$ page.php?page=$1 [END,QSA]
 RewriteRule ^$ page.php?page=index [END,QSA]
 RewriteRule ^data(?:/|$) - [F,END]
+RewriteRule ^includes(?:/|$) - [F,END]
 RewriteRule ^(?:\.env|\.git|node_modules)(?:/|$) - [F,END]
-RewriteRule ^(?:config\.php|router\.php|server(?:/|$)) - [F,END]
+RewriteRule ^(?:config\.php|router\.php|server(?:/|$)|sitemap\.php) - [F,END]
 RewriteRule ^auth-config\.php$ - [F,END]
+
+# Unknown public paths → styled 404 (keeps HTTP 404 via page.php).
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_URI} !^/(api|assets|uploads)/
+RewriteRule ^ page.php?page=404 [END,QSA]
 
 <FilesMatch "^(?:config\.php|router\.php|auth-config\.php|Dockerfile|docker-compose\.yml|package(?:-lock)?\.json)$">
     Require all denied

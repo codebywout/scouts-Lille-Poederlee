@@ -11,8 +11,7 @@
     }
 
     /* Admin actions stay visible on every screen size. */
-    .admin-page .admin-toolbar,
-    .admin-page .admin-tool-btn {
+    .admin-page .admin-toolbar {
         display: flex;
     }
 
@@ -423,14 +422,6 @@
 
     .admin-page .admin-nav-inner {
         padding-block: 10px;
-    }
-
-    .admin-page .admin-toolbar {
-        display: flex;
-    }
-
-    .admin-page .admin-tool-btn {
-        display: inline-flex;
     }
 
     .admin-shell {

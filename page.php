@@ -19,14 +19,15 @@ $pages = [
     'verkenners' => 'pages' . DIRECTORY_SEPARATOR . 'verkenners.html',
     'welpen' => 'pages' . DIRECTORY_SEPARATOR . 'welpen.html',
     'privacybeleid' => 'pages' . DIRECTORY_SEPARATOR . 'privacyverklaring.html',
+    '404' => 'pages' . DIRECTORY_SEPARATOR . '404.html',
 ];
 
 if (!isset($pages[$page])) {
-    http_response_code(404);
-    header('Content-Type: text/plain; charset=utf-8');
-    scouts_send_html_cache_headers();
-    echo 'Pagina niet gevonden.';
-    exit;
+    scouts_send_not_found();
 }
 
-scouts_send_html_file(__DIR__ . DIRECTORY_SEPARATOR . $pages[$page]);
+if ($page === '404') {
+    http_response_code(404);
+}
+
+scouts_send_html_file(__DIR__ . DIRECTORY_SEPARATOR . $pages[$page], $page);

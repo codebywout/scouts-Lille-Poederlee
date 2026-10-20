@@ -1000,10 +1000,6 @@ body.home-page .hero {
         grid-template-columns: 64px minmax(0, 1fr);
     }
 
-    .news-item.is-open .news-summary:has(.news-thumb) {
-        grid-template-columns: minmax(0, 1fr);
-    }
-
     .agenda-item.has-agenda-image.is-open .agenda-details-inner,
     .news-item.has-news-image.is-open .news-details-inner {
         grid-template-columns: 1fr;

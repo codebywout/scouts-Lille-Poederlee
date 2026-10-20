@@ -801,9 +801,6 @@ html:has(body.admin-page) {
         display: grid;
         grid-template-columns: minmax(0, 1fr) auto;
         align-items: center;
-    }
-
-    .document-planning-box .document-add-fields {
         min-width: 0;
     }
 }
@@ -1762,6 +1759,30 @@ html:has(body.admin-page) {
     display: none;
 }
 
+.admin-utilities {
+    display: flex;
+    justify-content: flex-end;
+    margin: -4px 0 18px;
+}
+
+.admin-utility-link {
+    border: 0;
+    padding: 0;
+    background: transparent;
+    color: rgba(78, 43, 26, 0.72);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    cursor: pointer;
+}
+
+.admin-utility-link:hover,
+.admin-utility-link:focus-visible {
+    color: var(--scout-orange);
+}
+
 .save-row {
     position: sticky;
     bottom: 16px;
@@ -2278,6 +2299,11 @@ html:has(body.admin-page) {
         order: 3;
         justify-content: center;
         width: 100%;
+    }
+
+    .admin-utilities {
+        justify-content: center;
+        margin: 0 0 16px;
     }
 }
 

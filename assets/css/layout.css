@@ -498,6 +498,14 @@ body.home-page .hero {
 .phone-number {
     display: block;
     color: #555;
+    text-decoration: none;
+}
+
+a.phone-number:hover,
+a.phone-number:focus-visible {
+    color: var(--scout-green, #2f6b4d);
+    text-decoration: underline;
+    text-underline-offset: 2px;
 }
 
 .role {
