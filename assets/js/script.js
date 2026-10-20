@@ -40,7 +40,7 @@
       });
   }
 
-  const IMAGE_ASSET_VERSION = "20261019-26";
+  const IMAGE_ASSET_VERSION = "20261020-4";
 
   function formatLidgeldLabel(amount) {
     const amountNumber = Number(String(amount || "").replace(",", ".").replace(/[^\d.]/g, ""));
@@ -623,6 +623,23 @@
       liquidFrame = requestAnimationFrame(animateLiquid);
     };
 
+    const setRegistrationHelpOpen = (helpButton, panel, open) => {
+      if (!helpButton || !panel) return;
+      panel.classList.toggle("is-open", open);
+      panel.setAttribute("aria-hidden", String(!open));
+      helpButton.setAttribute("aria-expanded", String(open));
+      helpButton.classList.toggle("is-open", open);
+    };
+
+    const collapseRegistrationHelp = () => {
+      qsa("[data-registration-help]").forEach((helpButton) => {
+        const panel = document.getElementById(
+          helpButton.getAttribute("aria-controls"),
+        );
+        setRegistrationHelpOpen(helpButton, panel, false);
+      });
+    };
+
     buttons.forEach((button) => {
       button.addEventListener("click", () => {
         const selectedChoice = button.dataset.registrationChoice;
@@ -640,6 +657,8 @@
           return;
         }
         if (liquidMotion?.toChoice === selectedChoice) return;
+
+        collapseRegistrationHelp();
 
         buttons.forEach((item) => {
           item.setAttribute("aria-selected", String(item === button));
@@ -686,10 +705,11 @@
       button.addEventListener("click", () => {
         const panel = document.getElementById(button.getAttribute("aria-controls"));
         if (!panel) return;
-        const isOpen = panel.hidden === false;
-        panel.hidden = isOpen;
-        button.setAttribute("aria-expanded", String(!isOpen));
-        button.classList.toggle("is-open", !isOpen);
+        setRegistrationHelpOpen(
+          button,
+          panel,
+          !panel.classList.contains("is-open"),
+        );
       });
     });
   }
@@ -901,6 +921,14 @@
             content.style.height = "";
             item._bankCloseTimer = null;
           }, 380);
+
+          const anchor =
+            document.querySelector(".registration-choice") ||
+            document.querySelector(".registration-flow") ||
+            item;
+          requestAnimationFrame(() => {
+            revealOpenedAccordion(anchor);
+          });
           return;
         }
 

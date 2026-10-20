@@ -18,7 +18,7 @@ const SCOUTS_MAX_PDF_UPLOAD_BYTES = 20971520;
  * Bump this on every deploy so HTML/CSS/JS URLs change and old caches are skipped.
  * Format: YYYYMMDD-N
  */
-const SCOUTS_ASSET_VERSION = '20261019-26';
+const SCOUTS_ASSET_VERSION = '20261020-4';
 
 // Best-effort: some hosts allow raising these at runtime.
 @ini_set('upload_max_filesize', '20M');

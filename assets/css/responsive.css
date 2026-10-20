@@ -954,19 +954,21 @@
     }
 
     .branch {
-        min-height: 96px;
-        padding: 14px 14px 14px 16px;
+        min-height: 140px;
+        padding: 18px 16px 18px 18px;
     }
 
     .branch-main h3 {
-        font-size: clamp(18px, 5.4vw, 22px);
-        line-height: 1.15;
+        font-size: clamp(23px, 6vw, 27px);
+        line-height: 1.12;
     }
 
     .branch-main span,
-    .branch-main p {
-        font-size: 13px;
+    .branch-main p,
+    .branch-age {
+        font-size: 15px;
         line-height: 1.4;
+        font-weight: 600;
     }
 
     .agenda-item,
@@ -1157,6 +1159,11 @@
     }
 
     .branch-main h3 {
-        font-size: 17px;
+        font-size: 23px;
+    }
+
+    .branch-age,
+    .branch-main span {
+        font-size: 15px;
     }
 }

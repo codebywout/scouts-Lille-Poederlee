@@ -6,7 +6,7 @@
     background-color: #0d2419;
     background-image:
         linear-gradient(rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.65)),
-        url("/assets/images/domein2.jpg?v=20261019-26");
+        url("/assets/images/domein2.jpg?v=20261020-4");
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
@@ -51,7 +51,7 @@ body.news-page::before {
     background-color: #0d2419;
     background-image:
         linear-gradient(rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.65)),
-        url("/assets/images/domein2.jpg?v=20261019-26");
+        url("/assets/images/domein2.jpg?v=20261020-4");
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
@@ -60,19 +60,19 @@ body.news-page::before {
 body.secondhand-page::before {
     background-image:
         linear-gradient(rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.65)),
-        url("/assets/images/domein3.jpg?v=20261019-26");
+        url("/assets/images/domein3.jpg?v=20261020-4");
 }
 
 body.about-page::before {
     background-image:
         linear-gradient(rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.65)),
-        url("/assets/images/domein4.jpg?v=20261019-26");
+        url("/assets/images/domein4.jpg?v=20261020-4");
 }
 
 body.uniform-page::before {
     background-image:
         linear-gradient(rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.65)),
-        url("/assets/images/domein5.jpg?v=20261019-26");
+        url("/assets/images/domein5.jpg?v=20261020-4");
 }
 
 .registration-page .page-shell,
@@ -194,7 +194,7 @@ body.uniform-page::before {
 }
 
 .page-over-ons .about-hero {
-    background-image: url("/uploads/over-ons.jpg?v=20261019-26") !important;
+    background-image: url("/uploads/over-ons.jpg?v=20261020-4") !important;
 }
 
 .page-hero {
@@ -870,6 +870,22 @@ body.privacy-page {
 }
 
 .registration-help {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.registration-help.is-open {
+    grid-template-rows: 1fr;
+}
+
+.registration-help-inner {
+    min-height: 0;
+    overflow: hidden;
+}
+
+.registration-help-inner > p {
+    margin: 0;
     padding: 14px 16px;
     border: 1px solid rgba(47, 107, 77, 0.16);
     border-radius: 14px;
@@ -877,7 +893,16 @@ body.privacy-page {
     color: var(--scout-brown);
     font-size: 14px;
     line-height: 1.5;
-    animation: registration-help-in 0.28s ease;
+    opacity: 0;
+    transform: translateY(-6px);
+    transition:
+        opacity 0.24s ease,
+        transform 0.28s cubic-bezier(0.22, 0.8, 0.24, 1);
+}
+
+.registration-help.is-open .registration-help-inner > p {
+    opacity: 1;
+    transform: none;
 }
 
 .registration-info-new .registration-help-toggle {
@@ -898,17 +923,9 @@ body.privacy-page {
     color: #fff;
 }
 
-.registration-info-new .registration-help {
+.registration-info-new .registration-help-inner > p {
     border-color: rgba(211, 138, 45, 0.22);
     background: rgba(255, 248, 238, 0.95);
-}
-
-.registration-help[hidden] {
-    display: none;
-}
-
-.registration-help p {
-    margin: 0;
 }
 
 .visually-hidden {
@@ -923,15 +940,10 @@ body.privacy-page {
     border: 0;
 }
 
-@keyframes registration-help-in {
-    from {
-        opacity: 0;
-        transform: translateY(-6px);
-    }
-
-    to {
-        opacity: 1;
-        transform: none;
+@media (prefers-reduced-motion: reduce) {
+    .registration-help,
+    .registration-help-inner > p {
+        transition: none;
     }
 }
 
