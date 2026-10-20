@@ -360,28 +360,49 @@ try {
         }
         $allowedMimes = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp', 'image/gif' => 'gif'];
         $imageInfo = @getimagesize($file['tmp_name']);
-        $mime = is_array($imageInfo) ? (string) ($imageInfo['mime'] ?? '') : '';
+        if (!is_array($imageInfo)) {
+            scouts_json_response(['message' => 'Ongeldig afbeeldingsbestand. Gebruik JPG, PNG, WEBP of GIF.'], 400);
+        }
+        $mimeFromImage = (string) ($imageInfo['mime'] ?? '');
+        if (!isset($allowedMimes[$mimeFromImage]) || str_contains($mimeFromImage, 'svg')) {
+            scouts_json_response(['message' => 'Ongeldig afbeeldingsbestand. Gebruik JPG, PNG, WEBP of GIF.'], 400);
+        }
+        // Cross-check content sniffing when fileinfo is available.
         if (function_exists('finfo_open')) {
             $fileInfo = finfo_open(FILEINFO_MIME_TYPE);
             if ($fileInfo !== false) {
                 $detectedMime = finfo_file($fileInfo, $file['tmp_name']);
                 finfo_close($fileInfo);
-                if (is_string($detectedMime) && $detectedMime !== '') {
-                    $mime = $detectedMime;
+                if (
+                    is_string($detectedMime)
+                    && $detectedMime !== ''
+                    && $detectedMime !== $mimeFromImage
+                    && !isset($allowedMimes[$detectedMime])
+                ) {
+                    scouts_json_response(['message' => 'Ongeldig afbeeldingsbestand. Gebruik JPG, PNG, WEBP of GIF.'], 400);
                 }
             }
         }
-        if (!isset($allowedMimes[$mime]) || !is_array($imageInfo)) {
-            scouts_json_response(['message' => 'Ongeldig afbeeldingsbestand. Gebruik JPG, PNG, WEBP of GIF.'], 400);
-        }
+        $mime = $mimeFromImage;
 
         $width = (int) ($imageInfo[0] ?? 0);
         $height = (int) ($imageInfo[1] ?? 0);
-        if ($width < 1 || $height < 1) {
-            scouts_json_response(['message' => 'Ongeldig afbeeldingsbestand. Gebruik JPG, PNG, WEBP of GIF.'], 400);
+        try {
+            scouts_photo_assert_safe_dimensions($width, $height);
+        } catch (InvalidArgumentException $e) {
+            scouts_json_response(['message' => $e->getMessage()], 400);
         }
 
-        $path = scouts_store_uploaded_photo($file['tmp_name'], $filename, $mime, $width, $height);
+        try {
+            $path = scouts_store_uploaded_photo($file['tmp_name'], $filename, $mime, $width, $height);
+        } catch (InvalidArgumentException $e) {
+            scouts_json_response(['message' => $e->getMessage()], 400);
+        } catch (Throwable $e) {
+            error_log('scouts photo upload failed: ' . $e->getMessage());
+            scouts_json_response([
+                'message' => 'Foto verwerken mislukt. Probeer het opnieuw of kies een andere foto.',
+            ], 500);
+        }
         scouts_json_response(['success' => true, 'path' => $path]);
     }
 

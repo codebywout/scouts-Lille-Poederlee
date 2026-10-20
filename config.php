@@ -8,19 +8,32 @@ const SCOUTS_GOOGLE_DRIVE_SETTINGS_FILE = SCOUTS_ROOT . DIRECTORY_SEPARATOR . 'd
 const SCOUTS_GOOGLE_SERVICE_ACCOUNT_FILE = SCOUTS_ROOT . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . '.google-service-account.json';
 const SCOUTS_GOOGLE_OAUTH_FILE = SCOUTS_ROOT . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . '.google-oauth.json';
 const SCOUTS_UPLOADS_DIR = SCOUTS_ROOT . DIRECTORY_SEPARATOR . 'uploads';
+/** Private originals — not web-readable (see uploads/originals/.htaccess). */
+const SCOUTS_PHOTO_ORIGINALS_DIR = SCOUTS_UPLOADS_DIR . DIRECTORY_SEPARATOR . 'originals';
 const SCOUTS_MAX_UPLOAD_BYTES = 20971520;
-/** Match manually optimized heroes: sharp on retina, light to download. */
-const SCOUTS_PHOTO_MAX_EDGE = 2400;
+/** Public master max edge; full-res bytes live in originals/. */
+const SCOUTS_PHOTO_MAX_EDGE = 4000;
 const SCOUTS_PHOTO_THUMB_EDGE = 800;
 const SCOUTS_PHOTO_JPEG_QUALITY = 90;
 const SCOUTS_PHOTO_THUMB_JPEG_QUALITY = 82;
+/**
+ * Responsive widths used by the public site (srcset). Named by request width;
+ * pixel width is min(requested, master width) — never upscaled.
+ */
+const SCOUTS_PHOTO_VARIANT_WIDTHS = [480, 800, 1200, 1600, 2400];
+const SCOUTS_PHOTO_VARIANT_JPEG_QUALITY = 88;
+const SCOUTS_PHOTO_WEBP_QUALITY = 85;
+const SCOUTS_PHOTO_AVIF_QUALITY = 50;
+/** Decompression-bomb guards (pre-decode). */
+const SCOUTS_PHOTO_MAX_DIMENSION = 10000;
+const SCOUTS_PHOTO_MAX_PIXELS = 40000000; // 40 MP
 const SCOUTS_MAX_PDF_UPLOAD_BYTES = 20971520;
 
 /**
  * Bump this on every deploy so HTML/CSS/JS URLs change and old caches are skipped.
  * Format: YYYYMMDD-N
  */
-const SCOUTS_ASSET_VERSION = '20261020-55';
+const SCOUTS_ASSET_VERSION = '20261020-60';
 const SCOUTS_LOGIN_ATTEMPTS_FILE = SCOUTS_ROOT . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . '.login-attempts.json';
 const SCOUTS_LOGIN_MAX_ATTEMPTS = 5;
 const SCOUTS_LOGIN_LOCKOUT_SECONDS = 900;
@@ -93,6 +106,8 @@ if (!is_file($scoutsAuthConfig)) {
 if (is_readable($scoutsAuthConfig)) {
     require_once $scoutsAuthConfig;
 }
+
+require_once SCOUTS_ROOT . DIRECTORY_SEPARATOR . 'includes' . DIRECTORY_SEPARATOR . 'photo-pipeline.php';
 
 function scouts_env(string $name, ?string $default = null): ?string
 {
@@ -692,14 +707,8 @@ function scouts_delete_photo_versions(string $filename): void
         throw new InvalidArgumentException('Ongeldige bestandsnaam.');
     }
 
-    foreach ([$basename, $basename . '-thumb'] as $name) {
-        foreach (['jpg', 'jpeg', 'png', 'webp', 'gif'] as $extension) {
-            $path = SCOUTS_UPLOADS_DIR . DIRECTORY_SEPARATOR . $name . '.' . $extension;
-            if (is_file($path) && !unlink($path)) {
-                throw new RuntimeException('Foto kon niet worden verwijderd.');
-            }
-        }
-    }
+    scouts_photo_unlink_public_derivatives($basename);
+    scouts_photo_unlink_original($basename);
 }
 
 /**
@@ -722,6 +731,36 @@ function scouts_protected_upload_filenames(): array
 }
 
 /**
+ * Mark known derivative filenames for an upload stem (no extension).
+ *
+ * @param array<string, true> $found
+ */
+function scouts_mark_upload_variants(string $stem, array &$found): void
+{
+    foreach (['jpg', 'jpeg', 'png', 'webp', 'gif', 'avif'] as $extension) {
+        $found[$stem . '-thumb.' . $extension] = true;
+        $found[$stem . '-md.' . $extension] = true;
+        $found[$stem . '-display.' . $extension] = true;
+        foreach (SCOUTS_PHOTO_VARIANT_WIDTHS as $width) {
+            $found[$stem . '-w' . $width . '.' . $extension] = true;
+        }
+    }
+}
+
+/**
+ * @param array<string, true> $referenced
+ */
+function scouts_upload_stem_is_referenced(string $stem, array $referenced): bool
+{
+    foreach (['jpg', 'jpeg', 'png', 'webp', 'gif'] as $extension) {
+        if (isset($referenced[$stem . '.' . $extension])) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
  * Collect upload basenames referenced by site-data (and their -thumb siblings).
  *
  * @param mixed $value
@@ -734,10 +773,11 @@ function scouts_collect_referenced_uploads(mixed $value, array &$found = []): ar
             $name = basename(str_replace('\\', '/', $matches[1]));
             if ($name !== '' && $name !== '.' && $name !== '..') {
                 $found[$name] = true;
-                if (preg_match('/^(.+)-thumb(\.[a-z0-9]+)$/i', $name, $thumb) === 1) {
-                    $found[$thumb[1] . $thumb[2]] = true;
+                if (preg_match('/^(.+)-(?:thumb|md|display|w\d+)(\.[a-z0-9]+)$/i', $name, $variant) === 1) {
+                    $found[$variant[1] . $variant[2]] = true;
+                    scouts_mark_upload_variants($variant[1], $found);
                 } elseif (preg_match('/^(.+)(\.[a-z0-9]+)$/i', $name, $full) === 1) {
-                    $found[$full[1] . '-thumb' . $full[2]] = true;
+                    scouts_mark_upload_variants($full[1], $found);
                 }
             }
         }
@@ -766,7 +806,7 @@ function scouts_list_orphan_uploads(): array
     foreach (scouts_protected_upload_filenames() as $protected) {
         $referenced[$protected] = true;
         if (preg_match('/^(.+)(\.[a-z0-9]+)$/i', $protected, $parts) === 1) {
-            $referenced[$parts[1] . '-thumb' . $parts[2]] = true;
+            scouts_mark_upload_variants($parts[1], $referenced);
         }
     }
 
@@ -782,6 +822,13 @@ function scouts_list_orphan_uploads(): array
         }
         $path = SCOUTS_UPLOADS_DIR . DIRECTORY_SEPARATOR . $entry;
         if (!is_file($path) || isset($referenced[$entry])) {
+            continue;
+        }
+        // Width/WebP derivatives of a referenced master are never orphans.
+        if (
+            preg_match('/^(.+)-w\d+\.(jpe?g|webp)$/i', $entry, $widthMatch) === 1
+            && scouts_upload_stem_is_referenced($widthMatch[1], $referenced)
+        ) {
             continue;
         }
         $orphans[] = [
@@ -832,238 +879,6 @@ function scouts_purge_orphan_uploads(?array $names = null): array
     return $deleted;
 }
 
-function scouts_photo_exif_orientation(string $sourcePath): int
-{
-    if (!function_exists('exif_read_data')) {
-        return 1;
-    }
-
-    $exif = @exif_read_data($sourcePath);
-    if (!is_array($exif)) {
-        return 1;
-    }
-
-    $orientation = (int) ($exif['Orientation'] ?? 1);
-    return $orientation >= 1 && $orientation <= 8 ? $orientation : 1;
-}
-
-/**
- * @param \GdImage|resource $image
- * @return \GdImage|resource
- */
-function scouts_photo_apply_orientation($image, int $orientation)
-{
-    switch ($orientation) {
-        case 2:
-            if (function_exists('imageflip')) {
-                imageflip($image, IMG_FLIP_HORIZONTAL);
-            }
-            return $image;
-        case 3:
-            $rotated = imagerotate($image, 180, 0);
-            break;
-        case 4:
-            if (function_exists('imageflip')) {
-                imageflip($image, IMG_FLIP_VERTICAL);
-            }
-            return $image;
-        case 5:
-            if (function_exists('imageflip')) {
-                imageflip($image, IMG_FLIP_VERTICAL);
-            }
-            $rotated = imagerotate($image, -90, 0);
-            break;
-        case 6:
-            $rotated = imagerotate($image, -90, 0);
-            break;
-        case 7:
-            if (function_exists('imageflip')) {
-                imageflip($image, IMG_FLIP_HORIZONTAL);
-            }
-            $rotated = imagerotate($image, -90, 0);
-            break;
-        case 8:
-            $rotated = imagerotate($image, 90, 0);
-            break;
-        default:
-            return $image;
-    }
-
-    if ($rotated === false) {
-        return $image;
-    }
-
-    imagedestroy($image);
-    return $rotated;
-}
-
-/**
- * Store an uploaded photo (max edge 2400px, JPEG quality 90, progressive)
- * plus a card thumb (max edge 800px). Always re-encodes when GD is available.
- * Returns the public path of the full image including a cache-buster query.
- */
-function scouts_store_uploaded_photo(string $sourcePath, string $basename, string $mime, int $width, int $height): string
-{
-    if (!is_dir(SCOUTS_UPLOADS_DIR) && !mkdir(SCOUTS_UPLOADS_DIR, 0755, true) && !is_dir(SCOUTS_UPLOADS_DIR)) {
-        throw new RuntimeException('Uploadmap kon niet worden aangemaakt.');
-    }
-
-    $gdAvailable = function_exists('imagejpeg') && function_exists('imagecreatefromstring');
-    $orientation = scouts_photo_exif_orientation($sourcePath);
-    $needsOrient = $orientation !== 1;
-
-    $tempFile = tempnam(SCOUTS_UPLOADS_DIR, $basename . '-');
-    if ($tempFile === false) {
-        throw new RuntimeException('Tijdelijk uploadbestand kon niet worden aangemaakt.');
-    }
-
-    $extension = 'jpg';
-    $finalPath = SCOUTS_UPLOADS_DIR . DIRECTORY_SEPARATOR . $basename . '.' . $extension;
-    $thumbPath = SCOUTS_UPLOADS_DIR . DIRECTORY_SEPARATOR . $basename . '-thumb.' . $extension;
-    $thumbTemp = null;
-
-    try {
-        if ($gdAvailable) {
-            $binary = file_get_contents($sourcePath);
-            if ($binary === false) {
-                throw new RuntimeException('Afbeelding kon niet worden gelezen.');
-            }
-
-            $image = @imagecreatefromstring($binary);
-            if ($image === false) {
-                throw new RuntimeException('Afbeelding kon niet worden verwerkt.');
-            }
-
-            if (function_exists('imagepalettetotruecolor')) {
-                @imagepalettetotruecolor($image);
-            }
-
-            if ($needsOrient) {
-                $image = scouts_photo_apply_orientation($image, $orientation);
-            }
-
-            $currentWidth = imagesx($image);
-            $currentHeight = imagesy($image);
-            $longest = max($currentWidth, $currentHeight);
-            if ($longest > SCOUTS_PHOTO_MAX_EDGE && function_exists('imagescale')) {
-                $scale = SCOUTS_PHOTO_MAX_EDGE / $longest;
-                $targetWidth = max(1, (int) round($currentWidth * $scale));
-                $targetHeight = max(1, (int) round($currentHeight * $scale));
-                $mode = defined('IMG_BICUBIC') ? IMG_BICUBIC : IMG_BILINEAR_FIXED;
-                $scaled = imagescale($image, $targetWidth, $targetHeight, $mode);
-                if ($scaled !== false) {
-                    imagedestroy($image);
-                    $image = $scaled;
-                    $currentWidth = $targetWidth;
-                    $currentHeight = $targetHeight;
-                }
-            }
-
-            // Flatten onto cream so PNG/WebP transparency never becomes black.
-            $canvas = imagecreatetruecolor($currentWidth, $currentHeight);
-            if ($canvas === false) {
-                imagedestroy($image);
-                throw new RuntimeException('Afbeelding kon niet worden verwerkt.');
-            }
-            $background = imagecolorallocate($canvas, 245, 239, 231);
-            imagefilledrectangle($canvas, 0, 0, $currentWidth, $currentHeight, $background);
-            imagecopy($canvas, $image, 0, 0, 0, 0, $currentWidth, $currentHeight);
-            imagedestroy($image);
-
-            if (function_exists('imageinterlace')) {
-                imageinterlace($canvas, true);
-            }
-
-            if (!imagejpeg($canvas, $tempFile, SCOUTS_PHOTO_JPEG_QUALITY)) {
-                imagedestroy($canvas);
-                throw new RuntimeException('Afbeelding kon niet worden opgeslagen.');
-            }
-
-            $thumbTemp = tempnam(SCOUTS_UPLOADS_DIR, $basename . '-thumb-');
-            if ($thumbTemp !== false && function_exists('imagescale')) {
-                $thumbLongest = max($currentWidth, $currentHeight);
-                if ($thumbLongest > SCOUTS_PHOTO_THUMB_EDGE) {
-                    $thumbScale = SCOUTS_PHOTO_THUMB_EDGE / $thumbLongest;
-                    $thumbWidth = max(1, (int) round($currentWidth * $thumbScale));
-                    $thumbHeight = max(1, (int) round($currentHeight * $thumbScale));
-                    $mode = defined('IMG_BICUBIC') ? IMG_BICUBIC : IMG_BILINEAR_FIXED;
-                    $thumbImage = imagescale($canvas, $thumbWidth, $thumbHeight, $mode);
-                } else {
-                    $thumbImage = $canvas;
-                }
-
-                if ($thumbImage !== false) {
-                    if (function_exists('imageinterlace')) {
-                        imageinterlace($thumbImage, true);
-                    }
-                    if (!imagejpeg($thumbImage, $thumbTemp, SCOUTS_PHOTO_THUMB_JPEG_QUALITY)) {
-                        @unlink($thumbTemp);
-                        $thumbTemp = null;
-                    }
-                    if ($thumbImage !== $canvas) {
-                        imagedestroy($thumbImage);
-                    }
-                } else {
-                    @unlink($thumbTemp);
-                    $thumbTemp = null;
-                }
-            }
-
-            imagedestroy($canvas);
-        } else {
-            $allowed = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp', 'image/gif' => 'gif'];
-            $extension = $allowed[$mime] ?? 'jpg';
-            $finalPath = SCOUTS_UPLOADS_DIR . DIRECTORY_SEPARATOR . $basename . '.' . $extension;
-            $thumbPath = SCOUTS_UPLOADS_DIR . DIRECTORY_SEPARATOR . $basename . '-thumb.' . $extension;
-            if (!copy($sourcePath, $tempFile)) {
-                throw new RuntimeException('Afbeelding kon niet worden opgeslagen.');
-            }
-        }
-
-        if (is_file($finalPath) && !unlink($finalPath)) {
-            throw new RuntimeException('Bestaande foto kon niet worden vervangen.');
-        }
-        if (!rename($tempFile, $finalPath)) {
-            throw new RuntimeException('Afbeelding kon niet definitief worden opgeslagen.');
-        }
-        if (!chmod($finalPath, 0644)) {
-            throw new RuntimeException('Afbeelding kon niet leesbaar worden gemaakt.');
-        }
-
-        if (is_string($thumbTemp) && is_file($thumbTemp)) {
-            if (is_file($thumbPath)) {
-                @unlink($thumbPath);
-            }
-            if (rename($thumbTemp, $thumbPath)) {
-                @chmod($thumbPath, 0644);
-                $thumbTemp = null;
-            } else {
-                @unlink($thumbTemp);
-                $thumbTemp = null;
-            }
-        }
-
-        foreach (['jpg', 'jpeg', 'png', 'webp', 'gif'] as $oldExtension) {
-            $oldPath = SCOUTS_UPLOADS_DIR . DIRECTORY_SEPARATOR . $basename . '.' . $oldExtension;
-            if ($oldPath !== $finalPath && is_file($oldPath)) {
-                @unlink($oldPath);
-            }
-            $oldThumb = SCOUTS_UPLOADS_DIR . DIRECTORY_SEPARATOR . $basename . '-thumb.' . $oldExtension;
-            if ($oldThumb !== $thumbPath && is_file($oldThumb)) {
-                @unlink($oldThumb);
-            }
-        }
-    } finally {
-        if (is_file($tempFile)) {
-            @unlink($tempFile);
-        }
-        if (is_string($thumbTemp) && is_file($thumbTemp)) {
-            @unlink($thumbTemp);
-        }
-    }
-
-    return '/uploads/' . basename($finalPath) . '?v=' . time();
-}
 
 function scouts_read_google_drive_settings(): array
 {

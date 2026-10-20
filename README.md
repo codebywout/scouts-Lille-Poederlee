@@ -230,15 +230,47 @@ Dit zijn **vaste** repo-assets (wel in Git), niet te verwarren met `uploads/`.
 | Pad | Functie | Gebruik | Aanpassen? |
 | --- | --- | --- | --- |
 | `site-chrome.php` | Gedeelde header, footer, Open Graph-tags, JSON-LD LocalBusiness | Geïnjecteerd door `scouts_send_html_file` | Handmatig; HTTP-toegang tot `/includes` is geblokkeerd in `.htaccess` |
+| `photo-pipeline.php` | Server-side foto-verwerking (origineel, master, `-w*` JPEG/WebP/AVIF) | Geladen via `config.php` bij elke request | Handmatig; geen HTTP-toegang |
 
 ### `uploads/`
 
 | Pad | Functie | Gebruik | Aanpassen? |
 | --- | --- | --- | --- |
 | `.htaccess` | Directory listing uit; PHP-uitvoering in uploads uitgeschakeld; bestanden wél publiek leesbaar | Runtime | In Git (`!uploads/.htaccess`) |
-| Overige bestanden (jpg/pdf/…) | Door admin geüploade media | Publieke URL’s `/uploads/…` | Via admin; **inhoud gitignored** |
+| `originals/.htaccess` | **Blokkeert HTTP** naar private originelen | Runtime | In Git |
+| `originals/*` | Onbewerkte uploadbytes (niet publiek) | Alleen PHP/CLI | Gitignored |
+| `{naam}.jpg` | Publieke master (georiënteerd, EXIF/GPS weg, max 4000px rand) | Site + admin | Via admin |
+| `{naam}-w{480\|800\|1200\|1600\|2400}.{jpg\|webp}` | Responsive varianten | `srcset` in `script.js` / HTML | Automatisch bij upload |
+| `{naam}-thumb.jpg` | Legacy card-thumb | Orphan-tooling / oudere UI | Automatisch |
+| Overige (pdf, …) | Documenten | Publieke URL’s | Via admin |
 
 > Opmerking: lokaal kan er een bestand `uploads/htaccess` (zonder punt) bestaan. Dat valt onder `uploads/*` en staat niet in Git. De actieve Apache-config is `uploads/.htaccess`.
+
+### Foto-pipeline (automatisch bij upload)
+
+Elke admin-foto via `POST /api/uploads/photo` (takfoto’s, over-ons, nieuws, agenda, tweedehands) doorloopt:
+
+1. Validatie: grootte ≤ 20 MB, MIME via `finfo` + `getimagesize`, max 10 000 px/zijde, max 40 MP (tegen decompression bombs). Geen SVG/HEIC.
+2. **Private origineel** → `uploads/originals/{naam}.{ext}` (HTTP denied).
+3. **Publieke master** → `uploads/{naam}.jpg` (EXIF-oriëntatie, metadata weg via herencode, max edge 4000, PNG-alpha op crème achtergrond).
+4. **Varianten** → `uploads/{naam}-w{N}.jpg` + `.webp` (als `imagewebp` bestaat) + optioneel `.avif` (als `imageavif` bestaat).
+5. Pas bij succesvolle variantenschrijf wordt de upload als geslaagd teruggegeven; staging gebeurt in een tijdelijke map die daarna wordt opgeruimd.
+
+Frontend (`assets/js/script.js`) kiest via `<picture>` / `srcset` / `sizes` de juiste `-w*`-URL. Statische assets onder `assets/images/` gebruiken dezelfde naamconventie (genereren met `tools/generate-image-variants.ps1`).
+
+**Bestaande foto’s migreren** (CLI, nooit tijdens een webrequest):
+
+```powershell
+php tools/migrate-photo-variants.php --dry-run
+php tools/migrate-photo-variants.php
+php tools/migrate-photo-variants.php --only=kapoenenleiding,over-ons
+```
+
+Smoke-test:
+
+```powershell
+php tools/test-photo-pipeline.php
+```
 
 ---
 
@@ -261,7 +293,9 @@ In principe alles wat `git ls-files` volgt / wat niet door `.gitignore` wordt ui
 | `data/site-data.default.json` | Ja | Reset-defaults | — |
 | `data/.htaccess` | Ja | Blokkeert publieke toegang | — |
 | `uploads/.htaccess` | Ja | Veilige uploads-map | — |
-| `uploads/*` (foto’s, PDF’s, …) | **Nee** | `.gitignore`: `uploads/*` | Op de server apart bewaren/back-uppen |
+| `uploads/originals/.htaccess` | Ja | Blokkeert HTTP naar originelen | — |
+| `tools/migrate-photo-variants.php`, `tools/test-photo-pipeline.php` | Ja | CLI migratie/tests | Alleen via SSH/CLI op server |
+| `uploads/*` (foto’s, PDF’s, …) | **Nee** | `.gitignore`: `uploads/*` | Op de server apart bewaren/back-uppen; inclusief `originals/*` en `-w*`-varianten |
 | `.env` | **Nee** | Geheimen | Gebruik `.env.example` |
 | `.env.example` | Ja | Template zonder echte hashes | — |
 | `auth-config.php` | **Nee** | Wachtwoordhashes | Staat in `.gitignore` |
@@ -350,11 +384,21 @@ Constanten in `auth-config.php` winnen van `.env` als beide bestaan.
 | PHP 8.1+ | Code gebruikt o.a. typed properties / moderne syntax |
 | Extensies `session`, `json` | Vereist |
 | `fileinfo` | Aanbevolen (uploadvalidatie) |
-| `GD` | Aanbevolen (foto’s herschalen/JPEG) |
+| `GD` (**vereist** voor foto-uploads) | `imagejpeg`, `imagecreatefromstring`, `imagescale` |
+| `exif` | Aanbevolen (oriëntatiecorrectie) |
+| WebP in GD (`imagewebp`) | Sterk aanbevolen voor moderne varianten |
+| `imageavif` | Optioneel; wordt gebruikt indien aanwezig |
 | Apache + `mod_rewrite` | Voor `.htaccess`-routing |
-| Schrijfrechten op `data/` en `uploads/` | Admin-opslag en uploads |
+| Schrijfrechten op `data/` en `uploads/` (+ `uploads/originals/`) | Admin-opslag en uploads |
 
-Geen `npm install` / `composer install`.
+Geen `npm install` / `composer install`. Geen ImageMagick/cwebp op de server nodig — alles via PHP GD.
+
+Controle op de host:
+
+```bash
+php -m | findstr /i "gd exif fileinfo"
+php -r "var_export(function_exists('imagewebp'));"
+```
 
 ### Publiek vs niet-publiek
 
@@ -552,9 +596,9 @@ Let op bij `git pull` op productie:
 
 ### Foto-upload mislukt / te groot
 
-- **Oorzaak:** PHP `upload_max_filesize` te laag; of geen schrijfrechten op `uploads/`.
-- **Check:** lokale start zonder `-d`-flags; op server `.user.ini` / Plesk PHP-settings.
-- **Oplossing:** limieten op 20M/25M zetten (zoals in `.user.ini` / `.htaccess`); maprechten corrigeren.
+- **Oorzaak:** PHP `upload_max_filesize` te laag; geen schrijfrechten op `uploads/`; of **GD ontbreekt** (foutmelding noemt “PHP GD-extensie”).
+- **Check:** `php -m` voor `gd`/`exif`/`fileinfo`; schrijfrechten op `uploads/` en `uploads/originals/`; lokale start mét `-d`-uploadflags; op server `.user.ini` / Plesk PHP-settings.
+- **Oplossing:** GD inschakelen; limieten op 20M/25M; maprechten corrigeren; opnieuw uploaden.
 
 ### Broken images na clone of deploy
 

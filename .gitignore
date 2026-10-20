@@ -8,6 +8,11 @@ data/google-drive.json
 .idea/
 uploads/*
 !uploads/.htaccess
+!uploads/originals/
+!uploads/originals/.htaccess
+uploads/originals/*
+!uploads/originals/.htaccess
+tools/libwebp/
 npm-debug.log*
 .DS_Store
 Thumbs.db

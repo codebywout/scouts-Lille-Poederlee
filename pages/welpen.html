@@ -8,11 +8,11 @@
     <title>Welpen | Scouts Lille-Poederlee</title>
     <meta name="description" content="Alles over de welpen van Scouts Lille-Poederlee.">
     <link rel="canonical" href="https://scoutslille.be/welpen">
-    <link rel="stylesheet" href="../assets/css/style.css?v=20261020-50">
-    <link rel="preload" as="image" href="../assets/images/domein2.jpg?v=20261020-50" fetchpriority="high">
+    <link rel="stylesheet" href="../assets/css/style.css?v=20261020-60">
+    <link rel="preload" as="image" type="image/webp" href="../assets/images/domein2-w1600.webp?v=20261020-60" fetchpriority="high">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Montserrat:wght@600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Montserrat:wght@600;700;800&display=swap" rel="stylesheet">
 </head>
 <body class="branch-page branch-welpen">
 
@@ -39,7 +39,10 @@
             </div>
 
             <div class="branch-photo" >
-                <img src="/uploads/welpenleiding.jpg?v=20261020-50" alt="" loading="lazy" decoding="async">
+                <picture>
+                    <source type="image/webp" srcset="/uploads/welpenleiding-w800.webp?v=20261020-60 800w, /uploads/welpenleiding-w1200.webp?v=20261020-60 1200w, /uploads/welpenleiding-w1600.webp?v=20261020-60 1600w, /uploads/welpenleiding-w2400.webp?v=20261020-60 2400w" sizes="(max-width: 800px) 100vw, 560px">
+                    <img src="/uploads/welpenleiding-w1200.jpg?v=20261020-60" srcset="/uploads/welpenleiding-w800.jpg?v=20261020-60 800w, /uploads/welpenleiding-w1200.jpg?v=20261020-60 1200w, /uploads/welpenleiding-w1600.jpg?v=20261020-60 1600w, /uploads/welpenleiding-w2400.jpg?v=20261020-60 2400w" sizes="(max-width: 800px) 100vw, 560px" alt="" width="1600" height="1200" loading="lazy" decoding="async" data-full-src="/uploads/welpenleiding.jpg">
+                </picture>
             </div>
         </div>
     </section>
@@ -47,7 +50,7 @@
 
 <!--SITE_FOOTER-->
 
-<script src="../assets/js/script.js?v=20261020-50"></script>
+<script src="../assets/js/script.js?v=20261020-60"></script>
 
 </body>
 </html>

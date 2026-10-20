@@ -47,7 +47,10 @@ body.news-page::before {
     background-color: #0d2419;
     background-image:
         linear-gradient(rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.65)),
-        url("/assets/images/domein2.jpg?v=20261020-4");
+        url("/assets/images/domein2-w1600.jpg?v=20261020-60");
+    background-image:
+        linear-gradient(rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.65)),
+        image-set(url("/assets/images/domein2-w1600.webp?v=20261020-60") type("image/webp"), url("/assets/images/domein2-w1600.jpg?v=20261020-60") type("image/jpeg"));
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
@@ -68,7 +71,16 @@ body.error-page::before {
             rgba(13, 36, 25, 0.42) 72%,
             rgba(13, 36, 25, 0.28) 100%
         ),
-        url("/assets/images/domein2.jpg?v=20261020-4");
+        url("/assets/images/domein2-w1600.jpg?v=20261020-60");
+    background-image:
+        linear-gradient(
+            115deg,
+            rgba(13, 36, 25, 0.94) 0%,
+            rgba(13, 36, 25, 0.78) 38%,
+            rgba(13, 36, 25, 0.42) 72%,
+            rgba(13, 36, 25, 0.28) 100%
+        ),
+        image-set(url("/assets/images/domein2-w1600.webp?v=20261020-60") type("image/webp"), url("/assets/images/domein2-w1600.jpg?v=20261020-60") type("image/jpeg"));
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
@@ -77,19 +89,28 @@ body.error-page::before {
 body.secondhand-page::before {
     background-image:
         linear-gradient(rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.65)),
-        url("/assets/images/domein3.jpg?v=20261020-4");
+        url("/assets/images/domein3-w1600.jpg?v=20261020-60");
+    background-image:
+        linear-gradient(rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.65)),
+        image-set(url("/assets/images/domein3-w1600.webp?v=20261020-60") type("image/webp"), url("/assets/images/domein3-w1600.jpg?v=20261020-60") type("image/jpeg"));
 }
 
 body.about-page::before {
     background-image:
         linear-gradient(rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.65)),
-        url("/assets/images/domein4.jpg?v=20261020-4");
+        url("/assets/images/domein4-w1600.jpg?v=20261020-60");
+    background-image:
+        linear-gradient(rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.65)),
+        image-set(url("/assets/images/domein4-w1600.webp?v=20261020-60") type("image/webp"), url("/assets/images/domein4-w1600.jpg?v=20261020-60") type("image/jpeg"));
 }
 
 body.uniform-page::before {
     background-image:
         linear-gradient(rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.65)),
-        url("/assets/images/domein5.jpg?v=20261020-4");
+        url("/assets/images/domein5-w1600.jpg?v=20261020-60");
+    background-image:
+        linear-gradient(rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.65)),
+        image-set(url("/assets/images/domein5-w1600.webp?v=20261020-60") type("image/webp"), url("/assets/images/domein5-w1600.jpg?v=20261020-60") type("image/jpeg"));
 }
 
 .registration-page .page-shell,
@@ -337,7 +358,12 @@ body.uniform-page::before {
 }
 
 .page-over-ons .about-hero {
-    background-image: url("/uploads/over-ons.jpg?v=20261020-4") !important;
+    background-image: url("/uploads/over-ons-w1600.jpg?v=20261020-60") !important;
+    background-image:
+        image-set(
+            url("/uploads/over-ons-w1600.webp?v=20261020-60") type("image/webp"),
+            url("/uploads/over-ons-w1600.jpg?v=20261020-60") type("image/jpeg")
+        ) !important;
 }
 
 .page-hero {
@@ -2331,6 +2357,12 @@ body.privacy-page {
     height: 210px;
     overflow: hidden;
     background: linear-gradient(145deg, #eee9df, #e4d8c4);
+}
+
+.secondhand-item-image picture {
+    display: block;
+    width: 100%;
+    height: 100%;
 }
 
 .secondhand-item-image img {

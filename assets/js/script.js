@@ -130,7 +130,7 @@
       });
   }
 
-  const IMAGE_ASSET_VERSION = "20261020-45";
+  const IMAGE_ASSET_VERSION = "20261020-60";
 
   function formatLidgeldLabel(amount) {
     const amountNumber = Number(String(amount || "").replace(",", ".").replace(/[^\d.]/g, ""));
@@ -169,25 +169,152 @@
     return src.includes("?") ? src : `${src}?v=${IMAGE_ASSET_VERSION}`;
   }
 
+  const RESPONSIVE_WIDTHS = {
+    card: [480, 800, 1200],
+    content: [480, 800, 1200, 1600],
+    hero: [800, 1200, 1600, 2400],
+    branch: [480, 800, 1200, 1600, 2400],
+  };
+
+  function uploadPathname(value) {
+    try {
+      return new URL(value, window.location.origin).pathname;
+    } catch {
+      return "";
+    }
+  }
+
+  function splitResponsiveAsset(src) {
+    const raw = String(src || "").trim();
+    if (!raw) return null;
+    const question = raw.indexOf("?");
+    const path = question === -1 ? raw : raw.slice(0, question);
+    const query = question === -1 ? "" : raw.slice(question);
+    const normalized = path.replace(
+      /-(?:thumb|md|display|w\d+)(\.[a-z0-9]+)$/i,
+      "$1",
+    );
+    const match = normalized.match(/^(.*)(\.[a-z0-9]+)$/i);
+    if (!match) return null;
+    return {
+      stem: match[1],
+      ext: match[2].toLowerCase(),
+      query,
+      original: raw,
+      originalPath: path,
+    };
+  }
+
+  function withAssetQuery(path, query) {
+    if (query) return `${path}${query}`;
+    if (path.includes("/assets/images/")) {
+      return `${path}?v=${IMAGE_ASSET_VERSION}`;
+    }
+    return path;
+  }
+
+  function buildWidthSrcset(stem, ext, widths, query) {
+    return widths
+      .map((width) => `${withAssetQuery(`${stem}-w${width}${ext}`, query)} ${width}w`)
+      .join(", ");
+  }
+
+  function defaultResponsiveWidth(widths) {
+    // Prefer a mid-size default so fallback `src` is never the largest file.
+    if (widths.includes(800)) return 800;
+    if (widths.includes(480)) return 480;
+    if (widths.includes(1200)) return 1200;
+    return widths[Math.max(0, Math.floor((widths.length - 1) / 2))];
+  }
+
+  if (typeof window !== "undefined" && !window.__scoutsImgFallback) {
+    window.__scoutsImgFallback = function scoutsImgFallback(img) {
+      if (!img || img.dataset.fallbackApplied === "1") return;
+      const full = img.getAttribute("data-full-src") || "";
+      if (!full) return;
+      img.dataset.fallbackApplied = "1";
+      img.removeAttribute("srcset");
+      img.src = full;
+    };
+  }
+
+  function responsivePictureHtml(
+    src,
+    {
+      alt = "",
+      className = "",
+      pictureClass = "",
+      sizes = "100vw",
+      widths = RESPONSIVE_WIDTHS.content,
+      loading = "lazy",
+      fetchpriority = "",
+      decoding = "async",
+      width = "",
+      height = "",
+      linkFull = false,
+    } = {},
+  ) {
+    const parts = splitResponsiveAsset(src);
+    if (!parts) return "";
+
+    const query = parts.query;
+    const defaultWidth = defaultResponsiveWidth(widths);
+    const defaultJpg = withAssetQuery(
+      `${parts.stem}-w${defaultWidth}.jpg`,
+      query,
+    );
+    const webpSrcset = buildWidthSrcset(parts.stem, ".webp", widths, query);
+    const jpgSrcset = buildWidthSrcset(parts.stem, ".jpg", widths, query);
+    const imgClass = className ? ` class="${escapeHtml(className)}"` : "";
+    const pictureClassAttr = pictureClass
+      ? ` class="${escapeHtml(pictureClass)}"`
+      : "";
+    const widthAttr = width ? ` width="${escapeHtml(String(width))}"` : "";
+    const heightAttr = height ? ` height="${escapeHtml(String(height))}"` : "";
+    const priorityAttr = fetchpriority
+      ? ` fetchpriority="${escapeHtml(fetchpriority)}"`
+      : "";
+    const loadingAttr = loading ? ` loading="${escapeHtml(loading)}"` : "";
+
+    const picture = `
+      <picture${pictureClassAttr}>
+        <source type="image/webp" srcset="${escapeHtml(webpSrcset)}" sizes="${escapeHtml(sizes)}">
+        <img${imgClass}
+          src="${escapeHtml(defaultJpg)}"
+          srcset="${escapeHtml(jpgSrcset)}"
+          sizes="${escapeHtml(sizes)}"
+          alt="${escapeHtml(alt)}"${loadingAttr}${priorityAttr}
+          decoding="${escapeHtml(decoding)}"${widthAttr}${heightAttr}
+          data-full-src="${escapeHtml(parts.original)}"
+          onerror="window.__scoutsImgFallback&&window.__scoutsImgFallback(this)">
+      </picture>`;
+
+    if (!linkFull) return picture;
+    return `<a class="responsive-full-link" href="${escapeHtml(parts.original)}" target="_blank" rel="noopener noreferrer" aria-label="${escapeHtml(alt || "Originale foto openen")}">${picture}</a>`;
+  }
+
   function toThumbUrl(src) {
-    if (typeof src !== "string" || !src.trim()) return src;
-    if (!src.includes("/uploads/") || src.includes("-thumb.")) return src;
-    const question = src.indexOf("?");
-    const path = question === -1 ? src : src.slice(0, question);
-    const query = question === -1 ? "" : src.slice(question);
-    const thumbPath = path.replace(/(\.[a-z0-9]+)$/i, "-thumb$1");
-    return thumbPath === path ? src : `${thumbPath}${query}`;
+    const parts = splitResponsiveAsset(src);
+    if (!parts) return src;
+    return withAssetQuery(`${parts.stem}-w800.jpg`, parts.query);
+  }
+
+  function toMediumUploadUrl(src) {
+    const parts = splitResponsiveAsset(src);
+    if (!parts) return src;
+    return withAssetQuery(`${parts.stem}-w1200.jpg`, parts.query);
   }
 
   function thumbImageHtml(src, { alt = "", className = "" } = {}) {
-    const full = String(src || "").trim();
-    if (!full) return "";
-    const thumb = toThumbUrl(full);
-    const classAttr = className ? ` class="${escapeHtml(className)}"` : "";
-    if (thumb === full) {
-      return `<img${classAttr} src="${escapeHtml(full)}" alt="${escapeHtml(alt)}" loading="lazy" decoding="async">`;
-    }
-    return `<img${classAttr} src="${escapeHtml(thumb)}" alt="${escapeHtml(alt)}" loading="lazy" decoding="async" data-full-src="${escapeHtml(full)}" onerror="this.onerror=null;this.src=this.dataset.fullSrc||'';">`;
+    return responsivePictureHtml(src, {
+      alt,
+      className,
+      sizes: "(max-width: 700px) 42vw, 120px",
+      widths: [480, 800],
+      loading: "lazy",
+      width: 480,
+      height: 480,
+    });
   }
 
   function slugifyNewsTitle(title, index = 0) {
@@ -1521,9 +1648,15 @@
 
   function buildNewsCarouselHtml(images, title) {
     if (!images.length) return "";
-    const alt = escapeHtml(title || "Nieuwsfoto");
+    const altText = title || "Nieuwsfoto";
     if (images.length === 1) {
-      return `<figure class="news-media"><img src="${escapeHtml(images[0])}" alt="${alt}" loading="lazy" decoding="async"></figure>`;
+      return `<figure class="news-media">${responsivePictureHtml(images[0], {
+        alt: altText,
+        sizes: "(max-width: 800px) 100vw, 42vw",
+        widths: RESPONSIVE_WIDTHS.content,
+        loading: "lazy",
+        linkFull: true,
+      })}</figure>`;
     }
 
     const total = images.length;
@@ -1531,7 +1664,13 @@
       .map(
         (src, index) => `
                       <div class="news-carousel-slide${index === 0 ? " is-active" : ""}" data-slide-index="${index}" role="group" aria-roledescription="slide" aria-label="Foto ${index + 1} van ${total}">
-                        <img src="${escapeHtml(src)}" alt="${alt} ${index + 1}" loading="${index === 0 ? "eager" : "lazy"}" decoding="async" draggable="false">
+                        ${responsivePictureHtml(src, {
+                          alt: `${altText} ${index + 1}`,
+                          sizes: "(max-width: 800px) 100vw, 42vw",
+                          widths: RESPONSIVE_WIDTHS.content,
+                          loading: index === 0 ? "eager" : "lazy",
+                          linkFull: true,
+                        }).replaceAll("<img", '<img draggable="false"')}
                       </div>`,
       )
       .join("");
@@ -1543,7 +1682,7 @@
       .join("");
 
     return `
-                      <figure class="news-media news-carousel" data-news-carousel aria-roledescription="carousel" aria-label="Foto's bij ${alt}">
+                      <figure class="news-media news-carousel" data-news-carousel aria-roledescription="carousel" aria-label="Foto's bij ${escapeHtml(altText)}">
                         <div class="news-carousel-viewport" tabindex="0">
                           <div class="news-carousel-track">
                             ${slides}
@@ -2374,56 +2513,49 @@
         "branch-jins": "jins",
       };
 
-      qsa(".branch-bg").forEach((image) => {
-        const card = image.closest(".branch");
-        const className = Object.keys(branchPhotoNames).find((name) => card?.classList.contains(name));
-        const photo = className ? data.photos?.branches?.[branchPhotoNames[className]] : "";
+      qsa(".branch-bg-picture, img.branch-bg").forEach((node) => {
+        const card = node.closest(".branch");
+        const className = Object.keys(branchPhotoNames).find((name) =>
+          card?.classList.contains(name),
+        );
+        const photo = className
+          ? data.photos?.branches?.[branchPhotoNames[className]]
+          : "";
 
         if (!photo) {
-          image.hidden = true;
+          node.hidden = true;
           return;
         }
 
-        let attempt = 0;
+        const parts = splitResponsiveAsset(photo);
+        const img = node.matches("img")
+          ? node
+          : node.querySelector("img.branch-bg, img");
+        const currentSrc = img?.getAttribute("src") || "";
+        const currentParts = splitResponsiveAsset(currentSrc);
+        if (
+          parts &&
+          currentParts &&
+          currentParts.stem === parts.stem &&
+          /(-w\d+|branch-bg)/.test(currentSrc + node.className)
+        ) {
+          node.hidden = false;
+          if (img) img.hidden = false;
+          return;
+        }
 
-        const loadPhoto = (src) => {
-          image.onload = () => {
-            image.hidden = false;
-          };
-          image.onerror = () => {
-            if (image.naturalWidth > 0) {
-              image.hidden = false;
-              return;
-            }
-
-            if (attempt < 1) {
-              attempt += 1;
-              const glue = src.includes("?") ? "&" : "?";
-              loadPhoto(`${src}${glue}retry=${attempt}`);
-              return;
-            }
-
-            image.hidden = true;
-          };
-
-          const absolute = new URL(src, window.location.origin).href;
-          const alreadyFailed = image.src === absolute && image.complete && image.naturalWidth === 0;
-
-          if (alreadyFailed && attempt < 1) {
-            attempt += 1;
-            const glue = src.includes("?") ? "&" : "?";
-            loadPhoto(`${src}${glue}retry=${attempt}`);
-            return;
-          }
-
-          image.src = src;
-
-          if (image.complete && image.naturalWidth > 0) {
-            image.hidden = false;
-          }
-        };
-
-        loadPhoto(photo);
+        const html = responsivePictureHtml(photo, {
+          alt: "",
+          className: "branch-bg",
+          pictureClass: "branch-bg-picture",
+          sizes: "(max-width: 900px) 100vw, 380px",
+          widths: RESPONSIVE_WIDTHS.card,
+          loading: "lazy",
+          width: 1200,
+          height: 900,
+        });
+        const mount = node.matches("picture") ? node : node;
+        mount.outerHTML = html;
       });
 
       if (pageName === "over-ons") {
@@ -2573,7 +2705,17 @@
                     <div class="agenda-details-inner">
                       <p>${escapeHtml(item.text)}</p>
                       ${link && linkText ? `<a class="agenda-link" href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer">${escapeHtml(linkText)} <span class="icon-arrow-external" aria-hidden="true"></span></a>` : ""}
-                      ${image ? `<img src="${escapeHtml(image)}" alt="${escapeHtml(item.title)}" loading="lazy" decoding="async">` : ""}
+                      ${
+                        image
+                          ? responsivePictureHtml(image, {
+                              alt: item.title || "",
+                              sizes: "(max-width: 800px) 100vw, 420px",
+                              widths: RESPONSIVE_WIDTHS.content,
+                              loading: "lazy",
+                              linkFull: true,
+                            })
+                          : ""
+                      }
                     </div>
                   </div>
                 </details>
@@ -2617,16 +2759,41 @@
       }
 
       const aboutHero = qs(".about-hero");
-      if (aboutHero) {
-        aboutHero.style.backgroundImage = data.photos.aboutHero
-          ? `url("${data.photos.aboutHero}")`
-          : "none";
+      if (aboutHero && data.photos.aboutHero) {
+        const aboutParts = splitResponsiveAsset(data.photos.aboutHero);
+        if (aboutParts) {
+          const q = aboutParts.query;
+          const webp = withAssetQuery(`${aboutParts.stem}-w1600.webp`, q);
+          const jpg = withAssetQuery(`${aboutParts.stem}-w1600.jpg`, q);
+          aboutHero.style.backgroundImage = `image-set(url("${webp}") type("image/webp"), url("${jpg}") type("image/jpeg")), url("${jpg}")`;
+        } else {
+          aboutHero.style.backgroundImage = `url("${data.photos.aboutHero}")`;
+        }
       }
 
       if (data.photos.branches[pageName]) {
-        const branchImage = qs(".branch-photo img");
-        if (branchImage)
-          branchImage.src = versionStaticImage(data.photos.branches[pageName]);
+        const branchPhoto = qs(".branch-photo");
+        const branchImage = branchPhoto?.querySelector("img, picture");
+        if (branchPhoto && branchImage) {
+          const full = data.photos.branches[pageName];
+          const parts = splitResponsiveAsset(full);
+          const current = splitResponsiveAsset(
+            branchImage.matches("img")
+              ? branchImage.getAttribute("src") || ""
+              : branchImage.querySelector("img")?.getAttribute("src") || "",
+          );
+          if (!(parts && current && parts.stem === current.stem)) {
+            branchImage.outerHTML = responsivePictureHtml(full, {
+              alt: "",
+              sizes: "(max-width: 800px) 100vw, 560px",
+              widths: RESPONSIVE_WIDTHS.branch,
+              loading: "lazy",
+              width: 1600,
+              height: 1200,
+              linkFull: true,
+            });
+          }
+        }
       }
 
       const secondhandScroll = qs(".secondhand-scroll");
@@ -2636,7 +2803,18 @@
             (item) => `
                         <article class="secondhand-item">
                             <div class="secondhand-item-image">
-                                <img src="${escapeHtml(versionStaticImage(item.image || "../assets/images/domein.jpg"))}" alt="${escapeHtml(item.title || "")}" loading="lazy" decoding="async">
+                                ${responsivePictureHtml(
+                                  item.image || "../assets/images/domein.jpg",
+                                  {
+                                    alt: item.title || "",
+                                    sizes: "(max-width: 700px) 70vw, 280px",
+                                    widths: RESPONSIVE_WIDTHS.card,
+                                    loading: "lazy",
+                                    width: 800,
+                                    height: 800,
+                                    linkFull: true,
+                                  },
+                                )}
                             </div>
                             <div class="secondhand-item-content">
                                 <span class="secondhand-item-category">${escapeHtml(item.category || "Materiaal")}</span>

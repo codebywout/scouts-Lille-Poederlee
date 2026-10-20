@@ -396,8 +396,9 @@
   };
 
   const CLIENT_MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
-  const PHOTO_UPLOAD_MAX_EDGE = 2400;
-  const PHOTO_UPLOAD_JPEG_QUALITY = 0.9;
+  /** Match server master edge; server keeps a private full original + variants. */
+  const PHOTO_UPLOAD_MAX_EDGE = 4000;
+  const PHOTO_UPLOAD_JPEG_QUALITY = 0.92;
 
   function assertUploadSize(file, label = "bestand") {
     if (!file) return;
@@ -409,9 +410,17 @@
     }
   }
 
-  /** Resize/compress uploads to max 2400px JPEG @ 0.9 before sending. */
+  /**
+   * Light client prep before upload: fix orientation, cap very large edges.
+   * Small/medium JPEGs under the edge/size limits are sent as-is so the
+   * server can archive higher-quality private originals. The server always
+   * builds public masters + -w* variants.
+   */
   async function optimizeImageForUpload(file) {
     if (!file || !file.type.startsWith("image/")) return file;
+    if (file.type === "image/svg+xml") {
+      throw new Error("SVG-bestanden kunnen niet als foto worden geüpload.");
+    }
 
     let bitmap;
     try {
@@ -426,8 +435,14 @@
 
     try {
       const longest = Math.max(bitmap.width, bitmap.height);
-      const scale =
-        longest > PHOTO_UPLOAD_MAX_EDGE ? PHOTO_UPLOAD_MAX_EDGE / longest : 1;
+      const needsResize = longest > PHOTO_UPLOAD_MAX_EDGE;
+      const alreadyJpeg = file.type === "image/jpeg" || file.type === "image/jpg";
+      // Keep original bytes when no resize is needed and payload is modest.
+      if (!needsResize && alreadyJpeg && file.size <= 8 * 1024 * 1024) {
+        return file;
+      }
+
+      const scale = needsResize ? PHOTO_UPLOAD_MAX_EDGE / longest : 1;
       const width = Math.max(1, Math.round(bitmap.width * scale));
       const height = Math.max(1, Math.round(bitmap.height * scale));
 

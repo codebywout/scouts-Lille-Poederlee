@@ -9,6 +9,9 @@ $requestPath = parse_url((string) ($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PATH
 $requestPath = is_string($requestPath) ? rawurldecode($requestPath) : '/';
 
 if ($requestPath === '/data' || strncmp($requestPath, '/data/', 6) === 0
+    || $requestPath === '/includes' || strncmp($requestPath, '/includes/', 10) === 0
+    || $requestPath === '/tools' || strncmp($requestPath, '/tools/', 7) === 0
+    || $requestPath === '/uploads/originals' || strncmp($requestPath, '/uploads/originals/', 19) === 0
     || $requestPath === '/.env' || strncmp($requestPath, '/.git/', 6) === 0
     || $requestPath === '/config.php' || $requestPath === '/auth-config.php'
     || strncmp($requestPath, '/server/', 8) === 0) {

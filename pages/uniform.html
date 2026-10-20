@@ -8,11 +8,11 @@
     <title>Uniform | Scouts Lille-Poederlee</title>
     <meta name="description" content="Meer informatie over het uniform van Scouts Lille-Poederlee.">
     <link rel="canonical" href="https://scoutslille.be/uniform">
-    <link rel="stylesheet" href="../assets/css/style.css?v=20261020-50">
-    <link rel="preload" as="image" href="../assets/images/domein5.jpg?v=20261020-50" fetchpriority="high">
+    <link rel="stylesheet" href="../assets/css/style.css?v=20261020-60">
+    <link rel="preload" as="image" type="image/webp" href="../assets/images/domein5-w1600.webp?v=20261020-60" fetchpriority="high">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Montserrat:wght@600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Montserrat:wght@600;700;800&display=swap" rel="stylesheet">
 </head>
 <body class="uniform-page">
 
@@ -61,7 +61,10 @@
         <div class="uniform-guide-layout">
             <div class="uniform-map-stack">
                 <div class="uniform-map" aria-label="Scoutshemd voorkant met aanduidingen">
-                    <img src="/assets/images/hemd_voorkant.jpg?v=20261020-50" alt="Scoutshemd vooraanzicht met genummerde kentekens" loading="lazy" decoding="async">
+                    <picture>
+                        <source type="image/webp" srcset="/assets/images/hemd_voorkant-w480.webp?v=20261020-60 480w, /assets/images/hemd_voorkant-w800.webp?v=20261020-60 800w, /assets/images/hemd_voorkant-w1200.webp?v=20261020-60 1200w, /assets/images/hemd_voorkant-w1583.webp?v=20261020-60 1583w" sizes="(max-width: 700px) 90vw, 420px">
+                        <img src="/assets/images/hemd_voorkant-w800.jpg?v=20261020-60" srcset="/assets/images/hemd_voorkant-w480.jpg?v=20261020-60 480w, /assets/images/hemd_voorkant-w800.jpg?v=20261020-60 800w, /assets/images/hemd_voorkant-w1200.jpg?v=20261020-60 1200w, /assets/images/hemd_voorkant-w1583.jpg?v=20261020-60 1583w" sizes="(max-width: 700px) 90vw, 420px" alt="Scoutshemd vooraanzicht met genummerde kentekens" width="800" height="1000" loading="lazy" decoding="async" data-full-src="/assets/images/hemd_voorkant.jpg">
+                    </picture>
 
                     <button type="button" class="uniform-marker" style="--x: 29%; --y: 14%;" data-uniform-marker="1" aria-label="1. Groepslint" aria-describedby="uniform-rule-1">
                         <span>1</span>
@@ -162,7 +165,7 @@
 
 <!--SITE_FOOTER-->
 
-<script src="../assets/js/script.js?v=20261020-50"></script>
+<script src="../assets/js/script.js?v=20261020-60"></script>
 
 </body>
 </html>
