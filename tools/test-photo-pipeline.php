@@ -198,6 +198,87 @@ try {
         'originals/.htaccess present'
     );
 
+    // Subpage background boot: custom CSS vars + body class without waiting for JS.
+    $regHtml = '<!DOCTYPE html><html><head></head><body class="registration-page"></body></html>';
+    // Use a real upload stem if present; otherwise skip gracefully.
+    if (is_file(SCOUTS_UPLOADS_DIR . DIRECTORY_SEPARATOR . 'bg-registration.jpg')) {
+        $regHtml = file_get_contents(SCOUTS_ROOT . '/pages/inschrijven.html') ?: $regHtml;
+        $booted = scouts_html_boot_page_background($regHtml, 'inschrijven');
+        expect(str_contains($booted, 'scouts-has-custom-bg'), 'subpage boot adds custom-bg class');
+        expect(str_contains($booted, 'scouts-page-bg-boot'), 'subpage boot injects CSS vars');
+        expect(str_contains($booted, 'data-bg-boot="1"'), 'subpage boot marks data-bg-boot');
+        expect(
+            str_contains($booted, 'bg-registration') || str_contains($booted, '--scouts-custom-bg-800'),
+            'subpage boot references custom background'
+        );
+        expect(!str_contains($booted, 'domein2-w1600'), 'subpage boot replaces domein2 preload');
+        expect(str_contains($booted, 'bg-registration-w1600'), 'subpage preload points at custom w1600');
+        expect(str_contains($booted, 'bg-registration-w800'), 'subpage preload includes custom w800');
+        expect(str_contains($booted, 'media="(max-width: 768px)"'), 'subpage mobile preload is media-scoped');
+        expect(str_contains($booted, 'media="(min-width: 769px)"'), 'subpage desktop preload is media-scoped');
+        $assetV = scouts_asset_version();
+        expect(str_contains($booted, 'v=' . $assetV), 'subpage boot CSS/preload use asset version');
+        preg_match('/href="([^"]*bg-registration-w800[^"]*)"/', $booted, $preloadHref);
+        preg_match('/url\("([^"]*bg-registration-w800[^"]*)"\)/', $booted, $cssUrl);
+        expect(($preloadHref[1] ?? '') !== '', 'subpage w800 preload href present');
+        expect(($cssUrl[1] ?? '') !== '', 'subpage w800 CSS url present');
+        $preloadDecoded = html_entity_decode($preloadHref[1] ?? '', ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $cssDecoded = html_entity_decode($cssUrl[1] ?? '', ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        expect(
+            $preloadDecoded === $cssDecoded,
+            'subpage preload URL matches CSS url (same cache key)'
+        );
+    } else {
+        expect(true, 'subpage boot skipped (no bg-registration.jpg fixture)');
+    }
+
+    // Media-scoped default domein preloads (helper used when no custom bg).
+    if (is_file(SCOUTS_ROOT . '/assets/images/domein2-w800.webp')) {
+        $defaultLinks = scouts_html_page_bg_preload_links(
+            SCOUTS_ROOT . '/assets/images/domein2',
+            '/assets/images/domein2',
+            ''
+        );
+        expect(str_contains($defaultLinks, 'domein2-w800'), 'default preload helper includes w800');
+        expect(str_contains($defaultLinks, 'domein2-w1600'), 'default preload helper includes w1600');
+        expect(str_contains($defaultLinks, 'media="(max-width: 768px)"'), 'default helper mobile media');
+        expect(str_contains($defaultLinks, 'media="(min-width: 769px)"'), 'default helper desktop media');
+    } else {
+        expect(true, 'default preload helper skipped (no domein2 fixture)');
+    }
+
+    expect(scouts_page_background_slot_for_page('inschrijven') === 'registration', 'slot map inschrijven');
+    expect(scouts_page_background_slot_for_page('kapoenen') === 'branch', 'slot map branch');
+    expect(scouts_page_background_slot_for_page('index') === null, 'slot map index is null');
+
+    // Homepage hero: preload stem matches <picture>, prefers AVIF when present.
+    $indexHtml = file_get_contents(SCOUTS_ROOT . '/index.html') ?: '';
+    if ($indexHtml !== '' && is_file(SCOUTS_UPLOADS_DIR . DIRECTORY_SEPARATOR . 'bg-home.jpg')) {
+        $heroHtml = scouts_html_apply_home_hero_background($indexHtml);
+        expect(str_contains($heroHtml, 'bg-home'), 'home hero rewrite uses bg-home');
+        preg_match('#<link\s+rel="preload"\s+as="image"[^>]*>#i', $heroHtml, $homePreload);
+        preg_match('#src="([^"]*bg-home[^"]*)"#i', $heroHtml, $homeSrc);
+        expect(($homePreload[0] ?? '') !== '', 'home hero has image preload');
+        expect(($homeSrc[1] ?? '') !== '', 'home hero img src set');
+        if (preg_match('/href="([^"]+)"/', $homePreload[0] ?? '', $hrefBits)) {
+            $pStem = preg_replace('/-w\d+\.(avif|webp|jpe?g).*/i', '', basename($hrefBits[1]));
+            $sStem = preg_replace('/-w\d+\.(avif|webp|jpe?g).*/i', '', basename($homeSrc[1]));
+            expect($pStem === $sStem, 'home preload stem matches img src stem');
+        }
+        if (is_file(SCOUTS_UPLOADS_DIR . DIRECTORY_SEPARATOR . 'bg-home-w800.avif')) {
+            expect(
+                str_contains($homePreload[0] ?? '', 'type="image/avif"'),
+                'home preload prefers AVIF when variants exist'
+            );
+            expect(
+                str_contains($heroHtml, 'type="image/avif"'),
+                'home picture includes AVIF source'
+            );
+        }
+    } else {
+        expect(true, 'home hero rewrite skipped (no index/bg-home fixture)');
+    }
+
     // Cleanup test uploads
     scouts_delete_photo_versions($basename);
     scouts_delete_photo_versions($basename2);
