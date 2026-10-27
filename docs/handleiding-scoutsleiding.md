@@ -171,8 +171,7 @@ Verwijderen: **Verwijderen** bij die brief, daarna de site controleren.
 4. Wacht tot de upload klaar is. Die staat meteen live.
 5. Klik **Live** of open die pagina op de gewone website.
 
-Lukt de upload niet? De oude achtergrond blijft staan.  
-Staat er **Vorige**? Dan kun je de vorige upload terugzetten.
+Lukt de upload niet? De oude achtergrond blijft staan.
 
 ---
 

@@ -1752,9 +1752,6 @@
 
     container.innerHTML = PAGE_BACKGROUND_CONFIG.map((slot) => {
       const current = String(data.photos.pageBackgrounds[slot.key] || "").trim();
-      const previous = String(
-        data.photos.pageBackgroundsPrevious[slot.key] || "",
-      ).trim();
       const preview = backgroundPreviewSrc(data, slot.key, slot.defaultPreview);
 
       return `
@@ -1771,7 +1768,6 @@
               <h3>${escapeHtml(slot.label)}</h3>
             </div>
             <div class="admin-bg-actions">
-              <button type="button" class="admin-utility-link" data-bg-restore="${escapeHtml(slot.key)}" ${previous ? "" : "hidden"}>Vorige</button>
               <a class="admin-utility-link" href="${escapeHtml(slot.livePath)}" target="_blank" rel="noopener">Live</a>
             </div>
           </div>
@@ -1838,10 +1834,6 @@
         throw new Error(result.message || "Achtergrond uploaden mislukt.");
       }
 
-      const current = String(data.photos.pageBackgrounds[key] || "").trim();
-      if (current) {
-        data.photos.pageBackgroundsPrevious[key] = current;
-      }
       data.photos.pageBackgrounds[key] = result.path;
 
       const published = await persist(data, {
@@ -1855,23 +1847,6 @@
     } finally {
       endPhotoUpload(surface);
     }
-  }
-
-  async function restorePreviousBackground(data, key) {
-    ensurePageBackgroundBuckets(data);
-    const slot = PAGE_BACKGROUND_CONFIG.find((item) => item.key === key);
-    if (!slot) return;
-    const previous = String(data.photos.pageBackgroundsPrevious[key] || "").trim();
-    if (!previous) {
-      throw new Error("Geen vorige achtergrond beschikbaar.");
-    }
-
-    const current = String(data.photos.pageBackgrounds[key] || "").trim();
-    data.photos.pageBackgroundsPrevious[key] = current;
-    data.photos.pageBackgrounds[key] = previous;
-    await persist(data, {
-      message: `${slot.label}: vorige achtergrond hersteld.`,
-    });
   }
 
   function renderPhotoEditor(data) {
@@ -3254,21 +3229,6 @@
           renderAdminPanel();
         }
 
-        return;
-      }
-
-      const bgRestore = event.target.closest("[data-bg-restore]");
-      if (bgRestore) {
-        try {
-          await restorePreviousBackground(
-            DataStore.get(),
-            bgRestore.dataset.bgRestore,
-          );
-          renderAdminPanel();
-        } catch (error) {
-          console.error(error);
-          setSaveStatus(error.message || "Vorige achtergrond herstellen mislukt.", "error");
-        }
         return;
       }
 

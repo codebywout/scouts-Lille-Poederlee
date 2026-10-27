@@ -116,9 +116,93 @@ try {
         expect(true, '9k x 9k rejected by pixel budget');
     }
 
+    // 25 MP exceeds the 20 MP pre-decode budget (memory-safe).
+    try {
+        scouts_photo_assert_safe_dimensions(5000, 5000);
+        expect(false, '25 MP rejected by pixel budget');
+    } catch (InvalidArgumentException $e) {
+        expect(true, '25 MP rejected by pixel budget');
+    }
+
+    // Narrow master: variant files keep -w2400 names but pixel width is capped;
+    // srcset builder must dedupe descriptors to the real width.
+    $narrow = imagecreatetruecolor(900, 600);
+    $fill = imagecolorallocate($narrow, 40, 90, 160);
+    imagefilledrectangle($narrow, 0, 0, 899, 599, $fill);
+    $narrowPath = $tmpDir . DIRECTORY_SEPARATOR . 'narrow.jpg';
+    imagejpeg($narrow, $narrowPath, 90);
+    scouts_photo_destroy($narrow);
+
+    $basename3 = 'news-' . time() . '-narrow';
+    $info3 = getimagesize($narrowPath);
+    $public3 = scouts_store_uploaded_photo(
+        $narrowPath,
+        $basename3,
+        'image/jpeg',
+        (int) $info3[0],
+        (int) $info3[1]
+    );
+    expect(str_contains($public3, 'sw='), 'public path includes source-width hint');
+    $w2400 = SCOUTS_UPLOADS_DIR . DIRECTORY_SEPARATOR . $basename3 . '-w2400.jpg';
+    $w1200 = SCOUTS_UPLOADS_DIR . DIRECTORY_SEPARATOR . $basename3 . '-w1200.jpg';
+    expect(is_file($w2400) && is_file($w1200), 'named wide variants exist for narrow source');
+    $size2400 = @getimagesize($w2400);
+    $size1200 = @getimagesize($w1200);
+    expect(
+        is_array($size2400) && (int) $size2400[0] === 900,
+        'w2400 file is capped to source width 900'
+    );
+    expect(
+        is_array($size1200) && (int) $size1200[0] === 900,
+        'w1200 file is capped to source width 900'
+    );
+    $srcset = scouts_photo_build_srcset(
+        SCOUTS_UPLOADS_DIR . DIRECTORY_SEPARATOR . $basename3,
+        '/uploads/' . $basename3,
+        'jpg',
+        [800, 1200, 1600, 2400],
+        'v=1&sw=900'
+    );
+    expect(substr_count($srcset['srcset'], ' 900w') === 1, 'srcset lists 900w only once');
+    expect(!str_contains($srcset['srcset'], '2400w'), 'srcset does not claim 2400w for 900px file');
+
+    // Failed staging must not delete an already-committed master.
+    $keepName = 'news-' . time() . '-keep';
+    $keepMaster = SCOUTS_UPLOADS_DIR . DIRECTORY_SEPARATOR . $keepName . '.jpg';
+    $keepImg = imagecreatetruecolor(320, 240);
+    imagejpeg($keepImg, $keepMaster, 85);
+    scouts_photo_destroy($keepImg);
+    $before = filesize($keepMaster);
+    try {
+        scouts_store_uploaded_photo(
+            $tmpDir . DIRECTORY_SEPARATOR . 'does-not-exist.jpg',
+            $keepName,
+            'image/jpeg',
+            320,
+            240
+        );
+        expect(false, 'missing source should fail');
+    } catch (Throwable $e) {
+        expect(true, 'missing source should fail');
+    }
+    expect(
+        is_file($keepMaster) && filesize($keepMaster) === $before,
+        'failed upload leaves existing master intact'
+    );
+
+    // Originals stay private (htaccess deny) — file exists but under originals/.
+    $origOk = is_file(scouts_photo_originals_dir() . DIRECTORY_SEPARATOR . $basename3 . '.jpg');
+    expect($origOk, 'original stored under originals/');
+    expect(
+        is_file(SCOUTS_UPLOADS_DIR . DIRECTORY_SEPARATOR . 'originals' . DIRECTORY_SEPARATOR . '.htaccess'),
+        'originals/.htaccess present'
+    );
+
     // Cleanup test uploads
     scouts_delete_photo_versions($basename);
     scouts_delete_photo_versions($basename2);
+    scouts_delete_photo_versions($basename3);
+    scouts_delete_photo_versions($keepName);
     expect(!is_file(SCOUTS_UPLOADS_DIR . DIRECTORY_SEPARATOR . $basename . '.jpg'), 'cleanup removed master');
 } catch (Throwable $e) {
     fwrite(STDOUT, ' FAIL exception: ' . $e->getMessage() . "\n");
