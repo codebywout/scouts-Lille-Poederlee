@@ -87,17 +87,48 @@ jobs:
         run: |
           set -euo pipefail
           # Assertions are warn-level in lighthouserc.cjs — low scores must not fail the job.
+          # Runs from repo root so report paths resolve next to the workflow workspace.
           ./tools/lighthouse/node_modules/.bin/lhci autorun --config=tools/lighthouse/lighthouserc.cjs
-          node tools/lighthouse/summarize-results.mjs .lighthouseci
+          node tools/lighthouse/summarize-results.mjs lhci-reports
+
+      - name: Diagnose Lighthouse report files
+        if: always()
+        run: |
+          set -euo pipefail
+          echo "=== Workspace ==="
+          pwd
+          echo "=== .lighthouseci (LHCI temp working dir; hidden) ==="
+          if [ -d .lighthouseci ]; then
+            ls -la .lighthouseci
+            find .lighthouseci -type f | sort
+          else
+            echo "WARN: .lighthouseci directory is missing"
+          fi
+          echo "=== lhci-reports (filesystem upload target) ==="
+          if [ -d lhci-reports ]; then
+            ls -la lhci-reports
+            find lhci-reports -type f | sort
+          else
+            echo "WARN: lhci-reports directory is missing"
+          fi
+          html_count="$(find lhci-reports -type f -name '*.html' 2>/dev/null | wc -l | tr -d ' ')"
+          json_count="$(find lhci-reports -type f \( -name '*.json' -o -name '*.report.json' \) 2>/dev/null | wc -l | tr -d ' ')"
+          echo "html_count=${html_count} json_count=${json_count}"
+          if [ "${html_count}" = "0" ] && [ "${json_count}" = "0" ]; then
+            echo "::error::No Lighthouse HTML/JSON reports found in lhci-reports/. Refusing to treat this as a successful report upload."
+            exit 1
+          fi
 
       - name: Upload Lighthouse reports
         if: always()
-        uses: actions/upload-artifact@v4
+        # v5+ runs on the Node.js 24 Actions runtime (v4 used Node.js 20).
+        uses: actions/upload-artifact@v5
         with:
           name: lighthouse-mobile-reports
-          path: |
-            .lighthouseci/
-          if-no-files-found: warn
+          # Only the non-hidden filesystem upload dir (HTML + JSON).
+          # Do not upload .lighthouseci/: upload-artifact skips dotfolders by default.
+          path: lhci-reports/
+          if-no-files-found: error
           retention-days: 14
 
       - name: Stop PHP server

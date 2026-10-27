@@ -31,7 +31,8 @@ jobs:
 
       - name: Upload PageSpeed summary
         if: always()
-        uses: actions/upload-artifact@v4
+        # v5+ runs on the Node.js 24 Actions runtime (v4 used Node.js 20).
+        uses: actions/upload-artifact@v5
         with:
           name: pagespeed-mobile-summary
           path: pagespeed-results/

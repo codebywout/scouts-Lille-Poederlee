@@ -48,8 +48,12 @@ module.exports = {
       },
     },
     upload: {
+      // Write HTML + JSON reports to a non-hidden directory.
+      // (.lighthouseci is LHCI's temp working dir; upload-artifact skips dotfolders by default.)
       target: 'filesystem',
-      outputDir: '.lighthouseci',
+      outputDir: 'lhci-reports',
+      reportFilenamePattern:
+        '%%PATHNAME%%-%%DATETIME%%.report.%%EXTENSION%%',
     },
   },
 };
