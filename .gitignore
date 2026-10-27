@@ -24,6 +24,7 @@ tools/lighthouse/node_modules/
 npm-debug.log*
 node_modules/
 .lighthouseci/
+lhci-reports/
 pagespeed-results/
 
 .DS_Store

@@ -7,15 +7,22 @@
 import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 
-const dir = process.argv[2] || '.lighthouseci';
+const preferred = process.argv[2] || 'lhci-reports';
+const fallback = '.lighthouseci';
+const dir = existsSync(preferred) ? preferred : fallback;
 
 if (!existsSync(dir)) {
-  console.warn(`WARN  No Lighthouse output directory at ${dir}`);
+  console.warn(`WARN  No Lighthouse output directory at ${preferred} or ${fallback}`);
   process.exit(0);
 }
 
+console.log(`Reading Lighthouse JSON from ${dir}`);
+
 const files = readdirSync(dir).filter(
-  (name) => name.endsWith('.json') && !name.includes('manifest') && !name.includes('assertion')
+  (name) =>
+    name.endsWith('.json') &&
+    !name.includes('assertion-results') &&
+    name !== 'manifest.json'
 );
 
 if (files.length === 0) {
