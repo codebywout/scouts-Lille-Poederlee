@@ -15,7 +15,8 @@ jobs:
     name: checks (PHP ${{ matrix.php-version }})
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        # v5+ runs on the Node.js 24 Actions runtime (v4 used Node.js 20).
+        uses: actions/checkout@v5
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
@@ -26,7 +27,8 @@ jobs:
 
       # check-script-min.php runs `node --check` on script.js / script.min.js
       - name: Setup Node
-        uses: actions/setup-node@v4
+        # v5+ runs on the Node.js 24 Actions runtime; installed toolchain stays Node 20.
+        uses: actions/setup-node@v5
         with:
           node-version: "20"
 
