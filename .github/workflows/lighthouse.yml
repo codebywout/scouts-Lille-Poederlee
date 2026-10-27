@@ -1,0 +1,108 @@
+name: Lighthouse (mobile PR)
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lighthouse:
+    name: Mobile Lighthouse (PR preview)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+          extensions: gd, curl, fileinfo
+          coverage: none
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: "20"
+
+      # Same safe seed pattern as functional CI: fictional default only, Actions workspace only.
+      - name: Initialize fictional runtime site-data
+        run: |
+          set -euo pipefail
+          if [ "${GITHUB_ACTIONS:-}" != "true" ]; then
+            echo "Refusing to reset runtime site-data outside GitHub Actions."
+            exit 1
+          fi
+          if git ls-files --error-unmatch data/site-data.json >/dev/null 2>&1; then
+            echo "data/site-data.json must not be tracked by Git."
+            exit 1
+          fi
+          if [ -f data/site-data.json ]; then
+            echo "Removing leftover runtime site-data.json in CI workspace only."
+            rm -f data/site-data.json
+          else
+            echo "No runtime site-data.json present after checkout (expected)."
+          fi
+          rm -f data/.site-data.public.json
+          php tools/bootstrap-site-data.php
+          php -r '
+            $file = "data/site-data.json";
+            if (!is_file($file)) { fwrite(STDERR, "Bootstrap did not create runtime file\n"); exit(1); }
+            $data = json_decode(file_get_contents($file), true, 512, JSON_THROW_ON_ERROR);
+            if (!is_array($data) || $data === []) { fwrite(STDERR, "Invalid seed JSON\n"); exit(1); }
+            $email = (string) ($data["contact"]["email"] ?? "");
+            if (!str_contains($email, "voorbeeld") && !str_contains($email, "example")) {
+              fwrite(STDERR, "Seed contact email does not look fictional\n");
+              exit(1);
+            }
+            echo "Runtime site-data.json OK (fictional seed)\n";
+          '
+
+      - name: Start local PHP server
+        run: |
+          set -euo pipefail
+          php -d upload_max_filesize=20M -d post_max_size=25M -d memory_limit=256M \
+            -S 127.0.0.1:8000 router.php >/tmp/scouts-php-server-lh.log 2>&1 &
+          echo $! > /tmp/scouts-php-server-lh.pid
+          for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
+            if curl -sf -o /dev/null http://127.0.0.1:8000/; then
+              echo "PHP server is up"
+              exit 0
+            fi
+            sleep 0.5
+          done
+          echo "PHP server failed to start"
+          cat /tmp/scouts-php-server-lh.log || true
+          exit 1
+
+      - name: Install Lighthouse CI (pinned)
+        working-directory: tools/lighthouse
+        # package.json pins @lhci/cli; lockfile optional (generated in CI cache-friendly install).
+        run: npm install --omit=dev --no-fund --no-audit
+
+      - name: Collect + assert (warn-only) mobile Lighthouse
+        run: |
+          set -euo pipefail
+          # Assertions are warn-level in lighthouserc.cjs — low scores must not fail the job.
+          ./tools/lighthouse/node_modules/.bin/lhci autorun --config=tools/lighthouse/lighthouserc.cjs
+          node tools/lighthouse/summarize-results.mjs .lighthouseci
+
+      - name: Upload Lighthouse reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-mobile-reports
+          path: |
+            .lighthouseci/
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Stop PHP server
+        if: always()
+        run: |
+          if [ -f /tmp/scouts-php-server-lh.pid ]; then
+            kill "$(cat /tmp/scouts-php-server-lh.pid)" 2>/dev/null || true
+          fi
