@@ -77,22 +77,16 @@ expect(!isset($public['pageContent']['photos']), 'editor pageContent.photos stri
 expect(($public['pageContent']['over-ons']['intro'] ?? null) === 'Hallo', 'over-ons intro allowlisted');
 expect(!isset($public['pageContent']['over-ons']['secret']), 'non-allowlisted pageContent key dropped');
 
-$groupPhones = 0;
-foreach ($public['groupLeadership'] as $person) {
-    if (array_key_exists('phone', $person)) {
-        $groupPhones++;
-    }
-}
-expect($groupPhones === 0, 'groupLeadership phones absent from public payload');
 expect(($public['groupLeadership'][0]['name'] ?? '') === 'Public Name', 'groupLeadership name kept');
+expect(
+    ($public['groupLeadership'][0]['phone'] ?? '') === '04 00 00 00 00',
+    'groupLeadership phone kept in public payload'
+);
 
-$branchPhones = 0;
-foreach ($public['branchLeadership']['kapoenen'] ?? [] as $person) {
-    if (array_key_exists('phone', $person)) {
-        $branchPhones++;
-    }
-}
-expect($branchPhones === 0, 'branchLeadership phones absent from public payload');
+expect(
+    ($public['branchLeadership']['kapoenen'][0]['phone'] ?? '') === '04 11 11 11 11',
+    'branchLeadership phone kept in public payload'
+);
 expect(!empty($public['branchLeadership']['kapoenen'][0]['takleider']), 'takleider flag kept');
 expect(!isset($public['photos']['logo']), 'internal photo keys not public');
 expect(!isset($public['photos']['pageBackgroundsPrevious']), 'previous backgrounds not public');
@@ -175,17 +169,14 @@ try {
     if (is_file(SCOUTS_DATA_FILE)) {
         $bundle = scouts_public_site_data_bundle();
         $bundleEtag = trim($bundle['etag'], '"');
-        expect(str_ends_with($bundleEtag, '-p3'), 'public bundle etag uses format p3');
+        expect(str_ends_with($bundleEtag, '-p4'), 'public bundle etag uses format p4');
         $decoded = json_decode($bundle['json'], true);
         expect(is_array($decoded), 'public bundle JSON decodes');
-        if (is_array($decoded)) {
-            $phones = 0;
-            foreach ($decoded['groupLeadership'] ?? [] as $person) {
-                if (is_array($person) && array_key_exists('phone', $person)) {
-                    $phones++;
-                }
-            }
-            expect($phones === 0, 'live public bundle has no group phones');
+        if (is_array($decoded) && !empty($decoded['groupLeadership'][0]['name'])) {
+            expect(
+                array_key_exists('phone', $decoded['groupLeadership'][0]),
+                'live public bundle keeps group phones'
+            );
         }
     } else {
         expect(true, 'public bundle check skipped (no runtime site-data)');

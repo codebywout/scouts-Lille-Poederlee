@@ -54,7 +54,7 @@ const SCOUTS_MAX_PDF_UPLOAD_BYTES = 20971520;
  * Bump this on every deploy so HTML/CSS/JS URLs change and old caches are skipped.
  * Format: YYYYMMDD-N
  */
-const SCOUTS_ASSET_VERSION = '20261027-21';
+const SCOUTS_ASSET_VERSION = '20261027-24';
 /** Microsoft Clarity project ID (public site only; loaded after analytics consent). */
 const SCOUTS_CLARITY_PROJECT_ID = 'z4c8od8ljm';
 const SCOUTS_LOGIN_ATTEMPTS_FILE = SCOUTS_ROOT . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . '.login-attempts.json';
@@ -915,7 +915,7 @@ function scouts_site_data_version(): string
 
 /**
  * Build the public site-data payload (API + HTML boot) via an explicit allowlist.
- * Personal leadership phones and editor-only keys are never included.
+ * Editor-only keys are never included. Leadership names/phones are public contact info.
  *
  * @param array<string, mixed> $data
  * @return array<string, mixed>
@@ -1011,7 +1011,6 @@ function scouts_public_site_data(array $data): array
         'address' => (string) ($contact['address'] ?? ''),
     ];
 
-    // Names only — no personal phone numbers in the public payload.
     $out['groupLeadership'] = [];
     if (is_array($data['groupLeadership'] ?? null)) {
         foreach ($data['groupLeadership'] as $person) {
@@ -1022,7 +1021,10 @@ function scouts_public_site_data(array $data): array
             if ($name === '') {
                 continue;
             }
-            $out['groupLeadership'][] = ['name' => $name];
+            $out['groupLeadership'][] = [
+                'name' => $name,
+                'phone' => trim((string) ($person['phone'] ?? '')),
+            ];
         }
     }
 
@@ -1041,7 +1043,10 @@ function scouts_public_site_data(array $data): array
             if ($name === '') {
                 continue;
             }
-            $entry = ['name' => $name];
+            $entry = [
+                'name' => $name,
+                'phone' => trim((string) ($person['phone'] ?? '')),
+            ];
             if (!empty($person['takleider'])) {
                 $entry['takleider'] = true;
             }
@@ -1112,8 +1117,8 @@ function scouts_public_site_data(array $data): array
 function scouts_public_site_data_bundle(): array
 {
     $version = scouts_site_data_version();
-    // format 3 = HEX_* inline safety + allowlisted public fields (no leader phones)
-    $format = 3;
+    // format 4 = HEX_* inline safety + allowlisted public fields (incl. leader phones)
+    $format = 4;
     $etag = '"' . $version . '-p' . $format . '"';
 
     if (is_file(SCOUTS_PUBLIC_DATA_CACHE)) {

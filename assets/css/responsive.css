@@ -639,13 +639,17 @@
     }
 
     .admin-card-head {
-        flex-direction: column;
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: center;
         gap: 10px;
     }
 
     .admin-card-head .mini-button {
-        align-self: flex-start;
+        flex: 0 0 auto;
+        align-self: center;
         min-height: 40px;
+        white-space: nowrap;
     }
 
     .secondhand-empty {
