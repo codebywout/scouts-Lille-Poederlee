@@ -701,9 +701,6 @@
     },
   ];
 
-  /** @type {Record<string, { file: File, previewUrl: string }>} */
-  const pendingBackgroundUploads = {};
-
   function ensurePageBackgroundBuckets(data) {
     if (!data.photos || typeof data.photos !== "object") data.photos = {};
     if (!data.photos.pageBackgrounds || typeof data.photos.pageBackgrounds !== "object") {
@@ -725,15 +722,7 @@
     });
   }
 
-  function clearPendingBackground(key) {
-    const pending = pendingBackgroundUploads[key];
-    if (pending?.previewUrl) URL.revokeObjectURL(pending.previewUrl);
-    delete pendingBackgroundUploads[key];
-  }
-
   function backgroundPreviewSrc(data, key, fallback) {
-    const pending = pendingBackgroundUploads[key];
-    if (pending?.previewUrl) return pending.previewUrl;
     const current = String(data.photos?.pageBackgrounds?.[key] || "").trim();
     if (current) return current;
     return fallback;
@@ -1766,27 +1755,23 @@
       const previous = String(
         data.photos.pageBackgroundsPrevious[slot.key] || "",
       ).trim();
-      const pending = pendingBackgroundUploads[slot.key];
       const preview = backgroundPreviewSrc(data, slot.key, slot.defaultPreview);
 
       return `
-        <article class="admin-bg-card ${pending ? "is-pending" : ""} ${current ? "has-custom" : ""}" data-bg-key="${escapeHtml(slot.key)}">
+        <article class="admin-bg-card ${current ? "has-custom" : ""}" data-bg-key="${escapeHtml(slot.key)}">
           <div class="admin-bg-preview">
             <img src="${escapeHtml(preview)}" alt="" loading="lazy">
             <label class="admin-bg-dropzone">
-              <span>${pending ? "Andere foto" : "Foto kiezen"}</span>
+              <span>${current ? "Vervangen" : "Foto kiezen"}</span>
               <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" data-bg-pick="${escapeHtml(slot.key)}">
             </label>
           </div>
           <div class="admin-bg-body">
             <div class="admin-bg-heading">
               <h3>${escapeHtml(slot.label)}</h3>
-              ${pending ? `<p class="admin-bg-status" data-bg-status>Klaar om te publiceren</p>` : ""}
             </div>
             <div class="admin-bg-actions">
-              <button type="button" class="mini-button admin-bg-publish" data-bg-publish="${escapeHtml(slot.key)}" ${pending ? "" : "disabled"}>Publiceren</button>
-              <button type="button" class="admin-utility-link" data-bg-clear-pending="${escapeHtml(slot.key)}" ${pending ? "" : "hidden"}>Annuleren</button>
-              <button type="button" class="admin-utility-link" data-bg-restore="${escapeHtml(slot.key)}" ${previous && !pending ? "" : "hidden"}>Vorige</button>
+              <button type="button" class="admin-utility-link" data-bg-restore="${escapeHtml(slot.key)}" ${previous ? "" : "hidden"}>Vorige</button>
               <a class="admin-utility-link" href="${escapeHtml(slot.livePath)}" target="_blank" rel="noopener">Live</a>
             </div>
           </div>
@@ -1794,7 +1779,6 @@
       `;
     }).join("");
 
-    // Drag-and-drop on dropzones
     qsa(".admin-bg-dropzone", container).forEach((zone) => {
       ["dragenter", "dragover"].forEach((type) => {
         zone.addEventListener(type, (event) => {
@@ -1808,49 +1792,39 @@
           zone.classList.remove("is-dragover");
         });
       });
-      zone.addEventListener("drop", (event) => {
+      zone.addEventListener("drop", async (event) => {
         const key = zone.querySelector("input[data-bg-pick]")?.dataset.bgPick;
         const file = event.dataTransfer?.files?.[0];
-        if (key && file) stageBackgroundFile(key, file);
+        if (!key || !file) return;
+        const surface = document.querySelector(`[data-bg-key="${key}"]`);
+        try {
+          await updateBackground(DataStore.get(), key, file, surface);
+        } catch (error) {
+          console.error(error);
+          endPhotoUpload(surface);
+          setSaveStatus(error.message || "Achtergrond uploaden mislukt", "error");
+        }
       });
     });
   }
 
-  function stageBackgroundFile(key, file) {
-    if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      setSaveStatus("Selecteer een afbeeldingsbestand (JPEG, PNG, WebP of GIF).", "error");
-      return;
-    }
-    try {
-      assertUploadSize(file, "achtergrondfoto");
-    } catch (error) {
-      setSaveStatus(error.message || "Bestand te groot.", "error");
-      return;
-    }
-
-    clearPendingBackground(key);
-    pendingBackgroundUploads[key] = {
-      file,
-      previewUrl: URL.createObjectURL(file),
-    };
-    setSaveStatus("Voorbeeld klaar — publiceer om live te zetten.", "dirty");
-    renderAdminPanel();
-  }
-
-  async function publishBackground(data, key) {
+  async function updateBackground(data, key, file, surface = null) {
     ensurePageBackgroundBuckets(data);
     const slot = PAGE_BACKGROUND_CONFIG.find((item) => item.key === key);
-    const pending = pendingBackgroundUploads[key];
-    if (!slot || !pending?.file) {
-      throw new Error("Geen nieuwe foto om te publiceren.");
+    if (!slot) {
+      throw new Error("Onbekende achtergrond.");
+    }
+    if (!file) {
+      throw new Error("Geen foto geselecteerd.");
+    }
+    if (!file.type.startsWith("image/")) {
+      throw new Error("Selecteer een afbeeldingsbestand (JPEG, PNG, WebP of GIF).");
     }
 
-    beginPhotoUpload(
-      document.querySelector(`[data-bg-key="${key}"]`) || null,
-    );
+    beginPhotoUpload(surface);
     try {
-      const optimized = await optimizeImageForUpload(pending.file);
+      assertUploadSize(file, "achtergrondfoto");
+      const optimized = await optimizeImageForUpload(file);
       const formData = new FormData();
       formData.append("photo", optimized);
       formData.append("filename", slot.filename);
@@ -1869,16 +1843,17 @@
         data.photos.pageBackgroundsPrevious[key] = current;
       }
       data.photos.pageBackgrounds[key] = result.path;
-      clearPendingBackground(key);
 
       const published = await persist(data, {
-        message: `${slot.label}: achtergrond gepubliceerd.`,
+        message: "Achtergrond staat op de website",
       });
-      if (!published) {
-        throw new Error("Opslaan van de achtergrondinstelling mislukt.");
+      if (published) {
+        saveDetail = "Achtergronden worden meteen geplaatst.";
+        renderSaveBar();
       }
+      renderAdminPanel();
     } finally {
-      endPhotoUpload(document.querySelector(`[data-bg-key="${key}"]`) || null);
+      endPhotoUpload(surface);
     }
   }
 
@@ -1894,7 +1869,6 @@
     const current = String(data.photos.pageBackgrounds[key] || "").trim();
     data.photos.pageBackgroundsPrevious[key] = current;
     data.photos.pageBackgrounds[key] = previous;
-    clearPendingBackground(key);
     await persist(data, {
       message: `${slot.label}: vorige achtergrond hersteld.`,
     });
@@ -2899,7 +2873,17 @@
 
       const bgPick = event.target.closest("[data-bg-pick]");
       if (bgPick?.files?.[0]) {
-        stageBackgroundFile(bgPick.dataset.bgPick, bgPick.files[0]);
+        const key = bgPick.dataset.bgPick;
+        const surface =
+          bgPick.closest(".admin-bg-card") ||
+          document.querySelector(`[data-bg-key="${key}"]`);
+        try {
+          await updateBackground(DataStore.get(), key, bgPick.files[0], surface);
+        } catch (error) {
+          console.error(error);
+          endPhotoUpload(surface);
+          setSaveStatus(error.message || "Achtergrond uploaden mislukt", "error");
+        }
         bgPick.value = "";
         return;
       }
@@ -3270,29 +3254,6 @@
           renderAdminPanel();
         }
 
-        return;
-      }
-
-      const bgPublish = event.target.closest("[data-bg-publish]");
-      if (bgPublish) {
-        try {
-          await publishBackground(DataStore.get(), bgPublish.dataset.bgPublish);
-          renderAdminPanel();
-        } catch (error) {
-          console.error(error);
-          setSaveStatus(
-            error.message || "Achtergrond publiceren mislukt. De huidige blijft actief.",
-            "error",
-          );
-        }
-        return;
-      }
-
-      const bgClearPending = event.target.closest("[data-bg-clear-pending]");
-      if (bgClearPending) {
-        clearPendingBackground(bgClearPending.dataset.bgClearPending);
-        setSaveStatus("Voorbeeld geannuleerd.", "clean");
-        renderAdminPanel();
         return;
       }
 

@@ -1,6 +1,8 @@
-# Overdracht checklist — website Scouts Lille-Poederlee
+# Overdracht checklist — scoutswebsite
 
 Gebruik dit document wanneer de groepsleiding of de technische verantwoordelijke wisselt.  
+Het voorbeeld hieronder noemt soms Scouts Lille-Poederlee; vul overal **jullie** gegevens in.
+
 **Vul geen wachtwoorden, tokens of privésleutels in dit bestand in.** Noteer alleen *wie* iets beheert en *waar* de geheimen veilig liggen (bijv. “wachtwoordkluis van de groepsleiding”).
 
 Velden met `NOG IN TE VULLEN` moeten door de **huidige** beheerder worden ingevuld vóór of tijdens de overdracht.
@@ -38,7 +40,7 @@ Repository (bevestigd via remote): `https://github.com/codebywout/scouts-Lille-P
 
 | Onderdeel | Waarde |
 | --- | --- |
-| Domeinnaam | scoutslille.be (bevestigd in code/sitemap-basis) |
+| Domeinnaam | `NOG IN TE VULLEN` (voorbeeld in deze codebase: scoutslille.be) |
 | Registrar (waar domein gekocht is) | `NOG IN TE VULLEN` |
 | Hostingprovider / paneel (bijv. Plesk) | `NOG IN TE VULLEN` — in technische docs wordt Plesk als mogelijke context genoemd; **niet** als harde feit zonder bevestiging |
 | Accountlogin hosting (gebruikersnaam alleen) | `NOG IN TE VULLEN` |
@@ -106,7 +108,7 @@ Checklist — **vink af, vul geen geheimen in**:
 
 Na overdracht samen doorlopen:
 
-- [ ] scoutslille.be laadt (homepage + één takpagina)
+- [ ] Jullie live website laadt (homepage + één takpagina)
 - [ ] Inloggen op `/login` met **nieuw** wachtwoord lukt
 - [ ] Kleine testwijziging in admin → opslaan → zichtbaar op publieke site → wijziging terugzetten of laten
 - [ ] Foto- of PDF-upload testen (klein bestand) — daarna opruimen indien testdata
