@@ -1,203 +1,215 @@
-# Handleiding voor scoutsleiding — website beheren
+# Handleiding: inhoud beheren
 
-Voor leiding die de **inhoud** van de website bijwerkt. Geen programmeerkennis nodig.  
-Gemaakt rond de site van Scouts Lille-Poederlee; dezelfde stappen gelden als jouw groep deze website gebruikt.
+Deze handleiding is voor scoutsleiding. Je past de website aan via de **beheeromgeving**. Daarvoor hoef je niet te programmeren.
 
-Korte begrippen:
-
-- **Beheeromgeving** — pagina’s achter login waar je inhoud wijzigt.
-- **Publieke website** — wat bezoekers zien zonder inloggen.
-- **Opslaan** — je wijziging naar de live website sturen.
-
-Alles hieronder komt overeen met de beheeromgeving in deze code. Wat we niet op een live site hebben kunnen klikken, staat als **te controleren**.
+Terug naar het overzicht: [README.md](../README.md).
 
 ---
 
-## 1. Inloggen
+## Eerst inloggen
 
-1. Open op jullie website het pad **/login** (voorbeeld: `https://scoutslille.be/login` — vervang door jullie eigen adres).
-2. Vul gebruikersnaam en wachtwoord in van het **beheeraccount**.
-3. Na een geslaagde login kom je in de beheeromgeving (`/admin`).
+1. Open de website in je browser.
+2. Ga naar `/login` achter jullie adres.  
+   Voorbeeld: `https://scoutslille.be/login`  
+   Of: `https://jullie-adres.be/login`
+3. Vul gebruikersnaam en wachtwoord in.
+4. Je ziet nu het beheerscherm.
 
-**Wachtwoorden staan niet in deze map op GitHub.** Die krijg je bij de overdracht (zie [overdracht.md](overdracht.md)).
-
-Lukt inloggen niet?
-
-- Controleer hoofdletters en spaties.
-- Probeer niet tientallen keren opnieuw (er kan een beveiligingslimiet zijn).
-- Vraag de persoon die hosting/login beheert om hulp — zie overdrachtchecklist.
+Lukt inloggen niet? Controleer typfouten. Probeer niet eindeloos opnieuw. Vraag het wachtwoord aan wie de site beheert.
 
 ---
 
-## 2. De beheeromgeving in één oogopslag
+## Hoe het beheerscherm werkt
 
-Bovenaan kies je een onderdeel:
+Bovenaan staan knoppen:
 
-**Site**
+**Site:** Home · Nieuws · Over ons · Inschrijven · Foto’s · Achtergronden · Tweedehands  
 
-| Knop | Wat je daar beheert |
-| --- | --- |
-| Home | Planning/agenda, veelgestelde vragen (FAQ), contact (e-mail, adres) |
-| Nieuws | Nieuwsberichten |
-| Over ons | Introtekst + groepsleiding |
-| Inschrijven | Lidgeld en rekeningnummer |
-| Foto’s | Foto’s die op takpagina’s / Over ons getoond worden |
-| Achtergronden | Achtergrondfoto’s van pagina’s |
-| Tweedehands | Tweedehands-aanbod |
+**Takken:** Kapoenen · Welpen · Jongverkenners · Verkenners · Jins  
 
-**Takken** — Kapoenen, Welpen, Jongverkenners, Verkenners, Jins:
+Onderaan (of vast in beeld):
 
-- Takleiding (namen, telefoon, wie takleider is)
-- Maandplanning (PDF)
-- Brieven (PDF)
+- **Opslaan** — zet je tekstwijzigingen op de live website  
+- **Bekijk live** — opent de bijbehorende pagina zoals bezoekers die zien  
+- **Backup downloaden** — slaat jullie teksten/gegevens op als veiligheidsbestand  
 
-Verder:
-
-- Knop **Instellingen** (tandwiel) — o.a. Google Drive (optioneel), backup/herstel van sitegegevens, zoeken naar ongebruikte uploads. Sommige onderdelen vragen een extra wachtwoord (**te controleren** op jullie live site).
-- **Backup downloaden** — aparte knop in de beheeromgeving om de sitegegevens als bestand te downloaden (bevestigd in `admin.html`). In Instellingen staat ook backup/herstel.
-- **Bekijk live** — opent de bijbehorende publieke pagina.
-- **Opslaan** — zet je wijzigingen op de live website (foto’s en achtergronden gaan al bij upload live).
-
----
-
-## 3. Teksten en contactgegevens
-
-### Contact (e-mail en adres)
-
-1. Kies **Home**.
-2. Scroll naar **Contact**.
-3. Pas e-mail en/of adres aan.
-4. Klik **Opslaan**.
-5. Controleer de footer/contactzone op de publieke homepage.
-
-### Over ons — introtekst
-
-1. Kies **Over ons**.
-2. Pas het veld **Tekst** aan.
-3. Opslaan → controleer `/over-ons`.
-
-### Inschrijven — lidgeld en rekeningnummer
-
-1. Kies **Inschrijven**.
-2. Vul **Lidgeld (€)** en **Rekeningnummer** in.
-3. Opslaan → controleer `/inschrijven`.
-
-> Let op: het rekeningnummer is gevoelige informatie. Zet geen extra privégegevens in vrije tekstvelden.
-
----
-
-## 4. Agenda, nieuws en FAQ
-
-### Agenda (planning op de homepage)
-
-1. Kies **Home** → sectie **Planning**.
-2. **+ Activiteit** voor een nieuw item, of bewerk een bestaand item.
-3. Vul dag/maand (start en eventueel einde), titel, tekst, optioneel link en foto in.
-4. Opslaan → controleer de homepage.
-
-### FAQ
-
-1. Home → **Veelgestelde vragen**.
-2. **+ Vraag** of bestaand item bewerken.
-3. Opslaan.
-
-### Nieuws
-
-1. Kies **Nieuws**.
-2. Voeg berichten toe of pas ze aan via de editor in die sectie.
-3. Opslaan → controleer `/nieuws`.
-
-> Concepten/publicatiestatus: in de technische docs staat dat concepten admin-only kunnen blijven. **Te controleren** op live: of elk nieuwsitem meteen zichtbaar is voor bezoekers na opslaan.
-
----
-
-## 5. Leiding en takinformatie
-
-### Groepsleiding
-
-1. **Over ons** → **Groepsleiding**.
-2. **+ Groepsleider** of bestaande rij aanpassen (naam, telefoon).
-3. Opslaan → controleer Over ons.
-
-### Takleiding
-
-1. Kies de **tak** (bijv. Welpen).
-2. Pas leiders aan; markeer desgevraagd wie takleider is (veld aanwezig in de data/UI).
-3. Opslaan → controleer de takpagina.
-
----
-
-## 6. Foto’s uploaden en beheren
-
-1. Kies **Foto’s**.
-2. Upload of vervang de foto voor de gewenste plek (tak / Over ons — labels in het scherm).
-3. Bij een geslaagde upload kan de site de foto meteen plaatsen (bevestigd in de admin-code voor tak-/Over ons-foto’s).
-4. Controleer de publieke pagina.
-
-**Achtergronden:** sectie **Achtergronden**. Kies of sleep een foto — die wordt meteen geüpload en op de website gezet, net als bij Foto’s. Bij een mislukte upload blijft de huidige achtergrond staan. Via **Vorige** kun je de vorige upload terugzetten als die beschikbaar is.
-
----
-
-## 7. Brieven en maandplanningen
-
-Open de betreffende **tak**.
-
-### Maandplanning
-
-1. Kies minstens één maand.
-2. Kies een **PDF**.
-3. Na upload/opslaan verschijnt de planning op de takpagina.
-4. Verwijderen kan via de knop **Verwijderen** bij een bestaande planning.
-
-### Brieven
-
-1. Vul een **naam** voor de brief in.
-2. Kies een **PDF**.
-3. Na opslaan staat de brief bij die tak.
-4. Verwijderen via **Verwijderen** bij de brief.
-
-De PDF’s en foto’s komen op de **server** terecht (map `uploads/`). Ze staan meestal **niet** op GitHub.
-
----
-
-## 8. Wijzigingen controleren op de publieke website
+**Tip:** foto’s en achtergronden gaan meteen live na upload. Voor teksten, agenda, nieuws en leiding moet je meestal nog op **Opslaan** klikken.
 
 Na elke belangrijke wijziging:
 
-1. Klik **Bekijk live**, of open **jullie** gewone websiteadres in een nieuw tabblad.
-2. Vernieuw de pagina (soms helpt een harde refresh: Ctrl+F5).
-3. Controleer desktop én telefoon als het om layout/foto’s gaat.
-
-Werkt iets in de admin wel, maar niet publiek? Noteer welk onderdeel en vraag technische hulp — mogelijk cache of een mislukte opslag.
+1. Opslaan (als nodig).  
+2. Bekijk live of open de gewone website.  
+3. Pagina vernieuwen als je nog de oude versie ziet (vaak **Ctrl + F5**).
 
 ---
 
-## 9. Veelvoorkomende fouten
+## Contactgegevens (e-mail en adres)
 
-| Probleem | Wat je kunt proberen |
+1. Klik **Home**.
+2. Scroll naar **Contact**.
+3. Pas **E-mail** en/of **Adres** aan.
+4. Klik **Opslaan**.
+5. Controleer onderaan de gewone homepage of het klopt.
+
+---
+
+## Agenda / planning op de homepage
+
+1. Klik **Home**.
+2. Bij **Planning** zie je de activiteiten.
+3. Nieuw item: klik **+ Activiteit**.  
+   Bestaand item: pas de velden aan (dag, maand, titel, tekst, optioneel link of foto).
+4. Klik **Opslaan**.
+5. Open de homepage en controleer de planning.
+
+Verwijderen: gebruik de verwijderknop bij dat item, daarna **Opslaan**.
+
+---
+
+## Veelgestelde vragen (FAQ)
+
+1. Klik **Home**.
+2. Ga naar **Veelgestelde vragen**.
+3. Nieuw: **+ Vraag**. Of pas een bestaande vraag/antwoord aan.
+4. Klik **Opslaan**.
+5. Controleer de FAQ op de homepage.
+
+---
+
+## Nieuws
+
+1. Klik **Nieuws**.
+2. Nieuw bericht: **+ Nieuws**. Of open een bestaand bericht en pas het aan.
+3. Vul titel en tekst in (en eventuele foto’s als die in het scherm staan).
+4. Klik **Opslaan**.
+5. Ga naar de nieuwspagina op de gewone website en controleer.
+
+Verwijderen: verwijderknop bij het bericht, daarna **Opslaan**.
+
+---
+
+## Over ons — tekst en groepsleiding
+
+### Tekst
+
+1. Klik **Over ons**.
+2. Pas het veld **Tekst** aan.
+3. Klik **Opslaan**.
+4. Controleer `/over-ons` op de gewone website.
+
+### Groepsleiding
+
+1. Blijf op **Over ons**.
+2. Bij **Groepsleiding**: **+ Groepsleider** of pas naam/telefoon aan.
+3. Klik **Opslaan**.
+4. Controleer de Over ons-pagina.
+
+---
+
+## Inschrijven — lidgeld en rekeningnummer
+
+1. Klik **Inschrijven**.
+2. Vul **Lidgeld (€)** en **Rekeningnummer** in.
+3. Klik **Opslaan**.
+4. Controleer de inschrijfpagina op de gewone website.
+
+Het rekeningnummer is gevoelig. Zet geen extra privé-info in andere tekstvelden zonder noodzaak.
+
+---
+
+## Takleiding
+
+1. Klik de tak, bijvoorbeeld **Welpen**.
+2. Pas namen en telefoonnummers aan, of klik **+ Leider**.
+3. Markeer desgevraagd wie takleider is (als die optie in het scherm staat).
+4. Klik **Opslaan**.
+5. Open die takpagina op de gewone website.
+
+---
+
+## Maandplanning (PDF) per tak
+
+1. Klik de juiste **tak**.
+2. Zoek **Maandplanning**.
+3. Kies minstens één maand.
+4. Klik **PDF kiezen** en selecteer het bestand.
+5. Wacht tot de upload klaar is / sla op als de site dat vraagt.
+6. Controleer de takpagina.
+
+Verwijderen: knop **Verwijderen** bij de planning, daarna controleren op de site.
+
+---
+
+## Brieven (PDF) per tak
+
+1. Klik de juiste **tak**.
+2. Zoek **Brieven**.
+3. Vul een **naam** in (bijvoorbeeld “Ouderbrief september”).
+4. Kies de PDF.
+5. Sla op als de site dat vraagt.
+6. Controleer de takpagina.
+
+Verwijderen: **Verwijderen** bij die brief, daarna de site controleren.
+
+---
+
+## Foto’s (takken / Over ons)
+
+1. Klik **Foto’s**.
+2. Zoek de plek die je wilt wijzigen (label in het scherm).
+3. Kies of vervang de foto.
+4. Wacht tot de upload klaar is. De foto staat dan meteen op de website.
+5. Controleer de bijbehorende pagina.
+
+---
+
+## Achtergronden (grote pagina-foto’s)
+
+1. Klik **Achtergronden**.
+2. Kies de pagina (bijvoorbeeld Homepage).
+3. Klik **Foto kiezen** of sleep een afbeelding op de preview.
+4. Wacht tot de upload klaar is. Die staat meteen live.
+5. Klik **Live** of open die pagina op de gewone website.
+
+Lukt de upload niet? De oude achtergrond blijft staan.  
+Staat er **Vorige**? Dan kun je de vorige upload terugzetten.
+
+---
+
+## Tweedehands
+
+1. Klik **Tweedehands**.
+2. Nieuw: **+ Item**, of pas een bestaand item aan.
+3. Vul de gevraagde velden in (en upload een foto als dat kan).
+4. Klik **Opslaan**.
+5. Controleer de tweedehandspagina.
+
+---
+
+## Backup maken (aanbevolen)
+
+1. In de beheeromgeving: klik **Backup downloaden**.
+2. Bewaar dat bestand veilig op jullie computer of in een kluismap van de leiding.
+3. Doe dit vooral vóór grote opruimacties of bij wissel van leiding.
+
+Dit bestand bevat de teksten en gegevens van de site. Foto’s en PDF’s zelf bewaar je apart (die staan op de server). Zie ook [hosting-en-back-ups.md](hosting-en-back-ups.md).
+
+---
+
+## Als iets misgaat
+
+| Probleem | Wat doen |
 | --- | --- |
-| Opslaan lukt niet | Ben je nog ingelogd? Opnieuw inloggen en opnieuw proberen. |
-| Foto/PDF wordt geweigerd | Juist bestandstype? PDF voor brieven/planning; gangbare afbeeldingen voor foto’s. Bestand niet té groot (**exacte limiet te bevestigen** op hosting). |
-| Oude foto blijft zichtbaar | Harde refresh; andere browser. Anders: technische cache/CDN-hulp. |
-| Verkeerde tak bijgewerkt | Controleer of je de juiste tak-tegel had geselecteerd. |
-| Login lukt niet | Zie §1; geen wachtwoorden in GitHub zoeken. |
+| Opslaan lukt niet | Opnieuw inloggen en opnieuw proberen. |
+| Foto/PDF geweigerd | Juist type bestand? Probeer een kleiner bestand. |
+| Oude inhoud blijft zichtbaar | Hard vernieuwen (Ctrl+F5) of andere browser. |
+| Verkeerde tak aangepast | Juiste tak kiezen, goed zetten, opnieuw opslaan. |
+| Per ongeluk gewist | Zelf terugzetten als je de tekst nog weet. Anders: recente backup terugzetten via Instellingen (alleen als je zeker bent van het juiste bestand), of hulp vragen. |
+
+Wis nooit willekeurig bestanden “op de server” als je niet weet wat je doet.
 
 ---
 
-## 10. Foutieve wijziging of verwijdering
+## Andere scoutsgroep?
 
-1. **Niet panikeren** — stop met verdere willekeurige wijzigingen.
-2. Kun je het zelf herstellen? Zet de tekst/leiding terug en sla opnieuw op.
-3. Heb je een recente **JSON-backup** (Instellingen → Backup downloaden / herstellen)? Dan kun je die terugzetten — **alleen** als je weet dat het de juiste backup is. Herstellen overschrijft alle sitegegevens in die backup.
-4. Ontbreekt een foto of PDF? Die zat in `uploads/` op de server. Herstel via hostingback-up of vraag technische hulp. GitHub heeft die bestanden meestal niet.
-5. Documenteer wat er misging voor de volgende overdracht.
-
----
-
-## Wat deze handleiding níet behandelt
-
-- PHP/HTML/CSS wijzigen
-- GitHub commits of pull requests → [github-voor-beginners.md](github-voor-beginners.md)
-- Hostingaccounts en serverback-ups → [hosting-en-back-ups.md](hosting-en-back-ups.md)
-
-Meer over welk type inhoud waar hoort: [website-beheren.md](website-beheren.md).
+Gebruik dezelfde stappen. Vervang alle voorbeeldgegevens (contact, leiding, foto’s, brieven, agenda) door jullie eigen informatie. Lille-Poederlee is alleen een voorbeeld.
