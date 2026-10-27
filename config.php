@@ -54,7 +54,9 @@ const SCOUTS_MAX_PDF_UPLOAD_BYTES = 20971520;
  * Bump this on every deploy so HTML/CSS/JS URLs change and old caches are skipped.
  * Format: YYYYMMDD-N
  */
-const SCOUTS_ASSET_VERSION = '20261027-13';
+const SCOUTS_ASSET_VERSION = '20261027-14';
+/** Microsoft Clarity project ID (public site only; loaded after analytics consent). */
+const SCOUTS_CLARITY_PROJECT_ID = 'z4c8od8ljm';
 const SCOUTS_LOGIN_ATTEMPTS_FILE = SCOUTS_ROOT . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . '.login-attempts.json';
 const SCOUTS_LOGIN_MAX_ATTEMPTS = 5;
 const SCOUTS_LOGIN_LOCKOUT_SECONDS = 900;
@@ -528,6 +530,15 @@ function scouts_send_html_file(string $absolutePath, ?string $pageId = null): ne
         }
         if (str_contains($html, '<!--SITE_FOOTER-->')) {
             $html = str_replace('<!--SITE_FOOTER-->', scouts_render_site_footer($chromeOptions), $html);
+        }
+        // Cookie banner + gated Clarity loader (never on admin/login — those skip chrome).
+        if (!str_contains($html, 'id="scouts-consent-banner"')) {
+            $consent = scouts_render_consent_banner($chromeOptions);
+            if (str_contains($html, '</body>')) {
+                $html = preg_replace('/<\/body>/i', $consent . "\n</body>", $html, 1) ?? ($html . $consent);
+            } else {
+                $html .= $consent;
+            }
         }
         // Skip-link target for subpages (homepage already uses id="top").
         if ($resolvedPage !== 'index' && !preg_match('/<main[^>]*\bid\s*=/i', $html)) {

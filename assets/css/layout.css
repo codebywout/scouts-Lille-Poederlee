@@ -473,10 +473,17 @@ body.home-page .hero {
     padding-top: 18px;
     border-top: 1px solid rgba(255,255,255,0.14);
     display: flex;
+    flex-wrap: wrap;
     justify-content: space-between;
-    gap: 16px;
+    align-items: center;
+    gap: 12px 16px;
     color: #b7c0ba;
     font-size: 11px;
+}
+
+.footer-bottom a,
+.footer-bottom .footer-consent-link {
+    color: #b7c0ba;
 }
 
 /* Footer never uses scroll-reveal — that left it half-transparent ("wazig"). */

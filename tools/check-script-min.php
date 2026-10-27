@@ -33,7 +33,12 @@ if (!is_readable($minPath)) {
     check_fail("Minified not readable: {$minPath}");
 }
 
-$srcHash = hash_file('sha256', $srcPath);
+$srcRaw = file_get_contents($srcPath);
+if ($srcRaw === false) {
+    check_fail('Could not read script.js');
+}
+// LF-normalize so Windows CRLF checkouts match the git blob / Linux CI hash.
+$srcHash = hash('sha256', str_replace("\r\n", "\n", $srcRaw));
 if ($srcHash === false || strlen($srcHash) !== 64) {
     check_fail('Could not hash script.js');
 }

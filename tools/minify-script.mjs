@@ -45,7 +45,9 @@ if (!existsSync(terserJs)) {
 }
 
 const source = readFileSync(srcPath);
-const sha256 = createHash('sha256').update(source).digest('hex');
+// Hash LF-normalized bytes so Windows (CRLF checkout) matches Linux CI / git blob.
+const sourceForHash = Buffer.from(source.toString('utf8').replace(/\r\n/g, '\n'), 'utf8');
+const sha256 = createHash('sha256').update(sourceForHash).digest('hex');
 if (!/^[a-f0-9]{64}$/.test(sha256)) {
   fail('Unexpected SHA-256 digest');
 }

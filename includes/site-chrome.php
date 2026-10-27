@@ -139,8 +139,60 @@ function scouts_render_site_footer(array $options = []): string
         <span>© 2026 Scouts Lille-Poederlee</span>
         <span>Wout Pluym</span>
         <a href="/privacybeleid"{$privacyCurrent}>Privacybeleid</a>
+        <button type="button" class="footer-consent-link" data-consent-open>Cookievoorkeuren</button>
     </div>
 </footer>
+HTML;
+}
+
+/**
+ * Cookie / statistics consent banner + Clarity bootstrap config (public pages only).
+ */
+function scouts_render_consent_banner(array $options = []): string
+{
+    ['assets' => $assets] = scouts_chrome_options($options);
+    $scriptSrc = htmlspecialchars($assets . 'js/consent-clarity.js', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+    $bootJson = json_encode(
+        [
+            'clarityProjectId' => SCOUTS_CLARITY_PROJECT_ID,
+            'storageKey' => 'scouts_consent_v1',
+        ],
+        JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT
+    );
+    if ($bootJson === false) {
+        $bootJson = '{"clarityProjectId":"","storageKey":"scouts_consent_v1"}';
+    }
+
+    return <<<HTML
+<div
+    id="scouts-consent-banner"
+    class="consent-banner"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="scouts-consent-title"
+    aria-describedby="scouts-consent-desc"
+    hidden
+>
+    <div class="consent-banner__panel">
+        <h2 id="scouts-consent-title" class="consent-banner__title">Statistieken toestaan?</h2>
+        <p id="scouts-consent-desc" class="consent-banner__text">
+            Mag Microsoft Clarity anonieme gebruiksstatistieken verzamelen, zodat we de
+            website kunnen verbeteren? Je kan dit later altijd wijzigen via
+            Cookievoorkeuren in de voettekst. Meer info in ons
+            <a href="/privacybeleid#cookies">privacybeleid</a>.
+        </p>
+        <div class="consent-banner__actions">
+            <button type="button" class="consent-banner__btn consent-banner__btn--reject" data-consent-reject>
+                Weigeren
+            </button>
+            <button type="button" class="consent-banner__btn consent-banner__btn--accept" data-consent-accept>
+                Aanvaarden
+            </button>
+        </div>
+    </div>
+</div>
+<script>window.__SCOUTS_CONSENT__={$bootJson};</script>
+<script defer src="{$scriptSrc}"></script>
 HTML;
 }
 

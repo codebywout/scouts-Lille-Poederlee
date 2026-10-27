@@ -51,6 +51,9 @@ jobs:
       - name: Site-data bootstrap tests
         run: php tools/test-site-data-bootstrap.php
 
+      - name: Consent / Clarity tests
+        run: php tools/test-consent-clarity.php
+
       # Isolated Actions workspace only — never run this reset against production.
       - name: Initialize runtime site-data for smoke
         run: |
