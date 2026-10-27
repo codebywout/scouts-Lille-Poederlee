@@ -14,16 +14,36 @@
     >
     <link rel="canonical" href="https://scoutslille.be/">
 
-    <link rel="stylesheet" href="assets/css/style.css?v=20261020-60">
-    <link rel="preload" as="image" type="image/webp" href="assets/images/domein-w1600.webp?v=20261020-60" imagesrcset="assets/images/domein-w1600.webp?v=20261020-60 1600w, assets/images/domein-w2400.webp?v=20261020-60 2400w" imagesizes="100vw" fetchpriority="high">
+    <link rel="stylesheet" href="assets/css/style.css?v=20261020-63">
+    <link
+        rel="preload"
+        as="image"
+        type="image/webp"
+        href="assets/images/domein-w800.webp?v=20261020-63"
+        imagesrcset="assets/images/domein-w800.webp?v=20261020-63 800w, assets/images/domein-w1200.webp?v=20261020-63 1200w, assets/images/domein-w1600.webp?v=20261020-63 1600w, assets/images/domein-w2400.webp?v=20261020-63 2400w"
+        imagesizes="100vw"
+        fetchpriority="high"
+    >
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-
+    <link
+        rel="preload"
+        as="style"
+        href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Montserrat:wght@600;700;800&display=swap"
+    >
     <link
         href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Montserrat:wght@600;700;800&display=swap"
         rel="stylesheet"
+        media="print"
+        onload="this.media='all'"
     >
+    <noscript>
+        <link
+            href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Montserrat:wght@600;700;800&display=swap"
+            rel="stylesheet"
+        >
+    </noscript>
 </head>
 
 <body class="home-page">
@@ -37,6 +57,24 @@
 
     <!-- HERO -->
     <section class="hero">
+        <picture class="hero-media">
+            <source
+                type="image/webp"
+                srcset="assets/images/domein-w800.webp?v=20261020-63 800w, assets/images/domein-w1200.webp?v=20261020-63 1200w, assets/images/domein-w1600.webp?v=20261020-63 1600w, assets/images/domein-w2400.webp?v=20261020-63 2400w"
+                sizes="100vw"
+            >
+            <img
+                class="hero-media-img"
+                src="assets/images/domein-w1200.jpg?v=20261020-63"
+                srcset="assets/images/domein-w800.jpg?v=20261020-63 800w, assets/images/domein-w1200.jpg?v=20261020-63 1200w, assets/images/domein-w1600.jpg?v=20261020-63 1600w, assets/images/domein-w2400.jpg?v=20261020-63 2400w"
+                sizes="100vw"
+                width="1600"
+                height="1067"
+                alt=""
+                decoding="async"
+                fetchpriority="high"
+            >
+        </picture>
 
         <div class="hero-content">
             <h1>
@@ -70,10 +108,7 @@
         <div class="branch-list">
 
             <a class="branch branch-kapoenen" href="/kapoenen">
-                <picture class="branch-bg-picture">
-                    <source type="image/webp" srcset="/uploads/kapoenenleiding-w480.webp?v=20261020-60 480w, /uploads/kapoenenleiding-w800.webp?v=20261020-60 800w, /uploads/kapoenenleiding-w1200.webp?v=20261020-60 1200w" sizes="(max-width: 900px) 100vw, 380px">
-                    <img class="branch-bg" src="/uploads/kapoenenleiding-w800.jpg?v=20261020-60" srcset="/uploads/kapoenenleiding-w480.jpg?v=20261020-60 480w, /uploads/kapoenenleiding-w800.jpg?v=20261020-60 800w, /uploads/kapoenenleiding-w1200.jpg?v=20261020-60 1200w" sizes="(max-width: 900px) 100vw, 380px" alt="" width="1200" height="900" loading="lazy" decoding="async" data-full-src="/uploads/kapoenenleiding.jpg">
-                </picture>
+                <img class="branch-bg" hidden alt="">
                 <div class="branch-main">
                     <h3>Kapoenen</h3>
                     <span class="branch-age" data-birth-range="kapoenen"></span>
@@ -84,6 +119,10 @@
                         class="branch-logo"
                         src="assets/images/branches/kapoenen.png"
                         alt="Kapoenen kenteken"
+                        width="96"
+                        height="96"
+                        decoding="async"
+                        loading="lazy"
                     >
                 </div>
 
@@ -91,10 +130,7 @@
 
 
             <a class="branch branch-welpen" href="/welpen">
-                <picture class="branch-bg-picture">
-                    <source type="image/webp" srcset="/uploads/welpenleiding-w480.webp?v=20261020-60 480w, /uploads/welpenleiding-w800.webp?v=20261020-60 800w, /uploads/welpenleiding-w1200.webp?v=20261020-60 1200w" sizes="(max-width: 900px) 100vw, 380px">
-                    <img class="branch-bg" src="/uploads/welpenleiding-w800.jpg?v=20261020-60" srcset="/uploads/welpenleiding-w480.jpg?v=20261020-60 480w, /uploads/welpenleiding-w800.jpg?v=20261020-60 800w, /uploads/welpenleiding-w1200.jpg?v=20261020-60 1200w" sizes="(max-width: 900px) 100vw, 380px" alt="" width="1200" height="900" loading="lazy" decoding="async" data-full-src="/uploads/welpenleiding.jpg">
-                </picture>
+                <img class="branch-bg" hidden alt="">
                 <div class="branch-main">
                     <h3>Welpen</h3>
                     <span class="branch-age" data-birth-range="welpen"></span>
@@ -105,6 +141,10 @@
                         class="branch-logo"
                         src="assets/images/branches/welpen.png"
                         alt="Welpen kenteken"
+                        width="96"
+                        height="96"
+                        decoding="async"
+                        loading="lazy"
                     >
                 </div>
 
@@ -112,10 +152,7 @@
 
 
             <a class="branch branch-jongverkenners" href="/jongverkenners">
-                <picture class="branch-bg-picture">
-                    <source type="image/webp" srcset="/uploads/jongverkennersleiding-w480.webp?v=20261020-60 480w, /uploads/jongverkennersleiding-w800.webp?v=20261020-60 800w, /uploads/jongverkennersleiding-w1200.webp?v=20261020-60 1200w" sizes="(max-width: 900px) 100vw, 380px">
-                    <img class="branch-bg" src="/uploads/jongverkennersleiding-w800.jpg?v=20261020-60" srcset="/uploads/jongverkennersleiding-w480.jpg?v=20261020-60 480w, /uploads/jongverkennersleiding-w800.jpg?v=20261020-60 800w, /uploads/jongverkennersleiding-w1200.jpg?v=20261020-60 1200w" sizes="(max-width: 900px) 100vw, 380px" alt="" width="1200" height="900" loading="lazy" decoding="async" data-full-src="/uploads/jongverkennersleiding.jpg">
-                </picture>
+                <img class="branch-bg" hidden alt="">
                 <div class="branch-main">
                     <h3>Jongverkenners</h3>
                     <span class="branch-age" data-birth-range="jongverkenners"></span>
@@ -126,6 +163,10 @@
                         class="branch-logo"
                         src="assets/images/branches/jong-verkenners.png"
                         alt="Jongverkenners kenteken"
+                        width="96"
+                        height="96"
+                        decoding="async"
+                        loading="lazy"
                     >
                 </div>
 
@@ -133,10 +174,7 @@
 
 
             <a class="branch branch-verkenners" href="/verkenners">
-                <picture class="branch-bg-picture">
-                    <source type="image/webp" srcset="/uploads/verkennersleiding-w480.webp?v=20261020-60 480w, /uploads/verkennersleiding-w800.webp?v=20261020-60 800w, /uploads/verkennersleiding-w1200.webp?v=20261020-60 1200w" sizes="(max-width: 900px) 100vw, 380px">
-                    <img class="branch-bg" src="/uploads/verkennersleiding-w800.jpg?v=20261020-60" srcset="/uploads/verkennersleiding-w480.jpg?v=20261020-60 480w, /uploads/verkennersleiding-w800.jpg?v=20261020-60 800w, /uploads/verkennersleiding-w1200.jpg?v=20261020-60 1200w" sizes="(max-width: 900px) 100vw, 380px" alt="" width="1200" height="900" loading="lazy" decoding="async" data-full-src="/uploads/verkennersleiding.jpg">
-                </picture>
+                <img class="branch-bg" hidden alt="">
                 <div class="branch-main">
                     <h3>Verkenners</h3>
                     <span class="branch-age" data-birth-range="verkenners"></span>
@@ -147,6 +185,10 @@
                         class="branch-logo"
                         src="assets/images/branches/verkenners.png"
                         alt="Verkenners kenteken"
+                        width="96"
+                        height="96"
+                        decoding="async"
+                        loading="lazy"
                     >
                 </div>
 
@@ -154,10 +196,7 @@
 
 
             <a class="branch branch-jins" href="/jins">
-                <picture class="branch-bg-picture">
-                    <source type="image/webp" srcset="/uploads/jinsleiding-w480.webp?v=20261020-60 480w, /uploads/jinsleiding-w800.webp?v=20261020-60 800w, /uploads/jinsleiding-w1200.webp?v=20261020-60 1200w" sizes="(max-width: 900px) 100vw, 380px">
-                    <img class="branch-bg" src="/uploads/jinsleiding-w800.jpg?v=20261020-60" srcset="/uploads/jinsleiding-w480.jpg?v=20261020-60 480w, /uploads/jinsleiding-w800.jpg?v=20261020-60 800w, /uploads/jinsleiding-w1200.jpg?v=20261020-60 1200w" sizes="(max-width: 900px) 100vw, 380px" alt="" width="1200" height="900" loading="lazy" decoding="async" data-full-src="/uploads/jinsleiding.jpg">
-                </picture>
+                <img class="branch-bg" hidden alt="">
                 <div class="branch-main">
                     <h3>Jins</h3>
                     <span class="branch-age" data-birth-range="jins"></span>
@@ -168,6 +207,10 @@
                         class="branch-logo"
                         src="assets/images/branches/jins.png"
                         alt="Jins kenteken"
+                        width="96"
+                        height="96"
+                        decoding="async"
+                        loading="lazy"
                     >
                 </div>
 
@@ -227,7 +270,7 @@
 <!--SITE_FOOTER-->
 
 
-<script defer src="assets/js/script.js?v=20261020-60"></script>
+<script defer src="assets/js/script.js?v=20261020-63"></script>
 
 </body>
 </html>

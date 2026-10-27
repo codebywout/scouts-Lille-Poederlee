@@ -19,20 +19,21 @@ De site is de online presentatie van de scoutsgroep: homepage, takken (Kapoenen,
 | Pagina’s | Statische HTML (`index.html`, `pages/*.html`, `admin.html`, `login.html`) |
 | Styling | CSS in `assets/css/`, samengevoegd via `assets/css/style.php` |
 | Frontend-logica | Vanilla JavaScript (`assets/js/script.js`, `assets/js/admin.js`) |
-| Backend | PHP 8.1+ (`config.php`, `page.php`, `api/index.php`, …) |
+| Backend | PHP 8.2.35, 8.3.36, 8.4.27 of 8.5.12 of nieuwer (`config.php`, `page.php`, `api/index.php`, …) |
 | Data | JSON-bestand `data/site-data.json` (geen database) |
 | Uploads | Map `uploads/` (foto’s, PDF’s, brieven) |
 | Routing (productie) | Apache + `.htaccess` |
 | Routing (lokaal) | Ingebouwde PHP-server + `router.php` |
 | Optioneel | Google Drive-koppeling (`google-drive.php` + bestanden onder `data/`) |
+| Optionele JS-minify | Node.js alleen lokaal (`tools/minify-script.mjs` + gepinde Terser onder `tools/vendor/`) |
 
-Er is **geen** Node.js-project, **geen** `package.json`, **geen** Composer/`vendor`, en **geen** buildstap. HTML, CSS, JS en PHP worden rechtstreeks uitgevoerd.
+Er is **geen** Composer-project en **geen** root-`package.json`. De site draait zonder build op de hosting: HTML, CSS, JS en PHP worden rechtstreeks uitgevoerd. Node is enkel nodig als je `assets/js/script.js` wijzigt en opnieuw minificeert naar `script.min.js`.
 
 ### Hoe de onderdelen samenwerken
 
 1. Apache (of lokaal `router.php`) stuurt URL’s naar `page.php` / `admin-gate.php` / `api/index.php`.
 2. `page.php` leest de HTML, injecteert gedeelde header/footer (`includes/site-chrome.php`) en vernieuwt asset-queryparameters (`?v=…` uit `SCOUTS_ASSET_VERSION` in `config.php`).
-3. De browser laadt `assets/js/script.js`, dat inhoud ophaalt via `GET /api/site-data` en de pagina vult (nieuws, agenda, FAQ, contact, …).
+3. De browser laadt `assets/js/script.min.js` (gegenereerd uit `script.js`), dat inhoud ophaalt via `GET /api/site-data` en de pagina vult (nieuws, agenda, FAQ, contact, …).
 4. Admin (`admin.html` + `admin.js`) wijzigt die data via `POST /api/site-data` en uploadt bestanden naar `/api/uploads/…` → map `uploads/`.
 5. CSS wordt bij voorkeur geleverd door `assets/css/style.php` (via rewrite van `/assets/css/style.css`), zodat alle deel-stylesheets één gebundelde response krijgen met de juiste cache-bust-versie.
 
@@ -87,7 +88,8 @@ scouts/
 │   └── js/
 │       ├── admin.js
 │       ├── qrcode.min.js
-│       └── script.js
+│       ├── script.js
+│       └── script.min.js
 ├── data/
 │   ├── .htaccess
 │   ├── site-data.default.json
@@ -135,8 +137,8 @@ Hieronder: bestand per bestand (of groep met dezelfde rol).
 | `README.md` | Deze handleiding | Documentatie | — | Documentatie | Handmatig |
 | `start-server.ps1` | Start lokale PHP-server met uploadlimieten | Snelle lokale start op Windows | PHP CLI | Ontwikkeling | Handmatig |
 | `robots.txt` | Crawl-regels + sitemap-URL | SEO | — | Runtime (publiek) | Handmatig |
-| `sitemap.php` | Dynamische XML-sitemap (`lastmod` uit `site-data.json`) | SEO; via rewrite `/sitemap.xml` | `config.php` | Runtime | Handmatig |
-| `sitemap.xml` | Statische sitemap-fallback (commentaar: dynamisch via `sitemap.php`) | Fallback als rewrite faalt | — | Runtime (fallback) | Handmatig |
+| `sitemap.php` | Dynamische XML-sitemap (`scouts_sitemap_paths()` + `lastmod` uit `site-data.json`) | SEO; via rewrite `/sitemap.xml` | `config.php` | Runtime | Bij nieuwe publieke pagina: pad toevoegen in `scouts_sitemap_paths()` |
+| `sitemap.xml` | Statische URL-lijst (zelfde paden, zonder `lastmod`) | Fallback als rewrite faalt | Houd gelijk met `scouts_sitemap_paths()` | Runtime (fallback) | Handmatig sync |
 
 ### HTML-pagina’s
 
@@ -198,8 +200,9 @@ Muterende routes vereisen een adminsessie en same-origin-controle (`scouts_requi
 
 | Pad | Functie | Afhankelijkheden | Gebruik | Aanpassen? |
 | --- | --- | --- | --- | --- |
-| `script.js` | Publieke site: data laden, renderen, accordion, inschrijven, FAQ-links, agenda, Auth/DataStore-exports voor admin | `/api/site-data`, DOM van HTML | Runtime | Handmatig |
-| `admin.js` | Adminpaneel: editors, uploads, opslaan, Google Drive-UI | Laadt ná `script.js` (`window.ScoutsSite`) | Runtime (admin) | Handmatig |
+| `script.js` | Leesbare bron van de publieke site (data, renderen, accordion, inschrijven, FAQ, agenda, Auth/DataStore voor admin) | `/api/site-data`, DOM van HTML | Bron; niet de productieversie in HTML | Handmatig |
+| `script.min.js` | Gegenereerde minified productieversie van `script.js` (marker `scouts-src-sha256=…`) | Geserveerd via `scouts_send_html_file()` i.p.v. `script.js` | Runtime | Alleen via `node tools/minify-script.mjs` |
+| `admin.js` | Adminpaneel: editors, uploads, opslaan, Google Drive-UI | Laadt ná `script.min.js` (`window.ScoutsSite`) | Runtime (admin) | Handmatig |
 | `qrcode.min.js` | QR-codebibliotheek (o.a. betalings-QR bij inschrijven) | Gebruikt vanuit site-JS waar nodig | Runtime | Vendorbestand; liefst niet handmatig herschrijven |
 
 ### `assets/images/`
@@ -208,7 +211,7 @@ Muterende routes vereisen een adminsessie en same-origin-controle (`scouts_requi
 | --- | --- | --- | --- |
 | `scouts.png` | Logo / branding | Header, OG/JSON-LD | Handmatig vervangen |
 | `domein.jpg` … `domein5.jpg` | Hero-/sfeerbeelden | CSS/HTML preload | Handmatig |
-| `hemd_voorkant.jpg`, `hemd_achterkant.jpg` | Uniformpagina | `pages/uniform.html` | Handmatig |
+| `hemd_voorkant.jpg` (+ `-w*` / WebP) | Uniformpagina | `pages/uniform.html` | Handmatig |
 | `branches/*.png` | Taklogo’s | Takkaarten / takpagina’s | Handmatig |
 
 Dit zijn **vaste** repo-assets (wel in Git), niet te verwarren met `uploads/`.
@@ -243,8 +246,6 @@ Dit zijn **vaste** repo-assets (wel in Git), niet te verwarren met `uploads/`.
 | `{naam}-w{480\|800\|1200\|1600\|2400}.{jpg\|webp}` | Responsive varianten | `srcset` in `script.js` / HTML | Automatisch bij upload |
 | `{naam}-thumb.jpg` | Legacy card-thumb | Orphan-tooling / oudere UI | Automatisch |
 | Overige (pdf, …) | Documenten | Publieke URL’s | Via admin |
-
-> Opmerking: lokaal kan er een bestand `uploads/htaccess` (zonder punt) bestaan. Dat valt onder `uploads/*` en staat niet in Git. De actieve Apache-config is `uploads/.htaccess`.
 
 ### Foto-pipeline (automatisch bij upload)
 
@@ -285,7 +286,10 @@ In principe alles wat `git ls-files` volgt / wat niet door `.gitignore` wordt ui
 | Bestand of map | Uploaden? | Reden | Opmerkingen |
 | --- | --- | --- | --- |
 | `*.html`, `pages/` | Ja | Publieke/admin-UI | — |
-| `assets/` (css, js, images) | Ja | Frontend | Inclusief `qrcode.min.js` |
+| `assets/` (css, js, images) | Ja | Frontend | Inclusief `script.js`, `script.min.js`, `qrcode.min.js` |
+| `tools/minify-script.mjs`, `tools/check-script-min.php` | Ja | Verplichte minify/controle vóór JS-release | Node alleen lokaal |
+| `tools/vendor/terser-5.37.0.tgz`, `manifest.json`, `package.json`, `README.md` | Ja | Gepinde Terser + integrity | Geen `node_modules/` |
+| `tools/vendor/node_modules/` | **Nee** | Lokale Terser-install | `.gitignore` |
 | `api/`, `config.php`, `page.php`, `admin-gate.php`, `router.php`, `google-drive.php`, `includes/` | Ja | Backend | `router.php` vooral voor lokaal, maar mag in Git |
 | `.htaccess`, `.user.ini`, `api/.user.ini` | Ja | Hostinggedrag | — |
 | `robots.txt`, `sitemap.php`, `sitemap.xml` | Ja | SEO | — |
@@ -306,7 +310,7 @@ In principe alles wat `git ls-files` volgt / wat niet door `.gitignore` wordt ui
 | `.sessions/` | Nee | Sessiebestanden | `.gitignore` |
 | `.vscode/`, `.idea/` | Nee | Editor | `.gitignore` |
 | `*.bak`, `*.tmp`, `*.log`, `.DS_Store`, `Thumbs.db` | Nee | Rommel | `.gitignore` |
-| `node_modules/`, `vendor/` | N.v.t. | Bestaan niet in dit project | Geen package manager |
+| `node_modules/` (o.a. `tools/vendor/node_modules/`) | **Nee** | Lokale minify-deps | `.gitignore`; op Plesk niet nodig |
 | `README.md`, `start-server.ps1`, `.gitignore` | Ja | Docs / tooling | — |
 
 ### Gevoelige bestanden — nooit naar GitHub
@@ -381,7 +385,7 @@ Constanten in `auth-config.php` winnen van `.env` als beide bestaan.
 
 | Vereiste | Opmerking |
 | --- | --- |
-| PHP 8.1+ | Code gebruikt o.a. typed properties / moderne syntax |
+| PHP 8.2.35, 8.3.36, 8.4.27 of 8.5.12 of nieuwer | Oudere builds, ook 8.1, zijn kwetsbaar voor CVE-2026-109618 en CVE-2026-109619 (ongeauthenticeerde RCE). Alleen deze of nieuwere patchreleases zijn veilig |
 | Extensies `session`, `json` | Vereist |
 | `fileinfo` | Aanbevolen (uploadvalidatie) |
 | `GD` (**vereist** voor foto-uploads) | `imagejpeg`, `imagecreatefromstring`, `imagescale` |
@@ -412,13 +416,13 @@ php -r "var_export(function_exists('imagewebp'));"
 
 ### 1. Benodigde software
 
-- **PHP 8.1+** in PATH (`php -v`)
+- **PHP 8.2.35, 8.3.36, 8.4.27 of 8.5.12 of nieuwer** in PATH (`php -v`). Oudere versies missen de beveiligingsupdate van 21 oktober 2026 |
 - Extensies: `session`, `json`; bij voorkeur `fileinfo` en `GD`
 - **Git**
 - Browser
 - Op Windows: PowerShell (voor `start-server.ps1`)
 
-Geen Node.js vereist.
+Node.js is **niet** nodig om de site te draaien. Alleen nodig bij wijzigingen aan `assets/js/script.js` (minify → `script.min.js`).
 
 ### 2. Repository clonen
 
@@ -431,7 +435,14 @@ cd scouts-Lille-Poederlee
 
 ### 3. Dependencies installeren
 
-Niet van toepassing — er is geen package manager.
+Geen Composer of root-npm. Voor JS-minify (optioneel tot je `script.js` wijzigt):
+
+```powershell
+cd tools/vendor
+npm ci
+# of: npm install
+cd ../..
+```
 
 ### 4. Configuratie instellen
 
@@ -490,14 +501,15 @@ Zonder de `-d`-uploadflags weigert PHP vaak foto’s groter dan ~2 MB.
 
 ## 6. Deployment stap voor stap
 
-Er is in de repository **geen** geautomatiseerde CI/CD-pipeline of GitHub Action zichtbaar. Deployment is dus handmatig (FTP/SFTP, hosting-bestandsbeheer, of Git-pull op de server als jouw host dat ondersteunt).
+CI (`.github/workflows/ci.yml`) voert op push/PR alleen veilige controles uit: PHP-syntax, `check-script-min.php`, photo-pipeline-tests en HTTP-smoke tegen een tijdelijke PHP-server. **Er is geen automatische deploy naar productie.** Live zetten blijft handmatig (FTP/SFTP, hosting-bestandsbeheer, of Git-pull op de server als jouw host dat ondersteunt).
 
 ### A. Wijziging → live (handmatige upload)
 
 1. **Lokaal wijzigen** — pas de relevante bestanden aan (HTML/CSS/JS/PHP/data).
-2. **Testen** — start met `start-server.ps1`, controleer publieke pagina’s en admin-flows (opslaan, upload, login).
-3. **Asset-cache** — bij CSS/JS/image-wijzigingen: verhoog `SCOUTS_ASSET_VERSION` in `config.php` (formaat `YYYYMMDD-N`, zie bestaande waarde).
-4. **Naar GitHub** (optioneel maar aanbevolen):
+2. **JavaScript minify (verplicht bij wijziging aan `script.js`)** — zie hieronder *JS-minificatie*. Zonder geslaagde `php tools/check-script-min.php` mag je geen JS-release uploaden.
+3. **Testen** — start met `start-server.ps1`, controleer publieke pagina’s en admin-flows (opslaan, upload, login).
+4. **Asset-cache** — bij CSS/JS/image-wijzigingen: verhoog `SCOUTS_ASSET_VERSION` in `config.php` (formaat `YYYYMMDD-N`, zie bestaande waarde).
+5. **Naar GitHub** (optioneel maar aanbevolen):
    ```powershell
    git status
    git add <bestanden>
@@ -505,16 +517,39 @@ Er is in de repository **geen** geautomatiseerde CI/CD-pipeline of GitHub Action
    git push
    ```
    Voeg **geen** `.env`, `auth-config.php` of Drive-geheimen toe.
-5. **Naar de webserver** — upload alleen de gewijzigde runtime-bestanden naar dezelfde relatieve paden onder de document root (zie sectie 4). Typische sets:
-   - Alleen tekst/JS: `assets/js/…`, eventueel HTML
+6. **Naar de webserver** — upload alleen de gewijzigde runtime-bestanden naar dezelfde relatieve paden onder de document root (zie sectie 4). Typische sets:
+   - Alleen tekst/JS: `assets/js/script.js` **én** `assets/js/script.min.js`, eventueel HTML + `config.php`
    - Styling: `assets/css/…` + `config.php` (versienummer)
    - Backend: `api/index.php`, `config.php`, …
    - Inhoud: ofwel via **admin op productie**, of voorzichtig `data/site-data.json` (conflict risico)
-6. **Serverrechten** — bevestig schrijfrechten op `data/` en `uploads/`.
-7. **Credentials** — zorg dat productie `.env` of `auth-config.php` intact blijft (niet overschrijven met lokale testgegevens).
-8. **Controleren** — open `https://scoutslille.be/`, hard-refresh (`Ctrl+F5`), test `/login` + één admin-opslag, controleer dat uploads zichtbaar blijven.
-9. **Fouten opsporen** — zie sectie 8. Hosting error-logs (Plesk/Cloud86 e.d.) raadplegen indien PHP-fouten.
-10. **Terugrollen** — zet vorige bestandsversies terug via Git (`git checkout` lokaal + herupload) of hosting-backup. Herstel `data/site-data.json` en `uploads/` uit backup als inhoud beschadigd is.
+   - **Niet** uploaden: `tools/vendor/node_modules/`, lokale Node-installatie
+7. **Serverrechten** — bevestig schrijfrechten op `data/` en `uploads/`.
+8. **Credentials** — zorg dat productie `.env` of `auth-config.php` intact blijft (niet overschrijven met lokale testgegevens).
+9. **Controleren** — open `https://scoutslille.be/`, hard-refresh (`Ctrl+F5`), Network: `script.min.js?v=…` + `immutable`; test `/login` + één admin-opslag, controleer dat uploads zichtbaar blijven.
+10. **Fouten opsporen** — zie sectie 8. Hosting error-logs (Plesk/Cloud86 e.d.) raadplegen indien PHP-fouten.
+11. **Terugrollen** — zet vorige bestandsversies terug via Git (`git checkout` lokaal + herupload) of hosting-backup. Herstel `data/site-data.json` en `uploads/` uit backup als inhoud beschadigd is.
+
+### JS-minificatie (lokaal, verplicht vóór JS-deploy)
+
+Bron blijft `assets/js/script.js`. Productie laadt `assets/js/script.min.js` (HTML herschrijft via `scouts_send_html_file()`). Plesk heeft **geen** Node nodig.
+
+Eenmalig Terser installeren (TLS aan, OS-CA):
+
+```powershell
+cd tools/vendor
+$env:NODE_OPTIONS='--use-system-ca'
+npm install
+cd ../..
+```
+
+Na elke wijziging aan `script.js`:
+
+```powershell
+node tools/minify-script.mjs
+php tools/check-script-min.php
+```
+
+`check-script-min.php` moet exit **0** geven (marker-hash = SHA-256 van bron + `node --check`). Exit ≠ 0 → **niet** committen/uploaden. Verhoog daarna `SCOUTS_ASSET_VERSION`.
 
 ### B. Als de server zelf een Git-clone is
 
@@ -632,11 +667,12 @@ Let op bij `git pull` op productie:
 | --- | --- |
 | Bestaande pagina-structuur/tekst in HTML aanpassen | Betreffende `index.html` of `pages/*.html`; gedeelde nav/footer: `includes/site-chrome.php` |
 | Redactionele inhoud (nieuws, agenda, FAQ, contact, leiding) wijzigen | Bij voorkeur **admin** → schrijft `data/site-data.json` |
-| Nieuwe publieke pagina toevoegen | Nieuw HTML-bestand onder `pages/`; route in `page.php` `$pages`; rewrite in `.htaccess` én `router.php`; link in `includes/site-chrome.php`; eventueel `sitemap.php` |
+| Nieuwe publieke pagina toevoegen | Nieuw HTML-bestand onder `pages/`; route in `page.php` `$pages`; rewrite in `.htaccess` én `router.php`; link in `includes/site-chrome.php`; pad in `scouts_sitemap_paths()` (+ sync `sitemap.xml` fallback) |
 | Styling wijzigen | Juiste deelbestand in `assets/css/` (bijv. `home.css`, `pages.css`, `admin.css`); daarna `SCOUTS_ASSET_VERSION` verhogen |
 | Vaste beelden vervangen | `assets/images/…` |
 | Geüploade beelden/PDF’s vervangen | Admin-uploads → `uploads/` (+ referenties in `site-data.json`) |
-| Frontend-gedrag wijzigen | `assets/js/script.js` (publiek) of `admin.js` (beheer) |
+| Frontend-gedrag wijzigen | `assets/js/script.js` (publiek) of `admin.js` (beheer); daarna `node tools/minify-script.mjs` + `php tools/check-script-min.php` + assetversie |
+| Pagina-achtergrond wijzigen | Admin → **Achtergronden** (upload → voorbeeld → Publiceren). Gebruikt dezelfde foto-pipeline (`uploads/bg-*.jpg` + `-w*`/WebP/AVIF). Vereist PHP GD (JPEG/WebP; AVIF optioneel). |
 | API/serverlogica wijzigen | `api/index.php`, helpers in `config.php` / `google-drive.php` |
 | Login/credentials wijzigen | `.env` of `auth-config.php` (niet committen) |
 | Cache na release forceren | `SCOUTS_ASSET_VERSION` in `config.php` |
@@ -644,7 +680,32 @@ Let op bij `git pull` op productie:
 
 ---
 
-## 10. Kwaliteitscontrole (voor maintainers van deze README)
+## 10. Tests en controles
+
+Alle tests zijn niet-destructief en vereisen geen productiecredentials.
+
+```powershell
+# PHP-syntax (PowerShell)
+Get-ChildItem -Recurse -Filter *.php |
+  Where-Object { $_.FullName -notmatch '\\tools\\vendor\\' } |
+  ForEach-Object { php -l $_.FullName }
+
+# Minified JS moet overeenkomen met script.js
+php tools/check-script-min.php
+
+# Foto-uploadpipeline (tijdelijke bestanden, ruimt zelf op)
+php tools/test-photo-pipeline.php
+
+# HTTP-smoke (server moet al draaien: .\start-server.ps1)
+php tools/smoke-http.php
+# of: php tools/smoke-http.php http://127.0.0.1:8000
+```
+
+Er is geen aparte linter/typechecker voor PHP of vanilla JS in deze repo. CI herhaalt bovenstaande checks (zie `.github/workflows/ci.yml`).
+
+---
+
+## 11. Kwaliteitscontrole (voor maintainers van deze README)
 
 Bij updates van documentatie of releases controleren:
 
@@ -652,7 +713,8 @@ Bij updates van documentatie of releases controleren:
 - [ ] GitHub-tabel ↔ `.gitignore` consistent.
 - [ ] Server-tabel bevat credentials + `uploads/`-inhoud + schrijfrechten.
 - [ ] Geen echte wachtwoorden, hashes of tokens in de README.
-- [ ] Commando’s zijn PHP/Git/PowerShell — geen verzonnen npm/composer-stappen.
+- [ ] Commando’s zijn PHP/Git/PowerShell; npm alleen voor lokale Terser in `tools/vendor` (niet op Plesk).
+- [ ] Bij JS-release: `php tools/check-script-min.php` exit 0 en `script.min.js` mee uploaden.
 - [ ] Onderscheid lokaal (`router.php`) vs productie (`.htaccess`) blijft duidelijk.
 
 ---

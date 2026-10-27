@@ -8,7 +8,7 @@
     <title>Inloggen | Scouts Lille-Poederlee</title>
     <meta name="description" content="Beheerders inloggen voor Scouts Lille-Poederlee.">
     <meta name="robots" content="noindex, nofollow">
-    <link rel="stylesheet" href="assets/css/style.css?v=20261020-60">
+    <link rel="stylesheet" href="assets/css/style.css?v=20261020-63">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Montserrat:wght@600;700;800&display=swap" rel="stylesheet">
@@ -142,8 +142,24 @@
 
         .login-field input:focus {
             outline: none;
-            border-color: var(--scout-orange);
-            box-shadow: 0 0 0 4px rgba(211, 138, 45, 0.12);
+            border-color: rgba(78, 43, 26, 0.45);
+            box-shadow: 0 0 0 3px rgba(78, 43, 26, 0.10);
+        }
+
+        .login-field input[aria-invalid="true"] {
+            border-color: #a54827;
+        }
+
+        .login-field input[aria-invalid="true"]:focus {
+            border-color: #a54827;
+            box-shadow: 0 0 0 4px rgba(165, 72, 39, 0.12);
+        }
+
+        .login-field-error {
+            margin: 0;
+            color: #8a3b24;
+            font-size: 13px;
+            font-weight: 600;
         }
 
         .login-submit {
@@ -161,9 +177,13 @@
             box-shadow: 0 12px 30px rgba(211, 138, 45, 0.18);
         }
 
-        .login-submit:hover,
-        .login-submit:focus-visible {
+        .login-submit:hover {
             transform: translateY(-2px);
+        }
+
+        .login-submit:focus-visible {
+            outline: 2px solid rgba(78, 43, 26, 0.55);
+            outline-offset: 2px;
         }
 
         .login-submit:disabled {
@@ -251,17 +271,19 @@
 
         <div id="loginContent" class="login-content">
             <form id="loginForm" class="login-form" novalidate>
-                <div id="loginError" class="login-error" role="alert" aria-live="polite"></div>
-
                 <div class="login-field">
                     <label for="username">Gebruikersnaam</label>
                     <input type="text" id="username" name="username" placeholder="Voer gebruikersnaam in" autocomplete="username" required>
+                    <p id="usernameError" class="login-field-error" role="alert" hidden></p>
                 </div>
 
                 <div class="login-field">
                     <label for="password">Wachtwoord</label>
                     <input type="password" id="password" name="password" placeholder="Voer wachtwoord in" autocomplete="current-password" required>
+                    <p id="passwordError" class="login-field-error" role="alert" hidden></p>
                 </div>
+
+                <div id="loginError" class="login-error" role="alert" aria-live="polite"></div>
 
                 <button type="submit" class="login-submit" id="submitBtn">Inloggen</button>
 
@@ -286,14 +308,50 @@
         const errorDiv = document.getElementById('loginError');
         const loadingSpinner = document.getElementById('loadingSpinner');
 
+        function clearFieldState(input) {
+            const error = document.getElementById(input.id + 'Error');
+            input.removeAttribute('aria-invalid');
+            input.removeAttribute('aria-describedby');
+            if (error) {
+                error.hidden = true;
+                error.textContent = '';
+            }
+        }
+
+        function setFieldError(input, message) {
+            const error = document.getElementById(input.id + 'Error');
+            input.setAttribute('aria-invalid', 'true');
+            input.setAttribute('aria-describedby', error.id);
+            error.hidden = false;
+            error.textContent = message;
+        }
+
         function showError(message) {
             errorDiv.textContent = message;
             errorDiv.classList.add('show');
+            [usernameInput, passwordInput].forEach((input) => {
+                clearFieldState(input);
+                input.setAttribute('aria-invalid', 'true');
+                input.setAttribute('aria-describedby', 'loginError');
+            });
         }
 
         function hideError() {
             errorDiv.textContent = '';
             errorDiv.classList.remove('show');
+            clearFieldState(usernameInput);
+            clearFieldState(passwordInput);
+        }
+
+        function onFieldInput(event) {
+            const input = event.target;
+            if (input.getAttribute('aria-describedby') === 'loginError') {
+                hideError();
+                return;
+            }
+            if (input.getAttribute('aria-invalid') === 'true' && String(input.value).trim()) {
+                clearFieldState(input);
+            }
         }
 
         function setLoading(isLoading) {
@@ -332,8 +390,17 @@
 
             const username = usernameInput.value.trim();
             const password = passwordInput.value;
-            if (!username || !password) {
-                showError('Vul zowel gebruikersnaam en wachtwoord in.');
+            const missing = [];
+            if (!username) {
+                setFieldError(usernameInput, 'Vul je gebruikersnaam in.');
+                missing.push(usernameInput);
+            }
+            if (!password) {
+                setFieldError(passwordInput, 'Vul je wachtwoord in.');
+                missing.push(passwordInput);
+            }
+            if (missing.length) {
+                missing[0].focus();
                 return;
             }
 
@@ -356,11 +423,14 @@
                 }
             } catch (error) {
                 showError(error.message || 'Inloggen mislukt');
+                usernameInput.focus();
             } finally {
                 setLoading(false);
             }
         });
 
+        usernameInput.addEventListener('input', onFieldInput);
+        passwordInput.addEventListener('input', onFieldInput);
         setTimeout(() => usernameInput.focus(), 100);
         checkSessionAndRedirect();
     </script>

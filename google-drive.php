@@ -47,15 +47,88 @@ function scouts_google_oauth_client(): ?array
     return isset($oauth['client_id'], $oauth['client_secret']) ? $oauth : null;
 }
 
-function scouts_google_oauth_redirect_uri(): string
+function scouts_google_oauth_current_host_callback(): string
 {
-    $oauth = scouts_google_oauth_data();
-    if (is_array($oauth) && is_string($oauth['redirect_uri'] ?? null) && $oauth['redirect_uri'] !== '') {
-        return $oauth['redirect_uri'];
-    }
     $https = (!empty($_SERVER['HTTPS']) && strtolower((string) $_SERVER['HTTPS']) !== 'off')
         || strtolower((string) ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')) === 'https';
     return ($https ? 'https://' : 'http://') . ($_SERVER['HTTP_HOST'] ?? 'localhost') . '/api/google-drive/oauth/callback';
+}
+
+function scouts_google_oauth_authorized_redirect_uris(): array
+{
+    $oauth = scouts_google_oauth_data();
+    if (!is_array($oauth)) {
+        return [];
+    }
+    $uris = [];
+    if (is_array($oauth['redirect_uris'] ?? null)) {
+        foreach ($oauth['redirect_uris'] as $uri) {
+            if (is_string($uri) && trim($uri) !== '') {
+                $uris[] = trim($uri);
+            }
+        }
+    }
+    if (is_string($oauth['redirect_uri'] ?? null) && trim($oauth['redirect_uri']) !== '') {
+        $uris[] = trim($oauth['redirect_uri']);
+    }
+    return array_values(array_unique($uris));
+}
+
+function scouts_google_oauth_redirect_uri(): string
+{
+    $current = scouts_google_oauth_current_host_callback();
+    $authorized = scouts_google_oauth_authorized_redirect_uris();
+    foreach ($authorized as $uri) {
+        if (strcasecmp($uri, $current) === 0) {
+            return $uri;
+        }
+    }
+    // Same host/port/scheme, possibly different path spelling.
+    $currentParts = parse_url($current);
+    foreach ($authorized as $uri) {
+        $parts = parse_url($uri);
+        if (!is_array($parts) || !is_array($currentParts)) {
+            continue;
+        }
+        $sameHost = strcasecmp((string) ($parts['host'] ?? ''), (string) ($currentParts['host'] ?? '')) === 0;
+        $sameScheme = strcasecmp((string) ($parts['scheme'] ?? ''), (string) ($currentParts['scheme'] ?? '')) === 0;
+        $samePort = (int) ($parts['port'] ?? 0) === (int) ($currentParts['port'] ?? 0);
+        if ($sameHost && $sameScheme && $samePort) {
+            return $uri;
+        }
+    }
+    return $current;
+}
+
+function scouts_google_oauth_admin_redirect(string $status, string $message = ''): void
+{
+    $query = ['google' => $status];
+    if ($message !== '') {
+        $query['google_message'] = $message;
+    }
+    header('Location: /admin?' . http_build_query($query));
+    exit;
+}
+
+function scouts_google_oauth_fetch_email(string $accessToken): string
+{
+    $ch = curl_init('https://www.googleapis.com/oauth2/v2/userinfo');
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 15,
+        CURLOPT_HTTPHEADER => ['Authorization: Bearer ' . $accessToken],
+    ]);
+    if (defined('CURLSSLOPT_NATIVE_CA')) {
+        curl_setopt($ch, CURLOPT_SSL_OPTIONS, CURLSSLOPT_NATIVE_CA);
+    }
+    $response = curl_exec($ch);
+    $status = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+    if ($response === false || $status < 200 || $status >= 300) {
+        return '';
+    }
+    $payload = json_decode($response, true);
+    $email = is_array($payload) ? ($payload['email'] ?? '') : '';
+    return is_string($email) ? trim($email) : '';
 }
 
 function scouts_google_drive_folder_id(): string
@@ -99,7 +172,6 @@ function scouts_google_drive_access_token(?array $credentials): string
         $response = curl_exec($ch);
         $status = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
         $error = curl_error($ch);
-        curl_close($ch);
         if ($response === false || $status < 200 || $status >= 300) {
             throw new RuntimeException('Google OAuth-token kon niet worden vernieuwd: ' . ($error !== '' ? $error : scouts_google_error_message((string) $response, $status)));
         }
@@ -140,7 +212,6 @@ function scouts_google_drive_access_token(?array $credentials): string
     $response = curl_exec($ch);
     $status = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
     $error = curl_error($ch);
-    curl_close($ch);
     if ($response === false || $status < 200 || $status >= 300) {
         throw new RuntimeException('Google-token kon niet worden opgehaald: ' . ($error !== '' ? $error : scouts_google_error_message((string) $response, $status)));
     }
@@ -198,7 +269,6 @@ function scouts_google_drive_upload(string $filePath, string $filename): void
     $response = curl_exec($ch);
     $status = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
     $error = curl_error($ch);
-    curl_close($ch);
     if ($response === false || $status < 200 || $status >= 300) {
         throw new RuntimeException('PDF kon niet naar Google Drive worden geupload: ' . ($error !== '' ? $error : scouts_google_error_message((string) $response, $status)));
     }

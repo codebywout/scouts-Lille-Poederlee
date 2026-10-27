@@ -47,13 +47,58 @@ body.news-page::before {
     background-color: #0d2419;
     background-image:
         linear-gradient(rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.65)),
-        url("/assets/images/domein2-w1600.jpg?v=20261020-60");
+        url("/assets/images/domein2-w800.jpg?v=20261020-62");
     background-image:
         linear-gradient(rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.65)),
-        image-set(url("/assets/images/domein2-w1600.webp?v=20261020-60") type("image/webp"), url("/assets/images/domein2-w1600.jpg?v=20261020-60") type("image/jpeg"));
+        image-set(
+            url("/assets/images/domein2-w800.webp?v=20261020-62") type("image/webp"),
+            url("/assets/images/domein2-w800.jpg?v=20261020-62") type("image/jpeg")
+        );
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
+}
+
+/* Desktop: use w1600 for full-viewport backgrounds (avoids soft upscale from w800). */
+@media (min-width: 769px) {
+    body.registration-page::before,
+    body.news-page::before,
+    body.branch-page::before {
+        background-image:
+            linear-gradient(rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.65)),
+            url("/assets/images/domein2-w1600.jpg?v=20261020-62");
+        background-image:
+            linear-gradient(rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.65)),
+            image-set(
+                url("/assets/images/domein2-w1600.webp?v=20261020-62") type("image/webp"),
+                url("/assets/images/domein2-w1600.jpg?v=20261020-62") type("image/jpeg")
+            );
+    }
+}
+
+/* Admin-uploaded backgrounds override defaults via CSS variables set in script.js. */
+body.scouts-has-custom-bg.registration-page::before,
+body.scouts-has-custom-bg.news-page::before,
+body.scouts-has-custom-bg.secondhand-page::before,
+body.scouts-has-custom-bg.about-page::before,
+body.scouts-has-custom-bg.uniform-page::before,
+body.scouts-has-custom-bg.branch-page::before {
+    background-image:
+        linear-gradient(rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.65)),
+        var(--scouts-custom-bg-800) !important;
+}
+
+@media (min-width: 769px) {
+    body.scouts-has-custom-bg.registration-page::before,
+    body.scouts-has-custom-bg.news-page::before,
+    body.scouts-has-custom-bg.secondhand-page::before,
+    body.scouts-has-custom-bg.about-page::before,
+    body.scouts-has-custom-bg.uniform-page::before,
+    body.scouts-has-custom-bg.branch-page::before {
+        background-image:
+            linear-gradient(rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.65)),
+            var(--scouts-custom-bg-1600) !important;
+    }
 }
 
 body.error-page::before {
@@ -71,7 +116,7 @@ body.error-page::before {
             rgba(13, 36, 25, 0.42) 72%,
             rgba(13, 36, 25, 0.28) 100%
         ),
-        url("/assets/images/domein2-w1600.jpg?v=20261020-60");
+        url("/assets/images/domein2-w800.jpg?v=20261020-62");
     background-image:
         linear-gradient(
             115deg,
@@ -80,37 +125,135 @@ body.error-page::before {
             rgba(13, 36, 25, 0.42) 72%,
             rgba(13, 36, 25, 0.28) 100%
         ),
-        image-set(url("/assets/images/domein2-w1600.webp?v=20261020-60") type("image/webp"), url("/assets/images/domein2-w1600.jpg?v=20261020-60") type("image/jpeg"));
+        image-set(
+            url("/assets/images/domein2-w800.webp?v=20261020-62") type("image/webp"),
+            url("/assets/images/domein2-w800.jpg?v=20261020-62") type("image/jpeg")
+        );
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
 }
 
+body.scouts-has-custom-bg.error-page::before {
+    background-image:
+        linear-gradient(
+            115deg,
+            rgba(13, 36, 25, 0.94) 0%,
+            rgba(13, 36, 25, 0.78) 38%,
+            rgba(13, 36, 25, 0.42) 72%,
+            rgba(13, 36, 25, 0.28) 100%
+        ),
+        var(--scouts-custom-bg-800) !important;
+}
+
 body.secondhand-page::before {
     background-image:
         linear-gradient(rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.65)),
-        url("/assets/images/domein3-w1600.jpg?v=20261020-60");
+        url("/assets/images/domein3-w800.jpg?v=20261020-62");
     background-image:
         linear-gradient(rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.65)),
-        image-set(url("/assets/images/domein3-w1600.webp?v=20261020-60") type("image/webp"), url("/assets/images/domein3-w1600.jpg?v=20261020-60") type("image/jpeg"));
+        image-set(
+            url("/assets/images/domein3-w800.webp?v=20261020-62") type("image/webp"),
+            url("/assets/images/domein3-w800.jpg?v=20261020-62") type("image/jpeg")
+        );
 }
 
 body.about-page::before {
     background-image:
         linear-gradient(rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.65)),
-        url("/assets/images/domein4-w1600.jpg?v=20261020-60");
+        url("/assets/images/domein4-w800.jpg?v=20261020-62");
     background-image:
         linear-gradient(rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.65)),
-        image-set(url("/assets/images/domein4-w1600.webp?v=20261020-60") type("image/webp"), url("/assets/images/domein4-w1600.jpg?v=20261020-60") type("image/jpeg"));
+        image-set(
+            url("/assets/images/domein4-w800.webp?v=20261020-62") type("image/webp"),
+            url("/assets/images/domein4-w800.jpg?v=20261020-62") type("image/jpeg")
+        );
 }
 
 body.uniform-page::before {
     background-image:
         linear-gradient(rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.65)),
-        url("/assets/images/domein5-w1600.jpg?v=20261020-60");
+        url("/assets/images/domein5-w800.jpg?v=20261020-62");
     background-image:
         linear-gradient(rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.65)),
-        image-set(url("/assets/images/domein5-w1600.webp?v=20261020-60") type("image/webp"), url("/assets/images/domein5-w1600.jpg?v=20261020-60") type("image/jpeg"));
+        image-set(
+            url("/assets/images/domein5-w800.webp?v=20261020-62") type("image/webp"),
+            url("/assets/images/domein5-w800.jpg?v=20261020-62") type("image/jpeg")
+        );
+}
+
+@media (min-width: 769px) {
+    body.error-page::before {
+        background-image:
+            linear-gradient(
+                115deg,
+                rgba(13, 36, 25, 0.94) 0%,
+                rgba(13, 36, 25, 0.78) 38%,
+                rgba(13, 36, 25, 0.42) 72%,
+                rgba(13, 36, 25, 0.28) 100%
+            ),
+            url("/assets/images/domein2-w1600.jpg?v=20261020-62");
+        background-image:
+            linear-gradient(
+                115deg,
+                rgba(13, 36, 25, 0.94) 0%,
+                rgba(13, 36, 25, 0.78) 38%,
+                rgba(13, 36, 25, 0.42) 72%,
+                rgba(13, 36, 25, 0.28) 100%
+            ),
+            image-set(
+                url("/assets/images/domein2-w1600.webp?v=20261020-62") type("image/webp"),
+                url("/assets/images/domein2-w1600.jpg?v=20261020-62") type("image/jpeg")
+            );
+    }
+
+    body.scouts-has-custom-bg.error-page::before {
+        background-image:
+            linear-gradient(
+                115deg,
+                rgba(13, 36, 25, 0.94) 0%,
+                rgba(13, 36, 25, 0.78) 38%,
+                rgba(13, 36, 25, 0.42) 72%,
+                rgba(13, 36, 25, 0.28) 100%
+            ),
+            var(--scouts-custom-bg-1600) !important;
+    }
+
+    body.secondhand-page::before {
+        background-image:
+            linear-gradient(rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.65)),
+            url("/assets/images/domein3-w1600.jpg?v=20261020-62");
+        background-image:
+            linear-gradient(rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.65)),
+            image-set(
+                url("/assets/images/domein3-w1600.webp?v=20261020-62") type("image/webp"),
+                url("/assets/images/domein3-w1600.jpg?v=20261020-62") type("image/jpeg")
+            );
+    }
+
+    body.about-page::before {
+        background-image:
+            linear-gradient(rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.65)),
+            url("/assets/images/domein4-w1600.jpg?v=20261020-62");
+        background-image:
+            linear-gradient(rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.65)),
+            image-set(
+                url("/assets/images/domein4-w1600.webp?v=20261020-62") type("image/webp"),
+                url("/assets/images/domein4-w1600.jpg?v=20261020-62") type("image/jpeg")
+            );
+    }
+
+    body.uniform-page::before {
+        background-image:
+            linear-gradient(rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.65)),
+            url("/assets/images/domein5-w1600.jpg?v=20261020-62");
+        background-image:
+            linear-gradient(rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.65)),
+            image-set(
+                url("/assets/images/domein5-w1600.webp?v=20261020-62") type("image/webp"),
+                url("/assets/images/domein5-w1600.jpg?v=20261020-62") type("image/jpeg")
+            );
+    }
 }
 
 .registration-page .page-shell,
@@ -268,6 +411,13 @@ body.uniform-page::before {
     box-shadow: 0 12px 28px rgba(0, 0, 0, 0.22);
 }
 
+.branch-hero-mark picture {
+    display: grid;
+    place-items: center;
+    width: 74px;
+    height: 74px;
+}
+
 .branch-hero-mark img {
     width: 74px;
     height: 74px;
@@ -346,6 +496,11 @@ body.uniform-page::before {
         margin-bottom: 12px;
     }
 
+    .branch-hero-mark picture {
+        width: 58px;
+        height: 58px;
+    }
+
     .branch-hero-mark img {
         width: 58px;
         height: 58px;
@@ -354,16 +509,13 @@ body.uniform-page::before {
     .branch-page .page-hero .hero-content h1,
     .branch-page .page-hero .hero-content p {
         grid-column: 1;
+        min-width: 0;
+        max-width: 100%;
     }
-}
 
-.page-over-ons .about-hero {
-    background-image: url("/uploads/over-ons-w1600.jpg?v=20261020-60") !important;
-    background-image:
-        image-set(
-            url("/uploads/over-ons-w1600.webp?v=20261020-60") type("image/webp"),
-            url("/uploads/over-ons-w1600.jpg?v=20261020-60") type("image/jpeg")
-        ) !important;
+    .branch-page .page-hero .hero-content h1.eyebrow {
+        font-size: clamp(26px, 7.8vw, 52px);
+    }
 }
 
 .page-hero {

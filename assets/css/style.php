@@ -4,12 +4,21 @@ declare(strict_types=1);
 require_once dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'config.php';
 
 $version = scouts_asset_version();
-$bundle = strtolower((string) ($_GET['bundle'] ?? 'public'));
-$sheets = ['base', 'layout', 'components', 'home', 'pages', 'responsive'];
-if ($bundle === 'admin') {
-    // Admin styles after page styles, before responsive overrides.
-    array_splice($sheets, 5, 0, ['admin']);
-}
+$requestedBundle = strtolower(trim((string) ($_GET['bundle'] ?? 'public')));
+[$bundle, $sheets] = match ($requestedBundle) {
+    'core', 'home' => [
+        'core',
+        ['base', 'layout', 'components', 'home', 'responsive'],
+    ],
+    'admin' => [
+        'admin',
+        ['base', 'layout', 'components', 'home', 'pages', 'admin', 'responsive'],
+    ],
+    default => [
+        'public',
+        ['base', 'layout', 'components', 'home', 'pages', 'responsive'],
+    ],
+};
 
 $cssDir = __DIR__ . DIRECTORY_SEPARATOR;
 $css = '';
@@ -34,7 +43,7 @@ $css = preg_replace_callback(
         if (preg_match('#^(https?:)?//#i', $path) === 1 || str_starts_with($path, 'data:')) {
             return $matches[0];
         }
-        if (!preg_match('#\.(?:css|js|png|jpe?g|webp|gif|svg|ico)(?:\?|$)#i', $path)) {
+        if (!preg_match('#\.(?:css|js|png|jpe?g|webp|avif|gif|svg|ico)(?:\?|$)#i', $path)) {
             return $matches[0];
         }
         $bare = preg_replace('/\?.*$/', '', $path) ?? $path;
@@ -42,6 +51,13 @@ $css = preg_replace_callback(
     },
     $css
 ) ?? $css;
+
+// Light production minify: drop comments and collapse excess whitespace.
+$css = preg_replace('#/\*.*?\*/#s', '', $css) ?? $css;
+$css = preg_replace('/\s+/', ' ', $css) ?? $css;
+$css = preg_replace('/\s*([{}:;,>])\s*/', '$1', $css) ?? $css;
+$css = str_replace(';}', '}', $css);
+$css = trim($css);
 
 header('Content-Type: text/css; charset=utf-8');
 scouts_send_asset_revalidate_headers();

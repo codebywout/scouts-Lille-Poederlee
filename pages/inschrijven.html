@@ -6,8 +6,8 @@
     <title>Inschrijven | Scouts Lille-Poederlee</title>
     <meta name="description" content="Inschrijven bij Scouts Lille-Poederlee.">
     <link rel="canonical" href="https://scoutslille.be/inschrijven">
-    <link rel="stylesheet" href="../assets/css/style.css?v=20261020-60">
-    <link rel="preload" as="image" type="image/webp" href="../assets/images/domein2-w1600.webp?v=20261020-60" fetchpriority="high">
+    <link rel="stylesheet" href="../assets/css/style.css?v=20261020-63">
+    <link rel="preload" as="image" type="image/webp" href="../assets/images/domein2-w1600.webp?v=20261020-63" fetchpriority="high">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Montserrat:wght@600;700;800&display=swap" rel="stylesheet">
@@ -149,7 +149,7 @@
         <section class="new-member-section" id="inschrijving" hidden>
             <div class="new-member-layout">
                 <div class="registration-form-slot">
-                    <form id="registrationForm" class="registration-form">
+                    <form id="registrationForm" class="registration-form" novalidate>
                     <div class="registration-section-heading">
                         <h2>Vul je gegevens in</h2>
                     </div>
@@ -157,11 +157,13 @@
                         <label class="field-group">
                             <span>Voornaam</span>
                             <input type="text" name="voornaam" placeholder="Voornaam kind" required>
+                            <p id="voornaamError" class="field-error" role="alert" hidden></p>
                         </label>
 
                         <label class="field-group">
                             <span>Achternaam</span>
                             <input type="text" name="achternaam" placeholder="Achternaam kind" required>
+                            <p id="achternaamError" class="field-error" role="alert" hidden></p>
                         </label>
                     </div>
 
@@ -177,6 +179,7 @@
                                 <option value="jins">Jins</option>
                             </select>
                         </span>
+                        <p id="takError" class="field-error" role="alert" hidden></p>
                     </label>
 
                     <label class="field-group">
@@ -231,7 +234,7 @@
 <!--SITE_FOOTER-->
 
 <script src="../assets/js/qrcode.min.js"></script>
-<script src="../assets/js/script.js?v=20261020-60"></script>
+<script src="../assets/js/script.js?v=20261020-63"></script>
 
 </body>
 </html>

@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: gd, curl, fileinfo
+          coverage: none
+
+      - name: PHP syntax check
+        run: |
+          find . -name '*.php' \
+            -not -path './tools/vendor/*' \
+            -not -path './.git/*' \
+            -print0 | xargs -0 -n1 php -l
+
+      - name: Verify script.min.js matches script.js
+        run: php tools/check-script-min.php
+
+      - name: Photo pipeline tests
+        run: php tools/test-photo-pipeline.php
+
+      - name: HTTP smoke tests
+        run: |
+          php -d upload_max_filesize=20M -d post_max_size=25M -d memory_limit=256M \
+            -S 127.0.0.1:8000 router.php >/tmp/scouts-php-server.log 2>&1 &
+          for i in 1 2 3 4 5 6 7 8 9 10; do
+            if curl -sf -o /dev/null http://127.0.0.1:8000/; then
+              break
+            fi
+            sleep 0.5
+          done
+          php tools/smoke-http.php http://127.0.0.1:8000

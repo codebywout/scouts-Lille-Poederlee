@@ -1,0 +1,1 @@
+{"name":"scouts-terser-vendor","private":true,"description":"Local install root for vendored Terser; do not commit node_modules.","dependencies":{"terser":"file:terser-5.37.0.tgz"}}

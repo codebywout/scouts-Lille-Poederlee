@@ -139,7 +139,6 @@ $jobs = @(
   @{ Path = Join-Path $Root 'assets\images\domein4.jpg'; Widths = @(800, 1200, 1600, 2400) },
   @{ Path = Join-Path $Root 'assets\images\domein5.jpg'; Widths = @(800, 1200, 1600, 2400) },
   @{ Path = Join-Path $Root 'assets\images\hemd_voorkant.jpg'; Widths = @(480, 800, 1200) },
-  @{ Path = Join-Path $Root 'assets\images\hemd_achterkant.jpg'; Widths = @(480, 800, 1200) },
   @{ Path = Join-Path $Root 'uploads\over-ons.jpg'; Widths = @(800, 1200, 1600) },
   @{ Path = Join-Path $Root 'uploads\kapoenenleiding.jpg'; Widths = @(480, 800, 1200, 1600, 2400) },
   @{ Path = Join-Path $Root 'uploads\welpenleiding.jpg'; Widths = @(480, 800, 1200, 1600, 2400) },

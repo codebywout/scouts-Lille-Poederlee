@@ -1,5 +1,5 @@
 {
-    "activePage": "photos",
+    "activePage": "achtergronden",
     "pageContent": {
         "over-ons": {
             "intro": "Met 20 leiders, een hoop energie en net genoeg gezond verstand zorgen wij er elke week voor dat de scouts gevuld zijn met actie, plezier en verhalen die thuis niet altijd volledig worden verteld.\n\nWij geloven dat kinderen en jongeren het best groeien in een omgeving waar ze kunnen bewegen, experimenteren, samenwerken en zichzelf ontdekken."
@@ -18,7 +18,10 @@
             "title": "Geen vergadering!!!",
             "text": "De leiding is op planningsweekend, het is vandaag dus geen scouts!",
             "linkText": "",
-            "link": ""
+            "link": "",
+            "endDay": "",
+            "endMonth": "",
+            "image": "\/uploads\/agenda-1792509800350-c1b61224.jpg?v=1792509805"
         },
         {
             "day": "25",
@@ -27,7 +30,9 @@
             "text": "Zoals elk jaar organiseert de Jeugdraad, in samenwerking met de jeugddienst, opnieuw de Jeugdverenigingendag! Een namiddag om samen te komen, goe te ravotten en ons gewoon kei hard te amuseren!",
             "linkText": "Inschrijvingsformulier",
             "link": "https:\/\/forms.gle\/gyRRbgwhc8rx5kiq5",
-            "image": "\/uploads\/agenda-1790777268432-3ee66cfe.jpg?v=20261015-28"
+            "image": "\/uploads\/agenda-1792510188588-d39bc6d2.jpg?v=1792510190",
+            "endDay": "",
+            "endMonth": ""
         },
         {
             "day": "19",
@@ -36,7 +41,9 @@
             "text": "Meer informatie volgt",
             "link": "",
             "linkText": "",
-            "image": ""
+            "image": "",
+            "endDay": "21",
+            "endMonth": "FEB"
         }
     ],
     "news": [
@@ -44,14 +51,16 @@
             "title": "Welkom op onze nieuwe site!",
             "date": "September 2026",
             "text": "Je hebt het vast al gemerkt. Dit is onze nieuwe website, wat een upgrade.",
-            "image": "\/uploads\/news-1791911687331-359a4430.jpg?v=20261015-28",
+            "image": "\/uploads\/news-1792510338720-b07abb28.jpg?v=1792510343",
             "link": "",
             "linkText": "",
             "summary": "Wat is er allemaal veranderd op onze website?",
             "images": [
-                "\/uploads\/news-1791911687331-359a4430.jpg?v=20261015-28",
-                "\/uploads\/news-1792067019781-bba91747.jpg?v=20261015-28"
-            ]
+                "\/uploads\/news-1792510338720-b07abb28.jpg?v=1792510343",
+                "\/uploads\/news-1792510374095-7c18b6c7.jpg?v=1792510376"
+            ],
+            "published": true,
+            "id": "welkom-op-onze-nieuwe-site"
         },
         {
             "title": "Een nieuw dak op ons scoutslokaal",
@@ -61,7 +70,9 @@
             "link": "",
             "linkText": "",
             "summary": "Yesssss, eindelijk een nieuw dak. Na een heleboel gedoe met de verzekering.",
-            "images": []
+            "images": [],
+            "published": true,
+            "id": "een-nieuw-dak-op-ons-scoutslokaal"
         },
         {
             "title": "Sfeerfoto's oktober",
@@ -71,17 +82,9 @@
             "link": "",
             "linkText": "",
             "summary": "Kijk wat jullie kinderen allemaal hebben uitgestoken deze maand",
-            "images": []
-        },
-        {
-            "title": "Test bericht 2",
-            "date": "",
-            "text": "Schrijf hier het nieuws...",
-            "image": "",
-            "link": "",
-            "linkText": "",
-            "summary": "dit is een testbericht",
-            "images": []
+            "images": [],
+            "published": true,
+            "id": "sfeerfoto-s-oktober"
         }
     ],
     "faq": [
@@ -244,25 +247,25 @@
     "photos": {
         "logo": "\/assets\/images\/scouts.png",
         "homeHero": "\/assets\/images\/domein.jpg",
-        "aboutHero": "\/uploads\/over-ons.jpg?v=20261015-28",
+        "aboutHero": "\/uploads\/over-ons.jpg?v=1793090903",
         "uniform": [
             "https:\/\/images.unsplash.com\/photo-1472162072942-cd5147eb3902?auto=format&fit=crop&w=900&q=80",
             "https:\/\/images.unsplash.com\/photo-1504150558240-0b4fd8946624?auto=format&fit=crop&w=900&q=80",
             "https:\/\/images.unsplash.com\/photo-1504150558240-0b4fd8946624?auto=format&fit=crop&w=900&q=80"
         ],
         "branches": {
-            "kapoenen": "\/uploads\/kapoenenleiding.jpg?v=20261015-28",
-            "welpen": "\/uploads\/welpenleiding.jpg?v=20261015-28",
-            "jongverkenners": "\/uploads\/jongverkennersleiding.jpg?v=20261015-28",
-            "verkenners": "\/uploads\/verkennersleiding.jpg?v=20261015-28",
-            "jins": "\/uploads\/jinsleiding.jpg?v=20261015-28"
+            "kapoenen": "\/uploads\/kapoenenleiding.jpg?v=1792512264",
+            "welpen": "\/uploads\/welpenleiding.jpg?v=1792512270",
+            "jongverkenners": "\/uploads\/jongverkennersleiding.jpg?v=1792512288",
+            "verkenners": "\/uploads\/verkennersleiding.jpg?v=1792512276",
+            "jins": "\/uploads\/jinsleiding.jpg?v=1792512293"
         },
         "monthlyPlanning": {
-            "kapoenen": "\/uploads\/maandplanning-kapoenen.pdf?v=1791245038",
-            "welpen": "\/uploads\/maandplanning-welpen.pdf?v=1790684427",
-            "jongverkenners": "\/uploads\/maandplanning-jongverkenners.pdf?v=1791909047",
-            "verkenners": "\/uploads\/maandplanning-verkenners.pdf?v=1791035014",
-            "jins": "\/uploads\/maandplanning-jins.pdf?v=1790851940"
+            "kapoenen": "",
+            "welpen": "",
+            "jongverkenners": "\/uploads\/maandplanning-jongverkenners.pdf?v=1793022082",
+            "verkenners": "",
+            "jins": ""
         },
         "letters": {
             "kapoenen": [],
@@ -279,16 +282,41 @@
             "jins": "\/assets\/images\/branches\/jins.png"
         },
         "monthlyPlanningTitle": {
-            "kapoenen": "oktober",
-            "verkenners": "oktober",
-            "welpen": "september_oktober",
-            "jongverkenners": "oktober",
-            "jins": "oktober"
+            "kapoenen": "",
+            "verkenners": "",
+            "welpen": "",
+            "jongverkenners": "januari",
+            "jins": ""
+        },
+        "pageBackgrounds": {
+            "home": "\/uploads\/bg-home.jpg?v=1793091987",
+            "registration": "",
+            "news": "",
+            "about": "",
+            "secondhand": "",
+            "uniform": "",
+            "branch": "",
+            "error": ""
+        },
+        "pageBackgroundsPrevious": {
+            "home": "",
+            "registration": "\/uploads\/bg-registration.jpg?v=1793091845",
+            "news": "",
+            "about": "",
+            "secondhand": "",
+            "uniform": "",
+            "branch": "",
+            "error": ""
         }
     },
     "letters": {
         "welpen": [],
         "kapoenen": [],
-        "jongverkenners": []
+        "jongverkenners": [
+            {
+                "title": "test",
+                "path": "\/uploads\/brief-jongverkenners-7979f60807f68ac7.pdf?v=1793022082"
+            }
+        ]
     }
 }

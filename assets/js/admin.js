@@ -43,24 +43,74 @@
   }
 
   let adminHasUnsavedChanges = false;
+  let unpublished = false;
+  let publishFailed = false;
+  let editVersion = 0;
+  let saveMode = "clean";
+  let saveMessage = "";
+  let saveDetail = "";
   const pendingPlanningUploads = new Map();
   const pendingUploadDeletes = [];
+  const pendingDocumentDeletes = [];
   let saveStatusTimer = 0;
   let saveButtonTimer = 0;
   let googleDriveSettings = {
     folderId: "",
     oauthConfigured: false,
+    oauthClientConfigured: false,
     oauthEmail: "",
+    redirectUri: "",
+    authorizedRedirectUris: [],
   };
   let orphanUploadNames = [];
   let orphanScanResetTimer = 0;
   let settingsReturnPage = "home";
+
+  function confirmDialog(options) {
+    return S.openDialog(options);
+  }
+
+  function askSettingsPassword() {
+    return S.openDialog({
+      title: "Wachtwoord voor instellingen",
+      description: "Vul het wachtwoord in om de instellingen te openen.",
+      confirmLabel: "Ontgrendelen",
+      cancelLabel: "Annuleren",
+      input: {
+        type: "password",
+        label: "Wachtwoord",
+        autocomplete: "current-password",
+      },
+    });
+  }
+
+  function confirmDelete(title, description) {
+    return confirmDialog({
+      title,
+      description,
+      confirmLabel: "Verwijderen",
+      cancelLabel: "Annuleren",
+      tone: "destructive",
+    });
+  }
 
   function formatBytes(bytes) {
     const value = Number(bytes) || 0;
     if (value < 1024) return `${value} B`;
     if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`;
     return `${(value / (1024 * 1024)).toFixed(1)} MB`;
+  }
+
+  function hasQueuedWork() {
+    return (
+      pendingPlanningUploads.size > 0 ||
+      pendingUploadDeletes.length > 0 ||
+      pendingDocumentDeletes.length > 0
+    );
+  }
+
+  function isDraft() {
+    return unpublished || hasQueuedWork();
   }
 
   function setSaveButtonPhase(phase) {
@@ -82,65 +132,180 @@
     setSaveButtonPhase("saved");
     saveButtonTimer = window.setTimeout(() => {
       setSaveButtonPhase("idle");
-    }, 1800);
+      renderSaveBar();
+    }, 1600);
   }
 
-  function showSaveButtonSaving() {
-    window.clearTimeout(saveButtonTimer);
-    setSaveButtonPhase("saving");
-  }
+  function renderSaveBar() {
+    const row = document.querySelector(".save-row");
+    const status = document.getElementById("saveStatus");
+    const detail = document.getElementById("saveDetail");
+    const button = document.getElementById("saveChanges");
+    if (!row || !status || !button) return;
 
-  function clearSaveButton() {
-    window.clearTimeout(saveButtonTimer);
-    setSaveButtonPhase("idle");
+    const draft = isDraft();
+    adminHasUnsavedChanges = draft || saveMode === "saving";
+    const state = saveMode === "saving" ? "saving" : saveMode === "error" ? "error" : draft ? "dirty" : "clean";
+    row.dataset.saveState = state;
+    status.dataset.state = state;
+
+    const idleLabel = button.querySelector(".save-button-label-idle");
+    if (saveMode === "saving") {
+      status.textContent = saveMessage || "Bezig met opslaan";
+      if (detail) detail.textContent = saveDetail || "Even geduld. Sluit dit venster niet.";
+      if (idleLabel) idleLabel.textContent = "Opslaan";
+      button.disabled = true;
+      setSaveButtonPhase("saving");
+      return;
+    }
+
+    if (!button.classList.contains("is-saved")) setSaveButtonPhase("idle");
+
+    if (state === "error") {
+      status.textContent = saveMessage || "Er ging iets mis";
+      if (detail) {
+        detail.textContent = draft
+          ? "De website is niet bijgewerkt. Probeer opnieuw."
+          : "De website is niet gewijzigd.";
+      }
+      if (idleLabel) idleLabel.textContent = draft ? "Opnieuw opslaan" : "Opgeslagen";
+      button.disabled = !draft;
+      return;
+    }
+
+    if (draft) {
+      status.textContent = saveMessage || "Nog niet op de website";
+      if (detail) {
+        detail.textContent =
+          saveDetail || "Klik op Opslaan of gebruik Ctrl+S om dit te publiceren.";
+      }
+      if (idleLabel) idleLabel.textContent = publishFailed ? "Opnieuw opslaan" : "Opslaan";
+      button.disabled = false;
+      return;
+    }
+
+    status.textContent = saveMessage || "Staat op de website";
+    if (detail) {
+      detail.textContent =
+        saveDetail || "Tekst, lijsten en documenten publiceer je met Opslaan.";
+    }
+    if (idleLabel) idleLabel.textContent = "Opgeslagen";
+    button.disabled = true;
   }
 
   function setSaveStatus(message, state = "saved") {
-    const status = document.getElementById("saveStatus");
-    if (!status) return;
     window.clearTimeout(saveStatusTimer);
-    const confirmOnButton = state === "saved" && message === "Opgeslagen";
-    const savingOnButton = state === "saving" && message === "Opslaan...";
-    if (confirmOnButton || savingOnButton) {
-      status.textContent = message;
-      status.dataset.state = confirmOnButton ? "saved" : "saving";
-      status.dataset.buttonConfirm = "true";
-      if (confirmOnButton) {
-        flashSaveButton();
+    if (state === "saving") {
+      saveMode = "saving";
+      saveMessage = message || "Bezig met opslaan";
+      saveDetail = "";
+      renderSaveBar();
+      return;
+    }
+    if (state === "error") {
+      saveMode = "error";
+      saveMessage = message || "Er ging iets mis";
+      saveDetail = "";
+      renderSaveBar();
+      return;
+    }
+    if (state === "dirty") {
+      saveMode = "dirty";
+      saveMessage = message || "";
+      saveDetail = "";
+      unpublished = true;
+      publishFailed = false;
+      renderSaveBar();
+      return;
+    }
+    if (state === "idle") {
+      saveMessage = "";
+      saveDetail = "";
+      saveMode = isDraft() ? "dirty" : "clean";
+      renderSaveBar();
+      return;
+    }
+
+    saveMessage = message || "";
+    saveDetail = "";
+    if (isDraft()) {
+      saveMode = "dirty";
+      saveDetail = message || "";
+      saveMessage = "";
+      renderSaveBar();
+      if (message) {
         saveStatusTimer = window.setTimeout(() => {
-          if (status.dataset.buttonConfirm !== "true") return;
-          status.textContent = "";
-          status.dataset.state = "idle";
-          delete status.dataset.buttonConfirm;
-        }, 2300);
-      } else {
-        showSaveButtonSaving();
+          saveDetail = "";
+          renderSaveBar();
+        }, 2500);
       }
       return;
     }
-    clearSaveButton();
-    delete status.dataset.buttonConfirm;
-    status.textContent = message;
-    status.dataset.state = state;
-    if (state === "saved") {
+
+    saveMode = "clean";
+    renderSaveBar();
+    if (message && message !== "Staat op de website") {
       saveStatusTimer = window.setTimeout(() => {
-        if (status.dataset.state !== "saved") return;
-        status.textContent = "";
-        status.dataset.state = "idle";
+        if (saveMode !== "clean" || isDraft()) return;
+        saveMessage = "";
+        renderSaveBar();
       }, 2500);
     }
   }
 
   function markDirtyState(isDirty, { announce = true } = {}) {
-    adminHasUnsavedChanges = isDirty;
-    if (!announce) {
-      setSaveStatus("", "idle");
+    if (isDirty) {
+      editVersion += 1;
+      unpublished = true;
+      publishFailed = false;
+      saveMode = "dirty";
+      if (announce) {
+        saveMessage = "";
+        saveDetail = "";
+      }
+      renderSaveBar();
       return;
     }
-    setSaveStatus(
-      isDirty ? "Onopgeslagen wijzigingen" : "Opgeslagen",
-      isDirty ? "dirty" : "saved",
+
+    unpublished = false;
+    publishFailed = false;
+    saveMode = "clean";
+    if (!announce) {
+      saveMessage = "";
+      saveDetail = "";
+    }
+    renderSaveBar();
+    if (announce) flashSaveButton();
+  }
+
+  function photoUploadSurface(fromEl) {
+    if (!fromEl || !(fromEl instanceof Element)) return null;
+    return (
+      fromEl.closest(".admin-photo-card") ||
+      fromEl.closest(".admin-bg-card") ||
+      fromEl.closest(".admin-secondhand-photo") ||
+      fromEl.closest(".admin-news-photos") ||
+      fromEl.closest(".admin-agenda-photo-field") ||
+      fromEl.closest("label")
     );
+  }
+
+  function setPhotoUploadBusy(surface, busy) {
+    if (!surface) return;
+    surface.classList.toggle("is-uploading", Boolean(busy));
+    surface.setAttribute("aria-busy", busy ? "true" : "false");
+    surface.querySelectorAll('input[type="file"]').forEach((input) => {
+      input.disabled = Boolean(busy);
+    });
+  }
+
+  function beginPhotoUpload(surface, message = "Foto uploaden...") {
+    setSaveStatus(message, "saving");
+    setPhotoUploadBusy(surface, true);
+  }
+
+  function endPhotoUpload(surface) {
+    setPhotoUploadBusy(surface, false);
   }
 
   function queueUploadDelete(imagePath) {
@@ -171,30 +336,120 @@
     );
   }
 
-  async function persist(data, { quiet = false } = {}) {
+  function queueDocumentDelete(path) {
+    const filename = path?.split("/").pop()?.split("?")[0];
+    if (filename) pendingDocumentDeletes.push(filename);
+  }
+
+  async function flushDocumentDeletes() {
+    const filenames = pendingDocumentDeletes.splice(0);
+    await Promise.all(
+      filenames.map(async (filename) => {
+        try {
+          const response = await fetch(
+            `/api/uploads/document/${encodeURIComponent(filename)}`,
+            { method: "DELETE" },
+          );
+          if (!response.ok) {
+            console.warn("Document kon niet verwijderd worden.");
+          }
+        } catch (error) {
+          console.warn("Document verwijderen mislukt:", error);
+        }
+      }),
+    );
+  }
+
+  function clearPendingWork() {
+    pendingPlanningUploads.clear();
+    pendingUploadDeletes.length = 0;
+    pendingDocumentDeletes.length = 0;
+  }
+
+  async function persist(data, { quiet = false, message = "", flushDeletes = true } = {}) {
     normalizeBranchLeadership(data);
     normalizeNewsItems(data);
-    if (!quiet) setSaveStatus("Opslaan...", "saving");
+    const versionAtStart = editVersion;
+    if (!quiet) setSaveStatus("Bezig met opslaan", "saving");
     try {
       await DataStore.save(data);
-      await flushUploadDeletes();
-      markDirtyState(false, { announce: !quiet });
+      if (flushDeletes) {
+        await flushUploadDeletes();
+        await flushDocumentDeletes();
+      }
+      if (editVersion !== versionAtStart || pendingPlanningUploads.size > 0) {
+        unpublished = true;
+        publishFailed = false;
+        saveMode = "dirty";
+        saveMessage = "";
+        saveDetail = "Er is nog iets gewijzigd. Sla opnieuw op.";
+        renderSaveBar();
+        return false;
+      }
+      unpublished = false;
+      publishFailed = false;
+      saveMode = "clean";
+      saveMessage = message || "Staat op de website";
+      saveDetail = "";
+      renderSaveBar();
+      if (!quiet) flashSaveButton();
+      return true;
     } catch (error) {
       console.error(error);
-      adminHasUnsavedChanges = true;
-      if (error?.code === "version_conflict") {
-        setSaveStatus(
-          error.message ||
-            "Conflict: herlaad de pagina en probeer opnieuw",
-          "error",
-        );
-        return;
-      }
-      setSaveStatus(
-        error?.message || "Opslaan mislukt — probeer opnieuw",
-        "error",
-      );
+      unpublished = true;
+      publishFailed = true;
+      saveMode = "error";
+      saveMessage =
+        error?.code === "version_conflict"
+          ? error.message ||
+            "Iemand anders heeft ondertussen opgeslagen. Herlaad en probeer opnieuw."
+          : error?.message || "Opslaan mislukt. Probeer opnieuw.";
+      saveDetail = "";
+      renderSaveBar();
+      return false;
     }
+  }
+
+  async function saveGoogleDriveSettingsFromForm({ quiet = false } = {}) {
+    const folderId =
+      qs("[data-drive-setting='folderId']")?.value.trim() || "";
+    const oauthClientFile = qs("[data-drive-oauth-client]")?.files?.[0];
+
+    if (oauthClientFile) {
+      const oauthData = new FormData();
+      oauthData.append("client", oauthClientFile);
+      const oauthResponse = await fetch("/api/google-drive/oauth-client", {
+        method: "POST",
+        body: oauthData,
+      });
+      if (!oauthResponse.ok) {
+        const result = await readResponseJson(oauthResponse);
+        throw new Error(result.message || "OAuth-client opslaan mislukt");
+      }
+    }
+
+    const response = await fetch("/api/google-drive/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ folderId }),
+    });
+    if (!response.ok) {
+      const result = await readResponseJson(response);
+      throw new Error(result.message || "Instellingen opslaan mislukt");
+    }
+
+    googleDriveSettings.folderId = folderId;
+    if (quiet) {
+      markDirtyState(false, { announce: false });
+      return;
+    }
+    unpublished = false;
+    publishFailed = false;
+    saveMode = "clean";
+    saveMessage = "Staat op de website";
+    saveDetail = "De Drive-instellingen zijn opgeslagen.";
+    renderSaveBar();
+    flashSaveButton();
   }
 
   const photoEditorConfig = [
@@ -290,20 +545,14 @@
   }
 
   async function removeMonthlyPlanning(data, branch) {
+    readFormValues();
     const planning = getMonthlyPlanning(data, branch);
-    const filename = planning.split("/").pop()?.split("?")[0];
-    if (filename) {
-      const response = await fetch(
-        `/api/uploads/document/${encodeURIComponent(filename)}`,
-        { method: "DELETE" },
-      );
-      if (!response.ok) throw new Error("Maandplanning verwijderen mislukt.");
-    }
+    if (planning) queueDocumentDelete(planning);
+    pendingPlanningUploads.delete(branch);
     setMonthlyPlanning(data, branch, "");
     setMonthlyPlanningTitle(data, branch, "");
-    await persist(data);
+    markDirtyState(true);
     renderAdminPanel();
-    if (!adminHasUnsavedChanges) setSaveStatus("Maandplanning verwijderd", "saved");
   }
 
 
@@ -343,6 +592,7 @@
   }
 
   async function addLetter(data, branch, file) {
+    readFormValues();
     const titleInput = qs(`[data-letter-title-new="${branch}"]`);
     const title = titleInput?.value.trim() || "";
     if (!title) throw new Error("Geef eerst een naam aan de brief.");
@@ -364,26 +614,22 @@
       data.letters[branch] = [];
     }
     data.letters[branch].push({ title, path: result.path });
-    await persist(data);
+    markDirtyState(true);
+    saveDetail = "De brief komt op de website als je opslaat.";
+    renderSaveBar();
     renderAdminPanel();
-    if (!adminHasUnsavedChanges) setSaveStatus("Brief opgeslagen", "saved");
   }
 
   async function removeLetter(data, branch, index) {
+    readFormValues();
     const letter = getBranchLetters(data, branch)[index];
     if (!letter) return;
-    const filename = letter.path.split("/").pop()?.split("?")[0];
-    if (filename) {
-      const response = await fetch(
-        `/api/uploads/document/${encodeURIComponent(filename)}`,
-        { method: "DELETE" },
-      );
-      if (!response.ok) throw new Error("Brief verwijderen mislukt.");
-    }
+    if (letter.path) queueDocumentDelete(letter.path);
     data.letters[branch].splice(index, 1);
-    await persist(data);
+    markDirtyState(true);
+    saveDetail = "De brief verdwijnt van de website als je opslaat.";
+    renderSaveBar();
     renderAdminPanel();
-    if (!adminHasUnsavedChanges) setSaveStatus("Brief verwijderd", "saved");
   }
 
   const PHOTO_FILENAMES = {
@@ -394,6 +640,112 @@
     "branches.verkenners": "verkennersleiding",
     "branches.jins": "jinsleiding",
   };
+
+  /** Configurable full-page / hero backgrounds (stored under photos.pageBackgrounds). */
+  const PAGE_BACKGROUND_CONFIG = [
+    {
+      key: "home",
+      label: "Homepage (hero)",
+      hint: "Grote hero-foto bovenaan de startpagina.",
+      livePath: "/",
+      defaultPreview: "/assets/images/domein-w800.webp",
+      filename: "bg-home",
+    },
+    {
+      key: "registration",
+      label: "Inschrijven",
+      hint: "Achtergrond van /inschrijven.",
+      livePath: "/inschrijven",
+      defaultPreview: "/assets/images/domein2-w800.webp",
+      filename: "bg-registration",
+    },
+    {
+      key: "news",
+      label: "Nieuws",
+      hint: "Achtergrond van /nieuws.",
+      livePath: "/nieuws",
+      defaultPreview: "/assets/images/domein2-w800.webp",
+      filename: "bg-news",
+    },
+    {
+      key: "about",
+      label: "Over ons (pagina-achtergrond)",
+      hint: "Volledige pagina-achtergrond (los van de Over ons-inhoudfoto).",
+      livePath: "/over-ons",
+      defaultPreview: "/assets/images/domein4-w800.webp",
+      filename: "bg-about",
+    },
+    {
+      key: "secondhand",
+      label: "Tweedehands",
+      hint: "Achtergrond van /tweedehands.",
+      livePath: "/tweedehands",
+      defaultPreview: "/assets/images/domein3-w800.webp",
+      filename: "bg-secondhand",
+    },
+    {
+      key: "uniform",
+      label: "Uniform",
+      hint: "Achtergrond van /uniform.",
+      livePath: "/uniform",
+      defaultPreview: "/assets/images/domein5-w800.webp",
+      filename: "bg-uniform",
+    },
+    {
+      key: "branch",
+      label: "Takpagina's (gedeeld)",
+      hint: "Gedeelde achtergrond voor alle takpagina's.",
+      livePath: "/kapoenen",
+      defaultPreview: "/assets/images/domein2-w800.webp",
+      filename: "bg-branch",
+    },
+    {
+      key: "error",
+      label: "404-pagina",
+      hint: "Achtergrond van de foutpagina.",
+      livePath: "/404",
+      defaultPreview: "/assets/images/domein2-w800.webp",
+      filename: "bg-error",
+    },
+  ];
+
+  /** @type {Record<string, { file: File, previewUrl: string }>} */
+  const pendingBackgroundUploads = {};
+
+  function ensurePageBackgroundBuckets(data) {
+    if (!data.photos || typeof data.photos !== "object") data.photos = {};
+    if (!data.photos.pageBackgrounds || typeof data.photos.pageBackgrounds !== "object") {
+      data.photos.pageBackgrounds = {};
+    }
+    if (
+      !data.photos.pageBackgroundsPrevious ||
+      typeof data.photos.pageBackgroundsPrevious !== "object"
+    ) {
+      data.photos.pageBackgroundsPrevious = {};
+    }
+    PAGE_BACKGROUND_CONFIG.forEach(({ key }) => {
+      if (typeof data.photos.pageBackgrounds[key] !== "string") {
+        data.photos.pageBackgrounds[key] = "";
+      }
+      if (typeof data.photos.pageBackgroundsPrevious[key] !== "string") {
+        data.photos.pageBackgroundsPrevious[key] = "";
+      }
+    });
+  }
+
+  function clearPendingBackground(key) {
+    const pending = pendingBackgroundUploads[key];
+    if (pending?.previewUrl) URL.revokeObjectURL(pending.previewUrl);
+    delete pendingBackgroundUploads[key];
+  }
+
+  function backgroundPreviewSrc(data, key, fallback) {
+    const pending = pendingBackgroundUploads[key];
+    if (pending?.previewUrl) return pending.previewUrl;
+    const current = String(data.photos?.pageBackgrounds?.[key] || "").trim();
+    if (current) return current;
+    return fallback;
+  }
 
   const CLIENT_MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
   /** Match server master edge; server keeps a private full original + variants. */
@@ -471,7 +823,8 @@
     }
   }
 
-  async function updatePhoto(data, key, file) {
+  async function updatePhoto(data, key, file, surface = null) {
+    readFormValues();
     if (!file) {
       throw new Error("Geen foto geselecteerd.");
     }
@@ -480,40 +833,51 @@
       throw new Error("Selecteer een afbeeldingsbestand.");
     }
 
-    assertUploadSize(file, "foto");
-    const optimized = await optimizeImageForUpload(file);
+    beginPhotoUpload(surface);
+    try {
+      assertUploadSize(file, "foto");
+      const optimized = await optimizeImageForUpload(file);
 
-    const filename = PHOTO_FILENAMES[key];
+      const filename = PHOTO_FILENAMES[key];
 
-    if (!filename) {
-      throw new Error(`Geen bestandsnaam ingesteld voor ${key}.`);
+      if (!filename) {
+        throw new Error(`Geen bestandsnaam ingesteld voor ${key}.`);
+      }
+
+      const formData = new FormData();
+
+      formData.append("photo", optimized);
+      formData.append("filename", filename);
+
+      const response = await fetch("/api/uploads/photo", {
+        method: "POST",
+        body: formData,
+      });
+
+      const result = await readResponseJson(response);
+
+      if (!response.ok) {
+        throw new Error(result.message || "Foto uploaden mislukt.");
+      }
+
+      if (!result.path) {
+        throw new Error("Server gaf geen fotopad terug.");
+      }
+
+      setPhotoValue(data, key, result.path);
+
+      const published = await persist(data, {
+        message: "Foto staat op de website",
+      });
+      if (published) {
+        saveDetail = "Foto's van een tak of van Over ons worden meteen geplaatst.";
+        renderSaveBar();
+      }
+
+      renderAdminPanel();
+    } finally {
+      endPhotoUpload(surface);
     }
-
-    const formData = new FormData();
-
-    formData.append("photo", optimized);
-    formData.append("filename", filename);
-
-    const response = await fetch("/api/uploads/photo", {
-      method: "POST",
-      body: formData,
-    });
-
-    const result = await readResponseJson(response);
-
-    if (!response.ok) {
-      throw new Error(result.message || "Foto uploaden mislukt.");
-    }
-
-    if (!result.path) {
-      throw new Error("Server gaf geen fotopad terug.");
-    }
-
-    setPhotoValue(data, key, result.path);
-
-    await persist(data);
-
-    renderAdminPanel();
   }
 
   const pageFieldConfig = {
@@ -541,7 +905,7 @@
       fields: [
         {
           key: "day",
-          label: "Dag",
+          label: "",
           tag: "input",
           type: "number",
           row: true,
@@ -550,16 +914,18 @@
           min: 1,
           max: 31,
           inputmode: "numeric",
-          placeholder: "bv. 25",
+          placeholder: "Dag",
+          ariaLabel: "Dag",
         },
         {
           key: "month",
-          label: "Maand",
+          label: "",
           tag: "select",
           row: true,
           dateGroup: "start",
           default: "",
           placeholder: "Maand",
+          ariaLabel: "Maand",
           options: [
             "SEP",
             "OKT",
@@ -577,7 +943,7 @@
         },
         {
           key: "endDay",
-          label: "Dag",
+          label: "",
           tag: "input",
           type: "number",
           row: true,
@@ -586,16 +952,18 @@
           min: 1,
           max: 31,
           inputmode: "numeric",
-          placeholder: "bv. 3",
+          placeholder: "Dag",
+          ariaLabel: "Dag",
         },
         {
           key: "endMonth",
-          label: "Maand",
+          label: "",
           tag: "select",
           row: true,
           dateGroup: "end",
           default: "",
           placeholder: "Maand",
+          ariaLabel: "Maand",
           options: [
             "SEP",
             "OKT",
@@ -627,27 +995,31 @@
           placeholder: "Beschrijving",
         },
         {
-          key: "linkText",
-          label: "Linktekst",
-          tag: "input",
-          type: "text",
-          default: "",
-          placeholder: "bv. Inschrijven",
-        },
-        {
-          key: "link",
-          label: "Link",
-          tag: "input",
-          type: "url",
-          default: "",
-          placeholder: "https://...",
-        },
-        {
           key: "image",
           label: "Foto",
           tag: "file",
           type: "file",
           accept: "image/jpeg,image/png,image/webp,image/gif",
+        },
+        {
+          key: "linkText",
+          label: "",
+          tag: "input",
+          type: "text",
+          default: "",
+          placeholder: "Linktekst",
+          ariaLabel: "Linktekst",
+          optionalGroup: "link",
+        },
+        {
+          key: "link",
+          label: "",
+          tag: "input",
+          type: "url",
+          default: "",
+          placeholder: "https://...",
+          ariaLabel: "Link",
+          optionalGroup: "link",
         },
       ],
     },
@@ -738,7 +1110,7 @@
       itemLabel: "Item",
 
       newItem: {
-        category: "UNIFORM",
+        category: "HEMD",
         title: "Nieuw item",
         size: "",
         price: "",
@@ -751,7 +1123,7 @@
           label: "Categorie",
           tag: "select",
           options: ["HEMD", "KAPOENENTRUI", "SJAALTJE"],
-          default: "UNIFORM",
+          default: "HEMD",
         },
         {
           key: "size",
@@ -1053,17 +1425,26 @@
       const attrs = `data-field="${type}-${field.key}" data-index="${index}"`;
 
       if (field.tag === "file") {
+        const alt = escapeHtml(item.title || item.question || "activiteit");
         return `
-                    <div class="admin-agenda-photo-field">
-                        ${field.label}
+                    <div class="admin-agenda-photo-field${item.image ? " has-photo" : ""}">
                         ${
                           item.image
-                            ? `<img src="${escapeHtml(item.image)}" alt="Foto van ${escapeHtml(item.title || item.question || "item")}" loading="lazy">
-                               <span class="admin-agenda-photo-actions">
-                                 <span class="admin-agenda-photo-change">Vervangen<input type="file" accept="${field.accept}" data-list-image-upload="${type}" data-index="${index}"></span>
-                                 <button type="button" class="admin-agenda-photo-remove" data-list-image-remove="${type}" data-index="${index}">Verwijderen</button>
-                               </span>`
-                            : `<span class="admin-agenda-photo-change">Foto toevoegen<input type="file" accept="${field.accept}" data-list-image-upload="${type}" data-index="${index}"></span>`
+                            ? `<div class="admin-agenda-photo-preview">
+                                 <img src="${escapeHtml(item.image)}" alt="Foto van ${alt}" loading="lazy">
+                                 <div class="admin-agenda-photo-actions">
+                                   <label class="admin-agenda-action">
+                                     Vervangen
+                                     <input type="file" accept="${field.accept}" data-list-image-upload="${type}" data-index="${index}">
+                                   </label>
+                                   <button type="button" class="admin-agenda-action is-quiet" data-list-image-remove="${type}" data-index="${index}">Verwijderen</button>
+                                 </div>
+                               </div>`
+                            : `<label class="admin-agenda-add admin-agenda-photo-drop">
+                                 <span class="admin-agenda-add-icon" aria-hidden="true"></span>
+                                 <span class="admin-agenda-add-label">Foto toevoegen</span>
+                                 <input type="file" accept="${field.accept}" data-list-image-upload="${type}" data-index="${index}">
+                               </label>`
                         }
                     </div>
                 `;
@@ -1080,10 +1461,14 @@
 
       if (field.tag === "select") {
         const current = item[field.key] || "";
+        const aria =
+          field.ariaLabel && !field.label
+            ? ` aria-label="${escapeHtml(field.ariaLabel)}"`
+            : "";
         return `
                     <label>
-                        ${field.label}
-                        <select ${attrs}>
+                        ${field.label ? `<span>${escapeHtml(field.label)}</span>` : ""}
+                        <select ${attrs}${aria}>
                             <option value="" ${current ? "" : "selected"}${field.placeholder ? "" : " disabled"}>${escapeHtml(field.placeholder || "Kies…")}</option>
                             ${field.options
                               .map(
@@ -1099,16 +1484,20 @@
                 `;
       }
 
+      const aria =
+        field.ariaLabel && !field.label
+          ? ` aria-label="${escapeHtml(field.ariaLabel)}"`
+          : "";
       return `
                 <label>
-                    ${field.label}
+                    ${field.label ? `<span>${escapeHtml(field.label)}</span>` : ""}
                     <input
                         type="${field.type}"
-                        ${attrs}
+                        ${attrs}${aria}
                         ${field.min !== undefined ? `min="${field.min}"` : ""}
                         ${field.max !== undefined ? `max="${field.max}"` : ""}
                         ${field.inputmode ? `inputmode="${field.inputmode}"` : ""}
-                        ${field.placeholder ? `placeholder="${field.placeholder}"` : ""}
+                        ${field.placeholder ? `placeholder="${escapeHtml(field.placeholder)}"` : ""}
                         value="${value}"
                     >
                 </label>
@@ -1173,9 +1562,36 @@
                     `
               : "";
 
-        const restHtml = restFields
-          .map((f) => fieldHtml(f, item, index))
-          .join("");
+        let restHtml = "";
+        if (type === "agenda") {
+          const mainFields = restFields.filter((f) => !f.optionalGroup);
+          const linkFields = restFields.filter(
+            (f) => f.optionalGroup === "link",
+          );
+          const hasLink = Boolean(
+            String(item.link || "").trim() || String(item.linkText || "").trim(),
+          );
+          restHtml = `
+            ${mainFields.map((f) => fieldHtml(f, item, index)).join("")}
+            <div class="admin-agenda-link-field${hasLink ? " has-values is-open" : ""}">
+              <button type="button" class="admin-agenda-add" data-agenda-link-add ${hasLink ? "hidden" : ""}>
+                <span class="admin-agenda-add-icon" aria-hidden="true"></span>
+                <span class="admin-agenda-add-label">Link toevoegen</span>
+              </button>
+              <div class="admin-agenda-link-fields">
+                <div class="admin-agenda-link-head">
+                  <span>Link</span>
+                  <button type="button" class="admin-agenda-action is-quiet" data-agenda-link-clear data-index="${index}">Verwijderen</button>
+                </div>
+                <div class="admin-agenda-link-row">
+                  ${linkFields.map((f) => fieldHtml(f, item, index)).join("")}
+                </div>
+              </div>
+            </div>
+          `;
+        } else {
+          restHtml = restFields.map((f) => fieldHtml(f, item, index)).join("");
+        }
 
         return `
                     <div class="admin-item admin-collapsible-item is-collapsed">
@@ -1227,6 +1643,23 @@
                 `;
       })
       .join("");
+  }
+
+  function listEditorContainerId(type) {
+    if (type === "agenda") return "agendaEditor";
+    if (type === "faq") return "faqEditor";
+    if (type === "secondhand") return "secondhandEditor";
+    return null;
+  }
+
+  function reopenListEditorItem(type, index) {
+    if (index < 0) return;
+    const containerId = listEditorContainerId(type);
+    if (!containerId) return;
+    const item = qsa(`#${containerId} .admin-collapsible-item`)[index];
+    if (item?.classList.contains("is-collapsed")) {
+      toggleAdminCollapsible(item);
+    }
   }
 
   function toggleAdminCollapsible(item) {
@@ -1331,6 +1764,179 @@
       .join("");
   }
 
+  function renderBackgroundEditor(data) {
+    ensurePageBackgroundBuckets(data);
+    const container = document.getElementById("backgroundEditor");
+    if (!container) return;
+
+    container.innerHTML = PAGE_BACKGROUND_CONFIG.map((slot) => {
+      const current = String(data.photos.pageBackgrounds[slot.key] || "").trim();
+      const previous = String(
+        data.photos.pageBackgroundsPrevious[slot.key] || "",
+      ).trim();
+      const pending = pendingBackgroundUploads[slot.key];
+      const preview = backgroundPreviewSrc(data, slot.key, slot.defaultPreview);
+      const status = pending
+        ? "Nieuwe foto klaar om te publiceren"
+        : current
+          ? "Aangepaste achtergrond actief"
+          : "Standaardachtergrond actief";
+
+      return `
+        <article class="admin-bg-card ${pending ? "is-pending" : ""} ${current ? "has-custom" : ""}" data-bg-key="${escapeHtml(slot.key)}">
+          <div class="admin-bg-preview">
+            <img src="${escapeHtml(preview)}" alt="" loading="lazy">
+            <label class="admin-bg-dropzone">
+              <span>Kies of sleep een foto</span>
+              <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" data-bg-pick="${escapeHtml(slot.key)}">
+            </label>
+          </div>
+          <div class="admin-bg-body">
+            <h3>${escapeHtml(slot.label)}</h3>
+            <p class="admin-bg-hint">${escapeHtml(slot.hint)}</p>
+            <p class="admin-bg-status" data-bg-status>${escapeHtml(status)}</p>
+            <div class="admin-bg-actions">
+              <button type="button" class="button" data-bg-publish="${escapeHtml(slot.key)}" ${pending ? "" : "disabled"}>Publiceren</button>
+              <button type="button" class="admin-utility-link" data-bg-clear-pending="${escapeHtml(slot.key)}" ${pending ? "" : "hidden"}>Voorbeeld annuleren</button>
+              <button type="button" class="admin-utility-link" data-bg-reset="${escapeHtml(slot.key)}" ${current && !pending ? "" : "hidden"}>Standaard herstellen</button>
+              <button type="button" class="admin-utility-link" data-bg-restore="${escapeHtml(slot.key)}" ${previous && !pending ? "" : "hidden"}>Vorige herstellen</button>
+              <a class="admin-utility-link" href="${escapeHtml(slot.livePath)}" target="_blank" rel="noopener">Bekijk live</a>
+            </div>
+          </div>
+        </article>
+      `;
+    }).join("");
+
+    // Drag-and-drop on dropzones
+    qsa(".admin-bg-dropzone", container).forEach((zone) => {
+      ["dragenter", "dragover"].forEach((type) => {
+        zone.addEventListener(type, (event) => {
+          event.preventDefault();
+          zone.classList.add("is-dragover");
+        });
+      });
+      ["dragleave", "drop"].forEach((type) => {
+        zone.addEventListener(type, (event) => {
+          event.preventDefault();
+          zone.classList.remove("is-dragover");
+        });
+      });
+      zone.addEventListener("drop", (event) => {
+        const key = zone.querySelector("input[data-bg-pick]")?.dataset.bgPick;
+        const file = event.dataTransfer?.files?.[0];
+        if (key && file) stageBackgroundFile(key, file);
+      });
+    });
+  }
+
+  function stageBackgroundFile(key, file) {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setSaveStatus("Selecteer een afbeeldingsbestand (JPEG, PNG, WebP of GIF).", "error");
+      return;
+    }
+    try {
+      assertUploadSize(file, "achtergrondfoto");
+    } catch (error) {
+      setSaveStatus(error.message || "Bestand te groot.", "error");
+      return;
+    }
+
+    clearPendingBackground(key);
+    pendingBackgroundUploads[key] = {
+      file,
+      previewUrl: URL.createObjectURL(file),
+    };
+    setSaveStatus(
+      "Voorbeeld klaar. Klik op Publiceren om de achtergrond live te zetten.",
+      "dirty",
+    );
+    renderAdminPanel();
+  }
+
+  async function publishBackground(data, key) {
+    ensurePageBackgroundBuckets(data);
+    const slot = PAGE_BACKGROUND_CONFIG.find((item) => item.key === key);
+    const pending = pendingBackgroundUploads[key];
+    if (!slot || !pending?.file) {
+      throw new Error("Geen nieuwe foto om te publiceren.");
+    }
+
+    beginPhotoUpload(
+      document.querySelector(`[data-bg-key="${key}"]`) || null,
+    );
+    try {
+      const optimized = await optimizeImageForUpload(pending.file);
+      const formData = new FormData();
+      formData.append("photo", optimized);
+      formData.append("filename", slot.filename);
+
+      const response = await fetch("/api/uploads/photo", {
+        method: "POST",
+        body: formData,
+      });
+      const result = await readResponseJson(response);
+      if (!response.ok || !result.path) {
+        throw new Error(result.message || "Achtergrond uploaden mislukt.");
+      }
+
+      const current = String(data.photos.pageBackgrounds[key] || "").trim();
+      if (current) {
+        data.photos.pageBackgroundsPrevious[key] = current;
+      }
+      data.photos.pageBackgrounds[key] = result.path;
+      clearPendingBackground(key);
+
+      const published = await persist(data, {
+        message: `${slot.label}: achtergrond gepubliceerd.`,
+      });
+      if (!published) {
+        throw new Error("Opslaan van de achtergrondinstelling mislukt.");
+      }
+    } finally {
+      endPhotoUpload(document.querySelector(`[data-bg-key="${key}"]`) || null);
+    }
+  }
+
+  async function resetBackgroundToDefault(data, key) {
+    ensurePageBackgroundBuckets(data);
+    const slot = PAGE_BACKGROUND_CONFIG.find((item) => item.key === key);
+    if (!slot) return;
+    const current = String(data.photos.pageBackgrounds[key] || "").trim();
+    if (!current) return;
+
+    const ok = await confirmDelete(
+      "Standaardachtergrond herstellen?",
+      "De aangepaste achtergrond verdwijnt van de website. Je kunt daarna nog terug naar de vorige upload.",
+    );
+    if (!ok) return;
+
+    data.photos.pageBackgroundsPrevious[key] = current;
+    data.photos.pageBackgrounds[key] = "";
+    clearPendingBackground(key);
+    await persist(data, {
+      message: `${slot.label}: standaardachtergrond hersteld.`,
+    });
+  }
+
+  async function restorePreviousBackground(data, key) {
+    ensurePageBackgroundBuckets(data);
+    const slot = PAGE_BACKGROUND_CONFIG.find((item) => item.key === key);
+    if (!slot) return;
+    const previous = String(data.photos.pageBackgroundsPrevious[key] || "").trim();
+    if (!previous) {
+      throw new Error("Geen vorige achtergrond beschikbaar.");
+    }
+
+    const current = String(data.photos.pageBackgrounds[key] || "").trim();
+    data.photos.pageBackgroundsPrevious[key] = current;
+    data.photos.pageBackgrounds[key] = previous;
+    clearPendingBackground(key);
+    await persist(data, {
+      message: `${slot.label}: vorige achtergrond hersteld.`,
+    });
+  }
+
   function renderPhotoEditor(data) {
     const container = document.getElementById("photoEditor");
     if (!container) return;
@@ -1418,10 +2024,16 @@
 
     if (activePage === "settings") {
       const driveConnected = Boolean(googleDriveSettings.oauthConfigured);
-      const driveEmail =
+      const driveEmailRaw =
         typeof googleDriveSettings.oauthEmail === "string"
           ? googleDriveSettings.oauthEmail.trim()
           : "";
+      const driveEmail =
+        driveEmailRaw.includes("@") &&
+        driveEmailRaw.toLowerCase() !== "google-account gekoppeld"
+          ? driveEmailRaw
+          : "";
+      const folderId = String(googleDriveSettings.folderId || "").trim();
       container.innerHTML = `
           <div class="admin-settings">
             <header class="admin-settings-intro">
@@ -1432,40 +2044,58 @@
             </header>
 
             <div class="admin-settings-layout">
-              <section class="admin-card compact-card admin-settings-card admin-settings-card--drive">
-                <div class="admin-card-head">
+              <section class="admin-card compact-card admin-settings-card admin-settings-card--drive admin-drive-panel ${driveConnected ? "is-connected" : "is-disconnected"}">
+                <div class="admin-card-head admin-drive-head">
                   <h2>Google Drive</h2>
-                  <span class="admin-settings-status ${driveConnected ? "is-ok" : "is-off"}">
+                  <span class="admin-settings-status ${driveConnected ? "is-ok" : "is-off"}" role="status">
+                    <span class="admin-settings-status-dot" aria-hidden="true"></span>
                     ${driveConnected ? "Verbonden" : "Niet verbonden"}
                   </span>
                 </div>
+
                 ${
-                  driveEmail
-                    ? `<p class="form-help">${escapeHtml(driveEmail)}</p>`
+                  driveConnected && driveEmail
+                    ? `<p class="admin-drive-email">${escapeHtml(driveEmail)}</p>`
                     : ""
                 }
-                <div class="admin-fields">
-                  <label>
-                    Map-ID
-                    <input type="text" data-drive-setting="folderId" value="${escapeHtml(googleDriveSettings.folderId)}" placeholder="Drive-map ID" autocomplete="off">
+
+                <div class="admin-drive-fields admin-fields">
+                  <label class="admin-drive-field">
+                    <span class="admin-drive-field-label">Map-ID</span>
+                    <input type="text" data-drive-setting="folderId" value="${escapeHtml(folderId)}" placeholder="Map-ID" autocomplete="off" spellcheck="false">
                   </label>
-                  <div class="admin-settings-file">
-                    <span class="admin-settings-file-heading">OAuth-client</span>
-                    <label class="document-upload-button document-upload-button--wide admin-settings-file-pick">
-                      <span data-drive-oauth-label>JSON kiezen</span>
+
+                  ${
+                    driveConnected
+                      ? ""
+                      : `<div class="admin-drive-field admin-settings-file">
+                    <span class="admin-drive-field-label">Client JSON</span>
+                    <label class="admin-drive-file-pick admin-settings-file-pick">
+                      <span data-drive-oauth-label>Bestand kiezen…</span>
                       <input type="file" data-drive-oauth-client accept="application/json,.json">
                     </label>
-                  </div>
+                  </div>`
+                  }
                 </div>
-                <div class="admin-actions">
-                  <button type="button" class="button button-secondary" data-google-connect>${driveConnected ? "Opnieuw verbinden" : "Verbinden"}</button>
-                  <button type="button" class="button button-ghost-dark" data-google-oauth-reset ${driveConnected ? "" : "hidden"}>Resetten</button>
+
+                <div class="admin-drive-actions admin-actions">
+                  ${
+                    driveConnected
+                      ? `<button type="button" class="button button-secondary admin-drive-btn" data-google-connect>
+                           <span data-google-connect-label>Opnieuw verbinden</span>
+                         </button>
+                         <button type="button" class="button button-ghost-dark admin-drive-btn" data-google-oauth-reset>Verbreken</button>`
+                      : `<button type="button" class="button button-primary admin-drive-btn admin-drive-btn--connect" data-google-connect>
+                           <span data-google-connect-label>Verbinden</span>
+                         </button>`
+                  }
                 </div>
               </section>
 
               <div class="admin-settings-side">
                 <section class="admin-card compact-card admin-settings-card">
                   <div class="admin-card-head"><h2>Backup</h2></div>
+                  <p class="form-help admin-settings-side-help">Download of herstel alle sitegegevens als JSON.</p>
                   <div class="admin-actions">
                     <button type="button" class="button button-secondary" data-download-backup>Downloaden</button>
                     <label class="button button-ghost-dark admin-restore-button">
@@ -1477,6 +2107,7 @@
 
                 <section class="admin-card compact-card admin-settings-card admin-settings-card--orphans">
                   <div class="admin-card-head"><h2>Uploads opruimen</h2></div>
+                  <p class="form-help admin-settings-side-help">Zoek bestanden in uploads die nergens meer gebruikt worden.</p>
                   <div class="admin-actions admin-orphan-actions">
                     <button type="button" class="button button-secondary admin-orphan-scan" data-orphan-scan>
                       <span class="admin-orphan-scan-icon" aria-hidden="true"></span>
@@ -1556,6 +2187,22 @@
                 </section>
             `;
       renderPhotoEditor(data);
+      return;
+    }
+
+    if (activePage === "achtergronden") {
+      container.innerHTML = `
+                <section class="admin-card compact-card admin-backgrounds-card">
+                    <div class="admin-card-head">
+                        <div>
+                            <h2>Afbeeldingen en achtergronden</h2>
+                            <p class="admin-card-lede">Upload een foto, bekijk het voorbeeld, en publiceer pas wanneer je tevreden bent. Bij een mislukte upload blijft de huidige achtergrond staan.</p>
+                        </div>
+                    </div>
+                    <div id="backgroundEditor" class="admin-bg-grid"></div>
+                </section>
+            `;
+      renderBackgroundEditor(data);
       return;
     }
 
@@ -1707,6 +2354,8 @@
     news: "/nieuws",
     "over-ons": "/over-ons",
     inschrijven: "/inschrijven",
+    photos: "/over-ons",
+    achtergronden: "/",
     kapoenen: "/kapoenen",
     welpen: "/welpen",
     jongverkenners: "/jongverkenners",
@@ -1714,6 +2363,21 @@
     jins: "/jins",
     secondhand: "/tweedehands",
   };
+
+  function syncPagePickerRadios() {
+    const activePage = DataStore.get().activePage || "home";
+    qsa(".page-picker-grid").forEach((grid) => {
+      const radios = qsa("[role='radio']", grid);
+      const active = radios.find((button) => button.dataset.pageOption === activePage);
+      radios.forEach((button) => {
+        const isActive = button === active;
+        button.classList.toggle("is-active", isActive);
+        button.setAttribute("aria-checked", String(isActive));
+        button.tabIndex = isActive ? 0 : -1;
+      });
+      if (!active && radios[0]) radios[0].tabIndex = 0;
+    });
+  }
 
   function renderAdminPanel() {
     const data = DataStore.get();
@@ -1726,13 +2390,12 @@
 
     qsa("[data-page-option]").forEach((button) => {
       const isActive = button.dataset.pageOption === activePage;
-      button.classList.toggle("is-active", isActive);
-      if (button.getAttribute("role") === "radio") {
-        button.setAttribute("aria-checked", String(isActive));
-      } else {
+      if (button.getAttribute("role") !== "radio") {
+        button.classList.toggle("is-active", isActive);
         button.setAttribute("aria-pressed", String(isActive));
       }
     });
+    syncPagePickerRadios();
 
     const viewLink = document.getElementById("viewLivePage");
     const livePath = publicPagePaths[activePage];
@@ -1935,6 +2598,78 @@
     return data;
   }
 
+  async function loadGoogleDriveSettings() {
+    const settingsResponse = await fetch("/api/google-drive/settings");
+    if (!settingsResponse.ok) {
+      const result = await readResponseJson(settingsResponse);
+      throw new Error(
+        result.message || "Drive-instellingen laden mislukt",
+      );
+    }
+    googleDriveSettings = await settingsResponse.json();
+    return googleDriveSettings;
+  }
+
+  async function unlockGoogleDriveSettings() {
+    const password = await askSettingsPassword();
+    if (!password) return false;
+    const unlockResponse = await fetch("/api/google-drive/settings/unlock", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password }),
+    });
+    if (!unlockResponse.ok) {
+      const result = await readResponseJson(unlockResponse);
+      setSaveStatus(
+        result.message || "Instellingen ontgrendelen mislukt",
+        "error",
+      );
+      return false;
+    }
+    return true;
+  }
+
+  async function ensureGoogleDriveSettingsLoaded({ promptIfLocked = true } = {}) {
+    try {
+      await loadGoogleDriveSettings();
+      return true;
+    } catch (error) {
+      if (!promptIfLocked) return false;
+      const unlocked = await unlockGoogleDriveSettings();
+      if (!unlocked) return false;
+      await loadGoogleDriveSettings();
+      return true;
+    }
+  }
+
+  async function openSettingsAfterGoogleOAuth(status, message) {
+    const data = DataStore.get();
+    if (data.activePage !== "settings") {
+      settingsReturnPage = data.activePage || "home";
+      data.activePage = "settings";
+      await persist(data, { quiet: true });
+    }
+
+    const loaded = await ensureGoogleDriveSettingsLoaded();
+    renderAdminPanel();
+    if (!loaded) {
+      setSaveStatus(
+        message || "Drive-status kon niet geladen worden",
+        "error",
+      );
+      return;
+    }
+    if (status === "connected" && googleDriveSettings.oauthConfigured) {
+      setSaveStatus("Drive verbonden", "saved");
+    } else if (status === "connected") {
+      setSaveStatus("Koppeling niet opgeslagen. Verbind opnieuw.", "error");
+    } else {
+      const shortMessage =
+        message && message.length > 80 ? `${message.slice(0, 77)}…` : message;
+      setSaveStatus(shortMessage || "Drive verbinden mislukt", "error");
+    }
+  }
+
   async function initAdminPanel() {
     Auth.redirectIfNotAuthenticated();
 
@@ -1948,7 +2683,19 @@
     }
     sortAgendaInPlace(DataStore.get().agenda);
     markDirtyState(false, { announce: false });
-    renderAdminPanel();
+
+    const googleParams = new URLSearchParams(window.location.search);
+    const googleStatus = googleParams.get("google");
+    if (googleStatus === "connected" || googleStatus === "error") {
+      const googleMessage = googleParams.get("google_message") || "";
+      window.history.replaceState({}, "", "/admin");
+      await openSettingsAfterGoogleOAuth(googleStatus, googleMessage);
+    } else if ((DataStore.get().activePage || "home") === "settings") {
+      await ensureGoogleDriveSettingsLoaded({ promptIfLocked: true });
+      renderAdminPanel();
+    } else {
+      renderAdminPanel();
+    }
 
     document.addEventListener("input", (event) => {
       const dayInput = event.target.closest(
@@ -2129,7 +2876,7 @@
           if (label) label.textContent = file.name;
         } else {
           pick?.classList.remove("is-selected");
-          if (label) label.textContent = "JSON kiezen";
+          if (label) label.textContent = "Bestand kiezen…";
         }
         markDirtyState(true);
         return;
@@ -2175,17 +2922,27 @@
       const photoUpload = event.target.closest("[data-photo-upload]");
 
       if (photoUpload?.files[0]) {
+        const surface = photoUploadSurface(photoUpload);
         try {
           await updatePhoto(
             DataStore.get(),
             photoUpload.dataset.photoUpload,
             photoUpload.files[0],
+            surface,
           );
         } catch (error) {
           console.error(error);
+          endPhotoUpload(surface);
           setSaveStatus(error.message || "Foto uploaden mislukt", "error");
         }
 
+        return;
+      }
+
+      const bgPick = event.target.closest("[data-bg-pick]");
+      if (bgPick?.files?.[0]) {
+        stageBackgroundFile(bgPick.dataset.bgPick, bgPick.files[0]);
+        bgPick.value = "";
         return;
       }
 
@@ -2213,11 +2970,12 @@
           return;
         }
 
+        const surface = photoUploadSurface(newsImageUpload);
         try {
           imageFiles.forEach((file) => assertUploadSize(file, "foto"));
-          setSaveStatus(
+          beginPhotoUpload(
+            surface,
             imageFiles.length > 1 ? "Foto's uploaden..." : "Foto uploaden...",
-            "saving",
           );
           for (const file of imageFiles) {
             const optimized = await optimizeImageForUpload(file);
@@ -2236,7 +2994,9 @@
             images.push(result.path);
           }
           setNewsImages(data.news[index], images);
-          await persist(data);
+          markDirtyState(true);
+          saveDetail = "De foto komt op de website als je opslaat.";
+          renderSaveBar();
           renderAdminPanel();
           const card = qsa(".admin-news-item")[index];
           if (card?.classList.contains("is-collapsed")) {
@@ -2244,6 +3004,7 @@
           }
         } catch (error) {
           console.error(error);
+          endPhotoUpload(surface);
           setSaveStatus(error.message || "Foto uploaden mislukt.", "error");
         }
         return;
@@ -2263,10 +3024,12 @@
         }
 
         if (!Array.isArray(data[type]) || !data[type][index]) return;
+        const listItem = data[type][index];
 
+        const surface = photoUploadSurface(listImageUpload);
         try {
           assertUploadSize(file, "foto");
-          setSaveStatus("Foto uploaden...", "saving");
+          beginPhotoUpload(surface);
           const optimized = await optimizeImageForUpload(file);
           const filename = `${type}-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`;
           const formData = new FormData();
@@ -2282,11 +3045,13 @@
             throw new Error(result.message || "Foto uploaden mislukt.");
           }
 
-          data[type][index].image = result.path;
+          listItem.image = result.path;
           markDirtyState(true);
           renderAdminPanel();
+          reopenListEditorItem(type, data[type].indexOf(listItem));
         } catch (error) {
           console.error(error);
+          endPhotoUpload(surface);
           setSaveStatus(error.message || "Foto uploaden mislukt.", "error");
         }
         return;
@@ -2296,6 +3061,7 @@
 
       if (!secondhandUpload?.files[0]) return;
 
+      readFormValues();
       const data = DataStore.get();
       const index = Number(secondhandUpload.dataset.secondhandUpload);
       const file = secondhandUpload.files[0];
@@ -2307,9 +3073,10 @@
 
       if (!data.secondhand[index]) return;
 
+      const surface = photoUploadSurface(secondhandUpload);
       try {
         assertUploadSize(file, "foto");
-        setSaveStatus("Foto uploaden...", "saving");
+        beginPhotoUpload(surface);
 
         const optimized = await optimizeImageForUpload(file);
         const filename = `tweedehands-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`;
@@ -2334,11 +3101,13 @@
 
         data.secondhand[index].image = result.path;
 
-        await persist(data);
+        markDirtyState(true);
+        saveDetail = "De foto komt op de website als je opslaat.";
+        renderSaveBar();
         renderAdminPanel();
       } catch (error) {
         console.error(error);
-
+        endPhotoUpload(surface);
         setSaveStatus(error.message || "Foto uploaden mislukt.", "error");
       }
     });
@@ -2353,9 +3122,66 @@
         return;
       }
 
+      const agendaLinkAdd = event.target.closest("[data-agenda-link-add]");
+      if (agendaLinkAdd) {
+        const block = agendaLinkAdd.closest(".admin-agenda-link-field");
+        if (!block) return;
+        block.classList.add("is-open", "has-values");
+        agendaLinkAdd.setAttribute("hidden", "");
+        block.querySelector(".admin-agenda-link-fields input")?.focus();
+        return;
+      }
+
+      const agendaLinkClear = event.target.closest("[data-agenda-link-clear]");
+      if (agendaLinkClear) {
+        const block = agendaLinkClear.closest(".admin-agenda-link-field");
+        const index = Number(agendaLinkClear.dataset.index);
+        const data = DataStore.get();
+        if (!block || !Array.isArray(data.agenda) || !data.agenda[index]) return;
+        block
+          .querySelectorAll(
+            "[data-field='agenda-linkText'], [data-field='agenda-link']",
+          )
+          .forEach((input) => {
+            input.value = "";
+          });
+        data.agenda[index].linkText = "";
+        data.agenda[index].link = "";
+        block.classList.remove("is-open", "has-values");
+        block.querySelector("[data-agenda-link-add]")?.removeAttribute("hidden");
+        markDirtyState(true);
+        return;
+      }
+
       const googleConnect = event.target.closest("[data-google-connect]");
       if (googleConnect) {
+        const connectBtn = googleConnect.closest("button") || googleConnect;
+        const label = connectBtn.querySelector("[data-google-connect-label]");
+        const previousLabel = label?.textContent || "";
+        if (googleDriveSettings.oauthConfigured) {
+          const reconnect = await confirmDialog({
+            title: "Opnieuw verbinden?",
+            description:
+              "Je wordt doorgestuurd naar Google om de koppeling te vernieuwen.",
+            confirmLabel: "Verbinden",
+          });
+          if (!reconnect) return;
+        }
+        const oauthClientFile = qs("[data-drive-oauth-client]")?.files?.[0];
+        if (
+          !oauthClientFile &&
+          !googleDriveSettings.oauthConfigured &&
+          !googleDriveSettings.oauthClientConfigured
+        ) {
+          setSaveStatus("Kies eerst een client JSON-bestand.", "error");
+          return;
+        }
+        connectBtn.classList.add("is-connecting");
+        connectBtn.setAttribute("aria-busy", "true");
+        connectBtn.disabled = true;
+        if (label) label.textContent = "Bezig…";
         try {
+          await saveGoogleDriveSettingsFromForm({ quiet: true });
           const response = await fetch("/api/google-drive/oauth/start");
           const result = await readResponseJson(response);
           if (!response.ok || !result.url) {
@@ -2363,6 +3189,10 @@
           }
           window.location.href = result.url;
         } catch (error) {
+          connectBtn.classList.remove("is-connecting");
+          connectBtn.removeAttribute("aria-busy");
+          connectBtn.disabled = false;
+          if (label) label.textContent = previousLabel;
           setSaveStatus(error.message || "Google verbinden mislukt", "error");
         }
         return;
@@ -2370,24 +3200,37 @@
 
       const googleOAuthReset = event.target.closest("[data-google-oauth-reset]");
       if (googleOAuthReset) {
-        if (!window.confirm("Google-koppeling resetten? Daarna opnieuw verbinden.")) {
-          return;
-        }
+        const disconnect = await confirmDialog({
+          title: "Drive-koppeling verbreken?",
+          description:
+            "De koppeling met Google Drive stopt. Je kan later opnieuw verbinden.",
+          confirmLabel: "Verbreken",
+          tone: "destructive",
+        });
+        if (!disconnect) return;
         try {
           const response = await fetch("/api/google-drive/oauth-reset", {
             method: "POST",
           });
           const result = await readResponseJson(response);
           if (!response.ok) {
-            throw new Error(result.message || "OAuth-client resetten mislukt.");
+            throw new Error(result.message || "Verbreken mislukt.");
           }
           googleDriveSettings.oauthConfigured = false;
           googleDriveSettings.oauthEmail = "";
+          googleDriveSettings.oauthClientConfigured = Boolean(
+            googleDriveSettings.oauthClientConfigured,
+          );
+          try {
+            await loadGoogleDriveSettings();
+          } catch {
+            /* keep local state */
+          }
           renderAdminPanel();
-          setSaveStatus("OAuth-client gereset. Upload nu een nieuw clientbestand.", "saved");
+          setSaveStatus("Koppeling verbroken.", "saved");
         } catch (error) {
           console.error(error);
-          setSaveStatus(error.message || "OAuth-client resetten mislukt.", "error");
+          setSaveStatus(error.message || "Verbreken mislukt.", "error");
         }
         return;
       }
@@ -2401,9 +3244,11 @@
 
       const planningRemove = event.target.closest("[data-planning-remove]");
       if (planningRemove) {
-        if (!window.confirm("Maandplanning verwijderen?")) {
-          return;
-        }
+          const removePlanning = await confirmDelete(
+          "Maandplanning verwijderen?",
+          "Ze verdwijnt van de website als je daarna op Opslaan klikt.",
+        );
+        if (!removePlanning) return;
 
         try {
           await removeMonthlyPlanning(
@@ -2422,7 +3267,11 @@
 
       const letterRemove = event.target.closest("[data-letter-remove]");
       if (letterRemove) {
-        if (!window.confirm("Brief verwijderen?")) return;
+        const removeLetterConfirmed = await confirmDelete(
+          "Brief verwijderen?",
+          "Ze verdwijnt van de website als je daarna op Opslaan klikt.",
+        );
+        if (!removeLetterConfirmed) return;
 
         try {
           await removeLetter(
@@ -2447,38 +3296,72 @@
         );
 
         if (photo) {
+          const removePhoto = await confirmDelete(
+            "Foto verwijderen?",
+            "De foto verdwijnt van de website als je daarna op Opslaan klikt.",
+          );
+          if (!removePhoto) return;
+
+          readFormValues();
           const filename = PHOTO_FILENAMES[photo.key];
-
-          if (filename) {
-            try {
-              const response = await fetch(
-                `/api/uploads/photo/${encodeURIComponent(filename)}`,
-                {
-                  method: "DELETE",
-                },
-              );
-
-              const result = await readResponseJson(response);
-
-              if (!response.ok) {
-                throw new Error(result.message || "Foto verwijderen mislukt.");
-              }
-            } catch (error) {
-              console.error(error);
-
-              setSaveStatus("Foto verwijderen mislukt", "error");
-
-              return;
-            }
-          }
-
+          if (filename) queueUploadDelete(`/uploads/${filename}.jpg`);
           setPhotoValue(data, photo.key, "");
-
-          await persist(data);
-
+          markDirtyState(true);
+          saveDetail = "De foto verdwijnt van de website als je opslaat.";
+          renderSaveBar();
           renderAdminPanel();
         }
 
+        return;
+      }
+
+      const bgPublish = event.target.closest("[data-bg-publish]");
+      if (bgPublish) {
+        try {
+          await publishBackground(DataStore.get(), bgPublish.dataset.bgPublish);
+          renderAdminPanel();
+        } catch (error) {
+          console.error(error);
+          setSaveStatus(
+            error.message || "Achtergrond publiceren mislukt. De huidige blijft actief.",
+            "error",
+          );
+        }
+        return;
+      }
+
+      const bgClearPending = event.target.closest("[data-bg-clear-pending]");
+      if (bgClearPending) {
+        clearPendingBackground(bgClearPending.dataset.bgClearPending);
+        setSaveStatus("Voorbeeld geannuleerd.", "clean");
+        renderAdminPanel();
+        return;
+      }
+
+      const bgReset = event.target.closest("[data-bg-reset]");
+      if (bgReset) {
+        try {
+          await resetBackgroundToDefault(DataStore.get(), bgReset.dataset.bgReset);
+          renderAdminPanel();
+        } catch (error) {
+          console.error(error);
+          setSaveStatus(error.message || "Herstellen mislukt.", "error");
+        }
+        return;
+      }
+
+      const bgRestore = event.target.closest("[data-bg-restore]");
+      if (bgRestore) {
+        try {
+          await restorePreviousBackground(
+            DataStore.get(),
+            bgRestore.dataset.bgRestore,
+          );
+          renderAdminPanel();
+        } catch (error) {
+          console.error(error);
+          setSaveStatus(error.message || "Vorige achtergrond herstellen mislukt.", "error");
+        }
         return;
       }
 
@@ -2498,7 +3381,7 @@
         const [moved] = images.splice(imageIndex, 1);
         images.splice(target, 0, moved);
         setNewsImages(data.news[index], images);
-        await persist(data);
+        markDirtyState(true);
         renderAdminPanel();
         const card = qsa(".admin-news-item")[index];
         if (card?.classList.contains("is-collapsed")) {
@@ -2525,23 +3408,22 @@
           ?.split("?")[0]
           ?.replace(/\.[^/.]+$/, "");
 
-        if (!window.confirm("Foto verwijderen?")) return;
+        const removeNewsPhoto = await confirmDelete(
+          "Foto verwijderen?",
+          "De foto verdwijnt van de website als je daarna op Opslaan klikt.",
+        );
+        if (!removeNewsPhoto) return;
 
         try {
           if (filename && imagePath.startsWith("/uploads/")) {
-            const response = await fetch(
-              `/api/uploads/photo/${encodeURIComponent(filename)}`,
-              { method: "DELETE" },
-            );
-            if (!response.ok) {
-              const result = await readResponseJson(response);
-              throw new Error(result.message || "Foto verwijderen mislukt.");
-            }
+            queueUploadDelete(imagePath);
           }
 
           images.splice(imageIndex, 1);
           setNewsImages(data.news[index], images);
-          await persist(data);
+          markDirtyState(true);
+          saveDetail = "De foto verdwijnt van de website als je opslaat.";
+          renderSaveBar();
           renderAdminPanel();
           const card = qsa(".admin-news-item")[index];
           if (card?.classList.contains("is-collapsed")) {
@@ -2569,23 +3451,23 @@
           ?.split("?")[0]
           ?.replace(/\.[^/.]+$/, "");
 
-        if (!window.confirm("Foto verwijderen?")) return;
+        const removeListPhoto = await confirmDelete(
+          "Foto verwijderen?",
+          "De foto verdwijnt van de website als je daarna op Opslaan klikt.",
+        );
+        if (!removeListPhoto) return;
 
         try {
           if (filename && imagePath.startsWith("/uploads/")) {
-            const response = await fetch(
-              `/api/uploads/photo/${encodeURIComponent(filename)}`,
-              { method: "DELETE" },
-            );
-            if (!response.ok) {
-              const result = await readResponseJson(response);
-              throw new Error(result.message || "Foto verwijderen mislukt.");
-            }
+            queueUploadDelete(imagePath);
           }
 
           data[type][index].image = "";
-          await persist(data);
+          markDirtyState(true);
+          saveDetail = "De foto verdwijnt van de website als je opslaat.";
+          renderSaveBar();
           renderAdminPanel();
+          reopenListEditorItem(type, index);
         } catch (error) {
           console.error(error);
           setSaveStatus(error.message || "Foto verwijderen mislukt.", "error");
@@ -2600,14 +3482,25 @@
         if (targetPage === currentPage) return;
 
         if (adminHasUnsavedChanges) {
-          const leave = window.confirm(
-            "Onopgeslagen wijzigingen gaan verloren. Toch verdergaan?",
-          );
-          if (!leave) return;
+          const leave = await confirmDialog({
+            title: "Wijzigingen niet opgeslagen",
+            description:
+              "Onopgeslagen wijzigingen gaan verloren als je verdergaat.",
+            confirmLabel: "Verdergaan",
+          });
+          if (!leave) {
+            syncPagePickerRadios();
+            document
+              .querySelector(
+                `[role="radio"][data-page-option="${CSS.escape(currentPage)}"]`,
+              )
+              ?.focus();
+            return;
+          }
         }
 
         if (targetPage === "settings") {
-          const password = window.prompt("Wachtwoord voor instellingen:");
+          const password = await askSettingsPassword();
           if (!password) return;
           const unlockResponse = await fetch(
             "/api/google-drive/settings/unlock",
@@ -2625,9 +3518,14 @@
             );
             return;
           }
-          const settingsResponse = await fetch("/api/google-drive/settings");
-          if (settingsResponse.ok) {
-            googleDriveSettings = await settingsResponse.json();
+          try {
+            await loadGoogleDriveSettings();
+          } catch (error) {
+            setSaveStatus(
+              error.message || "Drive-instellingen laden mislukt",
+              "error",
+            );
+            return;
           }
           if (currentPage && currentPage !== "settings") {
             settingsReturnPage = currentPage;
@@ -2635,15 +3533,14 @@
         }
 
         if (adminHasUnsavedChanges) {
-          pendingPlanningUploads.clear();
-          pendingUploadDeletes.length = 0;
-          adminHasUnsavedChanges = false;
+          clearPendingWork();
           await DataStore.load({ force: true });
+          markDirtyState(false, { announce: false });
         }
 
         const fresh = DataStore.get();
         fresh.activePage = targetPage;
-        await persist(fresh, { quiet: true });
+        await persist(fresh, { quiet: true, flushDeletes: false });
         renderAdminPanel();
         window.scrollTo(0, 0);
         return;
@@ -2670,16 +3567,44 @@
       if (removeTarget) {
         const removeType = removeTarget.dataset.remove;
         const confirmation = {
-          agenda: "Deze activiteit verwijderen?",
-          news: "Dit bericht verwijderen?",
-          faq: "Deze vraag verwijderen?",
-          secondhand: "Dit item verwijderen?",
-          groupLeadership: "Deze groepsleider verwijderen?",
+          agenda: {
+            title: "Activiteit verwijderen?",
+            description:
+              "Deze activiteit verdwijnt uit de agenda. Sla op om de wijziging te bewaren.",
+          },
+          news: {
+            title: "Bericht verwijderen?",
+            description:
+              "Dit bericht verdwijnt. Sla op om de wijziging te bewaren.",
+          },
+          faq: {
+            title: "Vraag verwijderen?",
+            description:
+              "Deze vraag verdwijnt. Sla op om de wijziging te bewaren.",
+          },
+          secondhand: {
+            title: "Item verwijderen?",
+            description:
+              "Dit item verdwijnt uit de tweedehands. Sla op om de wijziging te bewaren.",
+          },
+          groupLeadership: {
+            title: "Groepsleider verwijderen?",
+            description:
+              "Deze groepsleider verdwijnt uit de lijst. Sla op om de wijziging te bewaren.",
+          },
         };
-        const message = removeType.startsWith("branchLeadership:")
-          ? "Deze leider verwijderen?"
-          : confirmation[removeType] || "Dit item verwijderen?";
-        if (!window.confirm(message)) return;
+        const prompt = removeType.startsWith("branchLeadership:")
+          ? {
+              title: "Leider verwijderen?",
+              description:
+                "Deze leider verdwijnt uit de lijst. Sla op om de wijziging te bewaren.",
+            }
+          : confirmation[removeType] || {
+              title: "Item verwijderen?",
+              description:
+                "Dit item verdwijnt. Sla op om de wijziging te bewaren.",
+            };
+        if (!(await confirmDelete(prompt.title, prompt.description))) return;
         markDirtyState(true);
         await removeEntry(removeType, Number(removeTarget.dataset.index));
       }
@@ -2693,6 +3618,7 @@
       .getElementById("adminForm")
       ?.addEventListener("submit", async (event) => {
         event.preventDefault();
+        if (saveMode === "saving" || !isDraft()) return;
         const data = readFormValues();
         if (
           data.activePage === "home" &&
@@ -2707,45 +3633,16 @@
           return;
         }
         if (data.activePage === "settings") {
-          const folderId =
-            qs("[data-drive-setting='folderId']")?.value.trim() || "";
-          const oauthClientFile = qs("[data-drive-oauth-client]")?.files?.[0];
-          if (oauthClientFile) {
-            const oauthData = new FormData();
-            oauthData.append("client", oauthClientFile);
-            const oauthResponse = await fetch(
-              "/api/google-drive/oauth-client",
-              {
-                method: "POST",
-                body: oauthData,
-              },
-            );
-            if (!oauthResponse.ok) {
-              const result = await readResponseJson(oauthResponse);
-              setSaveStatus(
-                result.message || "OAuth-client opslaan mislukt",
-                "error",
-              );
-              return;
-            }
-          }
-          const response = await fetch("/api/google-drive/settings", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ folderId }),
-          });
-          if (!response.ok) {
-            const result = await readResponseJson(response);
+          try {
+            await saveGoogleDriveSettingsFromForm();
+          } catch (error) {
+            publishFailed = true;
+            unpublished = true;
             setSaveStatus(
-              result.message || "Instellingen opslaan mislukt",
+              error.message || "Instellingen opslaan mislukt",
               "error",
             );
-            return;
           }
-          googleDriveSettings.folderId = folderId;
-          markDirtyState(false);
-          setSaveStatus("Opgeslagen", "saved");
-          flashSaveButton();
           return;
         }
 
@@ -2793,41 +3690,29 @@
             }
           }
 
-          await persist(data);
+          const published = await persist(data, {
+            message: hadPlanningUpload
+              ? "Maandplanning staat op de website"
+              : "Staat op de website",
+          });
+          if (!published) return;
           renderAdminPanel();
           PageRenderer.updatePageFromData();
           if (driveErrors.length) {
-            setSaveStatus(
-              `Maandplanning staat op de website, maar Google Drive gaf deze fout: ${driveErrors[0]}`,
-              "error",
-            );
-          } else if (hadPlanningUpload) {
-            setSaveStatus("Maandplanning opgeslagen", "saved");
+            saveMode = "clean";
+            saveMessage = "Staat op de website";
+            saveDetail = `Google Drive gaf deze fout: ${driveErrors[0]}`;
+            renderSaveBar();
           }
         } catch (error) {
           console.error(error);
+          publishFailed = true;
+          unpublished = true;
           setSaveStatus(
             error.message || "Wijzigingen opslaan mislukt",
             "error",
           );
         }
-      });
-
-    document
-      .getElementById("resetDefaults")
-      ?.addEventListener("click", async () => {
-        const response = await fetch("/api/site-data/reset", {
-          method: "POST",
-        });
-
-        if (!response.ok) {
-          setSaveStatus("Resetten mislukt", "error");
-          return;
-        }
-
-        await DataStore.load({ force: true });
-        renderAdminPanel();
-        PageRenderer.updatePageFromData();
       });
 
     document.addEventListener("click", async (event) => {
@@ -2961,13 +3846,14 @@
           setSaveStatus("Selecteer minstens één bestand", "error");
           return;
         }
-        if (
-          !window.confirm(
-            `${selected.length} bestand${selected.length === 1 ? "" : "en"} definitief van de server verwijderen?\n\nDit kan niet ongedaan gemaakt worden.`,
-          )
-        ) {
-          return;
-        }
+        const purgeCount = selected.length;
+        const purgeConfirmed = await confirmDelete(
+          purgeCount === 1
+            ? "Bestand verwijderen?"
+            : `${purgeCount} bestanden verwijderen?`,
+          "De geselecteerde bestanden worden definitief van de server verwijderd. Dit kan niet ongedaan gemaakt worden.",
+        );
+        if (!purgeConfirmed) return;
         try {
           setSaveStatus("Uploads verwijderen...", "saving");
           const response = await fetch("/api/uploads/orphans/purge", {
@@ -3010,13 +3896,14 @@
       input.value = "";
       if (!file) return;
 
-      if (
-        !window.confirm(
-          "Huidige sitegegevens vervangen door deze backup? Dit kan niet ongedaan gemaakt worden.",
-        )
-      ) {
-        return;
-      }
+      const restoreConfirmed = await confirmDialog({
+        title: "Backup terugzetten?",
+        description:
+          "De huidige sitegegevens worden vervangen. Dit kan niet ongedaan gemaakt worden.",
+        confirmLabel: "Terugzetten",
+        tone: "destructive",
+      });
+      if (!restoreConfirmed) return;
 
       try {
         setSaveStatus("Backup terugzetten...", "saving");
@@ -3043,8 +3930,7 @@
 
         if (result.version) DataStore.setVersion(result.version);
         await DataStore.load({ force: true });
-        pendingPlanningUploads.clear();
-        pendingUploadDeletes.length = 0;
+        clearPendingWork();
         markDirtyState(false, { announce: false });
         const fresh = DataStore.get();
         fresh.activePage = "settings";
@@ -3055,6 +3941,45 @@
         console.error(error);
         setSaveStatus(error.message || "Backup terugzetten mislukt", "error");
       }
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== "s") {
+        return;
+      }
+      event.preventDefault();
+      const button = document.getElementById("saveChanges");
+      if (!button || button.disabled || saveMode === "saving") return;
+      button.click();
+    });
+
+    document.querySelector(".page-picker")?.addEventListener("keydown", (event) => {
+      const current = event.target.closest?.("[role='radio']");
+      if (!current) return;
+      const keys = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"];
+      if (!keys.includes(event.key)) return;
+      const group = current.closest("[role='radiogroup']");
+      if (!group) return;
+      const radios = [...group.querySelectorAll("[role='radio']")];
+      const index = radios.indexOf(current);
+      if (index < 0 || radios.length < 2) return;
+      let next = index;
+      if (event.key === "ArrowRight" || event.key === "ArrowDown") {
+        next = (index + 1) % radios.length;
+      } else if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
+        next = (index - 1 + radios.length) % radios.length;
+      } else if (event.key === "Home") {
+        next = 0;
+      } else {
+        next = radios.length - 1;
+      }
+      if (next === index) return;
+      event.preventDefault();
+      radios.forEach((radio, radioIndex) => {
+        radio.tabIndex = radioIndex === next ? 0 : -1;
+      });
+      radios[next].focus();
+      radios[next].click();
     });
 
     window.addEventListener("beforeunload", (event) => {

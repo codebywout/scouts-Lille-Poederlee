@@ -8,7 +8,7 @@
     <meta name="robots" content="noindex, nofollow">
     <title>Beheer | Scouts Lille-Poederlee</title>
     <meta name="description" content="Beheerpagina voor de Scouts Lille-Poederlee website.">
-    <link rel="stylesheet" href="assets/css/style.css?bundle=admin&v=20261020-60">
+    <link rel="stylesheet" href="assets/css/style.css?bundle=admin&v=20261020-63">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Montserrat:wght@600;700;800&display=swap" rel="stylesheet">
@@ -45,23 +45,24 @@
             <div class="page-picker">
                 <section class="page-picker-group" aria-labelledby="sitePickerLabel">
                     <h2 class="page-picker-label" id="sitePickerLabel">Site</h2>
-                    <div class="page-picker-grid">
-                        <button type="button" class="page-picker-tile is-active" data-page-option="home" role="radio" aria-checked="true">Home</button>
-                        <button type="button" class="page-picker-tile" data-page-option="news" role="radio" aria-checked="false">Nieuws</button>
-                        <button type="button" class="page-picker-tile" data-page-option="over-ons" role="radio" aria-checked="false">Over ons</button>
-                        <button type="button" class="page-picker-tile" data-page-option="inschrijven" role="radio" aria-checked="false">Inschrijven</button>
-                        <button type="button" class="page-picker-tile" data-page-option="photos" role="radio" aria-checked="false">Foto's</button>
-                        <button type="button" class="page-picker-tile" data-page-option="secondhand" role="radio" aria-checked="false">Tweedehands</button>
+                    <div class="page-picker-grid" role="radiogroup" aria-labelledby="sitePickerLabel">
+                        <button type="button" class="page-picker-tile is-active" data-page-option="home" role="radio" aria-checked="true" tabindex="0">Home</button>
+                        <button type="button" class="page-picker-tile" data-page-option="news" role="radio" aria-checked="false" tabindex="-1">Nieuws</button>
+                        <button type="button" class="page-picker-tile" data-page-option="over-ons" role="radio" aria-checked="false" tabindex="-1">Over ons</button>
+                        <button type="button" class="page-picker-tile" data-page-option="inschrijven" role="radio" aria-checked="false" tabindex="-1">Inschrijven</button>
+                        <button type="button" class="page-picker-tile" data-page-option="photos" role="radio" aria-checked="false" tabindex="-1">Foto's</button>
+                        <button type="button" class="page-picker-tile" data-page-option="achtergronden" role="radio" aria-checked="false" tabindex="-1">Achtergronden</button>
+                        <button type="button" class="page-picker-tile" data-page-option="secondhand" role="radio" aria-checked="false" tabindex="-1">Tweedehands</button>
                     </div>
                 </section>
                 <section class="page-picker-group" aria-labelledby="branchPickerLabel">
                     <h2 class="page-picker-label" id="branchPickerLabel">Takken</h2>
-                    <div class="page-picker-grid">
-                        <button type="button" class="page-picker-tile" data-page-option="kapoenen" role="radio" aria-checked="false">Kapoenen</button>
-                        <button type="button" class="page-picker-tile" data-page-option="welpen" role="radio" aria-checked="false">Welpen</button>
-                        <button type="button" class="page-picker-tile" data-page-option="jongverkenners" role="radio" aria-checked="false">Jongverkenners</button>
-                        <button type="button" class="page-picker-tile" data-page-option="verkenners" role="radio" aria-checked="false">Verkenners</button>
-                        <button type="button" class="page-picker-tile" data-page-option="jins" role="radio" aria-checked="false">Jins</button>
+                    <div class="page-picker-grid" role="radiogroup" aria-labelledby="branchPickerLabel">
+                        <button type="button" class="page-picker-tile" data-page-option="kapoenen" role="radio" aria-checked="false" tabindex="0">Kapoenen</button>
+                        <button type="button" class="page-picker-tile" data-page-option="welpen" role="radio" aria-checked="false" tabindex="-1">Welpen</button>
+                        <button type="button" class="page-picker-tile" data-page-option="jongverkenners" role="radio" aria-checked="false" tabindex="-1">Jongverkenners</button>
+                        <button type="button" class="page-picker-tile" data-page-option="verkenners" role="radio" aria-checked="false" tabindex="-1">Verkenners</button>
+                        <button type="button" class="page-picker-tile" data-page-option="jins" role="radio" aria-checked="false" tabindex="-1">Jins</button>
                     </div>
                 </section>
             </div>
@@ -74,10 +75,13 @@
 
             <div id="pageEditor" class="admin-grid" aria-live="polite"></div>
 
-            <div class="save-row">
+            <div class="save-row" data-save-state="clean">
+                <div class="save-bar-copy">
+                    <p id="saveStatus" class="save-bar-title" data-state="clean" aria-live="polite">Staat op de website</p>
+                </div>
                 <a id="viewLivePage" class="admin-view-live" href="/" target="_blank" rel="noopener noreferrer">Bekijk live</a>
-                <button type="submit" id="saveChanges" class="button button-primary">
-                    <span class="save-button-label save-button-label-idle">Opslaan</span>
+                <button type="submit" id="saveChanges" class="button button-primary" disabled>
+                    <span class="save-button-label save-button-label-idle">Opgeslagen</span>
                     <span class="save-button-label save-button-label-saving" aria-hidden="true">
                         <span class="save-button-spinner" aria-hidden="true"></span>
                         <span>Opslaan...</span>
@@ -87,12 +91,11 @@
                         <span>Opgeslagen</span>
                     </span>
                 </button>
-                <span id="saveStatus" aria-live="polite"></span>
             </div>
         </form>
     </main>
 
-    <script src="assets/js/script.js?v=20261020-60"></script>
-    <script src="assets/js/admin.js?v=20261020-60"></script>
+    <script src="assets/js/script.js?v=20261020-63"></script>
+    <script src="assets/js/admin.js?v=20261020-63"></script>
 </body>
 </html>
