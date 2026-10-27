@@ -22,15 +22,14 @@ Velden met `NOG IN TE VULLEN` moeten door de **huidige** beheerder worden ingevu
 
 ## 2. GitHub
 
-Repository (bevestigd via remote): `https://github.com/codebywout/scouts-Lille-Poederlee`
-
 | Vraag | Antwoord |
 | --- | --- |
-| Wie wordt eigenaar / beheerder van de GitHub-organisatie of -repo? | `NOG IN TE VULLEN` |
-| Welke GitHub-accounts krijgen `Admin` / `Maintain` / `Write`? | `NOG IN TE VULLEN` |
+| URL van **jullie** GitHub-repository | `NOG IN TE VULLEN` (voorbeeldproject: `https://github.com/codebywout/scouts-Lille-Poederlee`) |
+| Wie wordt eigenaar / beheerder? | `NOG IN TE VULLEN` |
+| Welke accounts krijgen schrijfrechten? | `NOG IN TE VULLEN` |
 | Welke accounts van vertrekkende leiding worden verwijderd? | `NOG IN TE VULLEN` |
-| Is de repository bewust **publiek** of moet die **privé**? | Bevestigd op moment van audit: **publiek**. Heroverweeg i.v.m. persoonsgegevens in `data/site-data.json` — zie privacy in het overdrachtsrapport / technische docs. |
-| Wie mag mergen naar `main`? | `NOG IN TE VULLEN` |
+| Publiek of privé? | `NOG IN TE VULLEN` — let op: in gegevensbestanden kunnen persoonsgegevens staan; zie ook [technische-handleiding.md](technische-handleiding.md) |
+| Wie mag naar `main` mergen? | `NOG IN TE VULLEN` |
 
 **Veilige overdracht:** nodig GitHub-uitnodigingen over; deel geen personal access tokens in chat/e-mail zonder kluis.
 

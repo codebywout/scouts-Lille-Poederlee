@@ -1,9 +1,10 @@
 # Hosting en back-ups
 
-**Hosting** = de plek op het internet waar je websitebestanden staan.  
-Dit document zegt alleen wat we uit **deze** projectmap kunnen afleiden, plus wat je nog zelf moet navragen bij jullie hoster.
+**Hosting** = de plek op het internet waar je websitebestanden staan.
 
-Er is **geen** automatische publicatie van GitHub naar de live site (de controles in GitHub testen alleen; ze zetten de site niet online).
+Dit document is vooral voor wie back-ups of herstel regelt. Startpunt voor iedereen: [README.md](../README.md).
+
+We schrijven alleen op wat uit **deze** projectmap volgt, plus wat je nog moet navragen bij jullie hoster. Er is **geen** automatische publicatie van GitHub naar de live site.
 
 ---
 

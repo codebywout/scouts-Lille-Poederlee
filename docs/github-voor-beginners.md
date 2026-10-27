@@ -25,13 +25,13 @@ Je hebt GitHub **niet** nodig om agenda, foto’s of brieven te beheren. Daarvoo
 
 | | Live website (hosting) | GitHub |
 | --- | --- | --- |
-| Wat bezoekers zien | Ja | Nee (tenzij je de code leest) |
-| Admin-inhoud na “Opslaan” | Direct op de server | **Niet** automatisch |
-| Foto’s/PDF’s in `uploads/` | Op de server | Meestal **niet** in de repo (`.gitignore`) |
-| PHP/HTML/CSS-bron | Staat ook op de server | Wel in de repo |
-| Volledige back-up van productie? | Hangt van hostingback-ups af | **Nee** — GitHub is geen garantie voor alle live data |
+| Wat bezoekers zien | Ja | Nee (tenzij je de bestanden leest) |
+| Inhoud na “Opslaan” in beheer | Direct op de live site | **Niet** automatisch |
+| Foto’s en PDF’s | Op de server | Meestal **niet** op GitHub |
+| Programmacode van de site | Staat ook op de server | Wel op GitHub |
+| Volledige back-up van alles? | Hangt van hostingback-ups af | **Nee** — geen garantie voor alle live foto’s en gegevens |
 
-Wijzigingen in de admin gaan **niet** vanzelf naar GitHub. Code op GitHub gaat **niet** vanzelf live (er is in deze repo **geen** automatische deploy in CI — bevestigd in `.github/workflows/ci.yml`: alleen controles).
+Wijzigingen in de beheeromgeving gaan **niet** vanzelf naar GitHub. Bestanden op GitHub gaan **niet** vanzelf naar de live website. In dit project controleren de automatische tests op GitHub alleen of bepaalde dingen kloppen; ze zetten de site **niet** online.
 
 ---
 
@@ -67,11 +67,9 @@ Zonder inlog zie je bij een publieke repo vaak wel code; wijzigen vereist rechte
 1. Ga naar **Actions** in de repo.
 2. Klik de nieuwste run op jouw branch/PR.
 3. Groen vinkje: jobs geslaagd.
-4. Rood kruis: open de job → bekijk welke stap faalde (bijv. `check-script-min`, smoke tests).
+4. Rood kruis: open de mislukte run en vraag een ontwikkelaar wat er fout ging.
 
-CI in deze repo (bevestigd): PHP-syntax, controle dat `script.min.js` bij `script.js` past, fotopipeline-tests, HTTP smoke tests. **Geen** deploy.
-
-Rode CI = niet gedachteloos mergen naar `main`. Vraag een ontwikkelaar.
+Rode controles = niet gedachteloos naar `main` mergen. Vraag technische hulp.
 
 ---
 
@@ -83,9 +81,9 @@ Veilige gewoonte voor code (niet voor gewone inhoud):
 2. Wijzigingen committen op die branch.
 3. **Pull request** openen naar `main`.
 4. Wachten tot CI groen is en iemand reviewt.
-5. Pas na merge: bewust **apart** naar de hosting deployen (handmatig proces — zie technische handleiding). Dat is een tweede stap.
+5. Pas na merge: bewust **apart** de bestanden op de hosting bijwerken (handmatig — zie technische handleiding). Dat is een tweede stap.
 
-Zolang er niet gedeployed wordt, blijft scoutslille.be ongewijzigd door GitHub-activiteit alleen.
+Zolang niemand de server bijwerkt, blijft jullie **live website** ongewijzigd door alleen activiteit op GitHub.
 
 ---
 

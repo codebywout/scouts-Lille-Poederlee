@@ -53,10 +53,10 @@ Bovenaan kies je een onderdeel:
 
 Verder:
 
-- Knop **Instellingen** (tandwiel) — Google Drive (optioneel), backup/herstel van sitegegevens, zoeken naar ongebruikte uploads. Sommige onderdelen vragen een extra wachtwoord (**te controleren** op jullie live site).
-- **Backup downloaden** — link om gegevens te downloaden (**te controleren** of dit hetzelfde is als Instellingen → Backup).
+- Knop **Instellingen** (tandwiel) — o.a. Google Drive (optioneel), backup/herstel van sitegegevens, zoeken naar ongebruikte uploads. Sommige onderdelen vragen een extra wachtwoord (**te controleren** op jullie live site).
+- **Backup downloaden** — aparte knop in de beheeromgeving om de sitegegevens als bestand te downloaden (bevestigd in `admin.html`). In Instellingen staat ook backup/herstel.
 - **Bekijk live** — opent de bijbehorende publieke pagina.
-- **Opslaan** — publiceert je wijzigingen.
+- **Opslaan** — zet je wijzigingen op de live website (foto’s en achtergronden gaan al bij upload live).
 
 ---
 
@@ -156,7 +156,7 @@ Open de betreffende **tak**.
 3. Na opslaan staat de brief bij die tak.
 4. Verwijderen via **Verwijderen** bij de brief.
 
-Bestanden worden via de API naar `uploads/` op de server gestuurd. Ze verdwijnen niet automatisch uit GitHub (staan daar meestal niet).
+De PDF’s en foto’s komen op de **server** terecht (map `uploads/`). Ze staan meestal **niet** op GitHub.
 
 ---
 
@@ -164,7 +164,7 @@ Bestanden worden via de API naar `uploads/` op de server gestuurd. Ze verdwijnen
 
 Na elke belangrijke wijziging:
 
-1. Klik **Bekijk live**, of open scoutslille.be in een nieuw tabblad.
+1. Klik **Bekijk live**, of open **jullie** gewone websiteadres in een nieuw tabblad.
 2. Vernieuw de pagina (soms helpt een harde refresh: Ctrl+F5).
 3. Controleer desktop én telefoon als het om layout/foto’s gaat.
 
