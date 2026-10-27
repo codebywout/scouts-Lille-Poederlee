@@ -190,6 +190,8 @@ scouts/
 | --- | --- |
 | `tools/minify-script.mjs` | Genereert `script.min.js` |
 | `tools/check-script-min.php` | Controleert hash-marker + `node --check` |
+| `tools/bootstrap-site-data.php` | Maakt runtime `site-data.json` vanuit default (nooit overwrite) |
+| `tools/test-site-data-bootstrap.php` | Regressietests voor bootstrap |
 | `tools/smoke-http.php` | HTTP-smoke tegen draaiende server |
 | `tools/test-photo-pipeline.php` | Niet-destructieve fotopipelinetests |
 | `tools/migrate-photo-variants.php` | CLI: varianten hergenereren |
@@ -217,20 +219,21 @@ Hoofdstructuur (keys zoals in de huidige data/code):
 
 Publieke `GET /api/site-data` filtert o.a. unpublished news en enkele admin/editor-keys (`scouts_public_site_data()` in `config.php`). Admins met sessiecookie krijgen de volledige dataset.
 
-### Privacyrisico: `site-data.json` in Git
+### Runtime-data: `site-data.json` staat niet in Git
 
-Het bestand **wordt momenteel getrackt** en kan **echte groepsgegevens** bevatten (namen, telefoons, e-mail, IBAN, teksten, paden naar uploads). Dat is handig voor een kleine beheergroep, maar:
+`data/site-data.json` is **runtime-data**: staat in `.gitignore`, wordt **niet gecommit**, en leeft alleen lokaal of op de server. Echte groepsgegevens (namen, telefoons, e-mail, IBAN, uploads-paden) horen daar — niet in de repository.
 
-- Iedereen met repo-toegang ziet die inhoud.
-- Een publieke GitHub-repo maakt die gegevens publiek.
+In Git staat alleen `data/site-data.default.json` met **fictieve** voorbeelddata.
 
-**Veilige aanpak (kies bewust, wijzig productie niet blind):**
+**Initialisatie (alleen als de runtime ontbreekt):**
 
-1. Repo **private** houden op GitHub; of
-2. Op termijn alleen `site-data.default.json` (geanonimiseerd) in Git houden en live `site-data.json` enkel op de server bewaren; of
-3. Voor elke commit de diff van `data/site-data.json` nalopen en geen testdata (bijv. proefbrieven) meenemen naar productie.
+```powershell
+php tools/bootstrap-site-data.php
+```
 
-Deze handleiding wijzigt je productiedata niet.
+Dat kopieert atomisch vanuit het defaultbestand naar `data/site-data.json` en **overschrijft nooit** een bestaand runtimebestand. CI doet hetzelfde vóór de HTTP-smoke (schone checkout → seed → tests). Er is **geen** automatische bootstrap bij gewone webrequests.
+
+Productie: bestaande `data/` en `uploads/` bij deploys behouden; nooit blind lokale testdata over live zetten.
 
 ---
 
@@ -441,7 +444,7 @@ Geslaagd: exitcode **0** (smoke print `passed=… failed=0`).
 | `assets/css/`, `assets/js/` (incl. `script.min.js`) | Front-end | Bij JS-wijziging: minify + check OK |
 | `assets/images/` | Vaste beelden | Geen geheimen |
 | `api/`, `includes/`, root-PHP, `.htaccess`, `.user.ini` | Backend/hostinggedrag | — |
-| `data/site-data.json`, `data/site-data.default.json`, `data/.htaccess` | Data + deny | Diff nalopen op privacy/testdata |
+| `data/site-data.default.json`, `data/.htaccess` | Seed (fictief) + deny | Geen `site-data.json` committen |
 | `uploads/.htaccess`, `uploads/originals/.htaccess` | Beveiliging | Geen upload-inhoud |
 | `tools/*` scripts + `tools/vendor` tarball/lock/README | Dev/CI | Geen `node_modules/` |
 | `.env.example`, `README.md`, `.gitignore`, `.github/workflows/ci.yml` | Docs/CI | Geen echte secrets in example |
@@ -463,7 +466,7 @@ git diff
 git diff --cached
 ```
 
-Controleer vooral `data/site-data.json` en of er geen `.env` / Drive-JSON meeslipt.
+Controleer dat `data/site-data.json` **niet** in de commit zit, en dat er geen `.env` / Drive-JSON meeslipt.
 
 ---
 
@@ -676,7 +679,7 @@ Neem **geen** echte hashes, tokens of keys op in Git of in deze documentatie.
 ### Release
 
 - [ ] Branch/status gecontroleerd; geen secrets in de diff
-- [ ] `site-data.json` nagelopen (geen testdata bedoeld voor productie)
+- [ ] Geen `data/site-data.json` in de commit; runtime blijft op de server
 - [ ] Bij JS: minify + `check-script-min` exit 0; `script.min.js` mee
 - [ ] Assetversie verhoogd indien nodig
 - [ ] Lokale tests gedraaid (syntax / minify / photo / smoke)
