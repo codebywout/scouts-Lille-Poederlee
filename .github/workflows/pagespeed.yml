@@ -31,8 +31,8 @@ jobs:
 
       - name: Upload PageSpeed summary
         if: always()
-        # v5+ runs on the Node.js 24 Actions runtime (v4 used Node.js 20).
-        uses: actions/upload-artifact@v5
+        # v6+ defaults to Node.js 24 (v5 still ran on Node.js 20 by default).
+        uses: actions/upload-artifact@v6
         with:
           name: pagespeed-mobile-summary
           path: pagespeed-results/
