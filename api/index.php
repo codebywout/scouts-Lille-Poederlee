@@ -694,8 +694,11 @@ try {
     if (preg_match('#^uploads/document/([^/]+)$#', $route, $matches) && $method === 'DELETE') {
         scouts_require_admin();
         scouts_require_same_origin();
-        $filename = basename(rawurldecode($matches[1]));
-        if ($filename !== $matches[1] || !str_ends_with(strtolower($filename), '.pdf')) {
+        // Compare against the decoded name so valid percent-encoded characters
+        // (e.g. %2D) are accepted, while basename() still rejects path segments.
+        $rawName = rawurldecode($matches[1]);
+        $filename = basename(str_replace('\\', '/', $rawName));
+        if ($filename !== $rawName || !str_ends_with(strtolower($filename), '.pdf')) {
             scouts_json_response(['message' => 'Ongeldige documentnaam.'], 400);
         }
         if (in_array(strtolower($filename), array_map('strtolower', scouts_protected_upload_filenames()), true)) {

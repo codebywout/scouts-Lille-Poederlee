@@ -19,6 +19,12 @@ jobs:
           extensions: gd, curl, fileinfo
           coverage: none
 
+      # check-script-min.php runs `node --check` on script.js / script.min.js
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
       - name: PHP syntax check
         run: |
           find . -name '*.php' \
