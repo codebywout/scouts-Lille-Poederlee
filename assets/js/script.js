@@ -130,7 +130,7 @@
       });
   }
 
-  const IMAGE_ASSET_VERSION = "20261027-12";
+  const IMAGE_ASSET_VERSION = "20261027-13";
 
   function formatLidgeldLabel(amount) {
     const amountNumber = Number(String(amount || "").replace(",", ".").replace(/[^\d.]/g, ""));
@@ -623,6 +623,11 @@
     },
 
     async logout() {
+      try {
+        sessionStorage.removeItem("scouts_site_data_cache");
+      } catch {
+        // ignore
+      }
       try {
         const response = await fetch("/api/logout", { method: "POST" });
         const data = await response.json();
@@ -2431,7 +2436,23 @@
         .replace(/^W\//, "")
         .trim()
         .replace(/"/g, "")
-        .replace(/-[ap]$/, "");
+        .replace(/-[ap]\d*$/i, "");
+    },
+
+    _isAdminEtag(etag) {
+      const token = String(etag || "")
+        .replace(/^W\//, "")
+        .trim()
+        .replace(/"/g, "");
+      return /-[aA]\d*$/.test(token);
+    },
+
+    _clearSessionCache() {
+      try {
+        sessionStorage.removeItem(this._storageKey);
+      } catch {
+        // ignore
+      }
     },
 
     _readSessionCache() {
@@ -2440,6 +2461,11 @@
         if (!raw) return null;
         const parsed = JSON.parse(raw);
         if (!parsed || typeof parsed !== "object" || !parsed.data) return null;
+        // Never reuse an admin payload as a public cache.
+        if (this._isAdminEtag(parsed.etag)) {
+          this._clearSessionCache();
+          return null;
+        }
         return parsed;
       } catch {
         return null;
@@ -2447,6 +2473,10 @@
     },
 
     _writeSessionCache(etag, version, data) {
+      if (this._isAdminEtag(etag)) {
+        this._clearSessionCache();
+        return;
+      }
       try {
         sessionStorage.setItem(
           this._storageKey,
@@ -2489,6 +2519,12 @@
         cache: force ? "no-store" : "default",
       });
 
+      if (response.status === 401) {
+        this._clearSessionCache();
+        this._cache = null;
+        throw new Error("Niet geautoriseerd");
+      }
+
       if (response.status === 304 && cached?.data) {
         this._version = cached.version || this._readVersion(response);
         this._cache = cached.data;
@@ -2498,13 +2534,15 @@
       }
 
       if (!response.ok) {
-        if (cached?.data) {
+        // Do not fall back to a possibly-admin cache after auth loss.
+        if (cached?.data && !this._isAdminEtag(cached.etag)) {
           this._version = cached.version || null;
           this._cache = cached.data;
           normalizeNewsItems(this._cache);
           normalizeBranchLeadership(this._cache);
           return this._cache;
         }
+        this._clearSessionCache();
         throw new Error("Kon gegevens niet laden");
       }
 

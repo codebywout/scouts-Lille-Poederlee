@@ -9,9 +9,23 @@ const SCOUTS_PUBLIC_DATA_CACHE = SCOUTS_ROOT . DIRECTORY_SEPARATOR . 'data' . DI
 const SCOUTS_GOOGLE_DRIVE_SETTINGS_FILE = SCOUTS_ROOT . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . 'google-drive.json';
 const SCOUTS_GOOGLE_SERVICE_ACCOUNT_FILE = SCOUTS_ROOT . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . '.google-service-account.json';
 const SCOUTS_GOOGLE_OAUTH_FILE = SCOUTS_ROOT . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . '.google-oauth.json';
-const SCOUTS_UPLOADS_DIR = SCOUTS_ROOT . DIRECTORY_SEPARATOR . 'uploads';
+// CLI photo tests may isolate uploads via SCOUTS_TEST_UPLOADS_DIR (never production).
+if (!defined('SCOUTS_UPLOADS_DIR')) {
+    $uploadsOverride = getenv('SCOUTS_TEST_UPLOADS_DIR');
+    define(
+        'SCOUTS_UPLOADS_DIR',
+        (is_string($uploadsOverride) && $uploadsOverride !== '')
+            ? $uploadsOverride
+            : (SCOUTS_ROOT . DIRECTORY_SEPARATOR . 'uploads')
+    );
+}
 /** Private originals — not web-readable (see uploads/originals/.htaccess). */
-const SCOUTS_PHOTO_ORIGINALS_DIR = SCOUTS_UPLOADS_DIR . DIRECTORY_SEPARATOR . 'originals';
+if (!defined('SCOUTS_PHOTO_ORIGINALS_DIR')) {
+    define(
+        'SCOUTS_PHOTO_ORIGINALS_DIR',
+        SCOUTS_UPLOADS_DIR . DIRECTORY_SEPARATOR . 'originals'
+    );
+}
 const SCOUTS_MAX_UPLOAD_BYTES = 20971520;
 /** Public master max edge; full-res bytes live in originals/. */
 const SCOUTS_PHOTO_MAX_EDGE = 4000;
@@ -40,7 +54,7 @@ const SCOUTS_MAX_PDF_UPLOAD_BYTES = 20971520;
  * Bump this on every deploy so HTML/CSS/JS URLs change and old caches are skipped.
  * Format: YYYYMMDD-N
  */
-const SCOUTS_ASSET_VERSION = '20261027-12';
+const SCOUTS_ASSET_VERSION = '20261027-13';
 const SCOUTS_LOGIN_ATTEMPTS_FILE = SCOUTS_ROOT . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . '.login-attempts.json';
 const SCOUTS_LOGIN_MAX_ATTEMPTS = 5;
 const SCOUTS_LOGIN_LOCKOUT_SECONDS = 900;
@@ -812,49 +826,194 @@ function scouts_site_data_version(): string
 }
 
 /**
- * Strip unpublished news for public API responses.
+ * Build the public site-data payload (API + HTML boot) via an explicit allowlist.
+ * Personal leadership phones and editor-only keys are never included.
  *
  * @param array<string, mixed> $data
  * @return array<string, mixed>
  */
 function scouts_public_site_data(array $data): array
 {
-    // Editor / unused keys — keep the public payload small.
-    unset($data['activePage']);
-    if (isset($data['pageContent']) && is_array($data['pageContent'])) {
-        unset($data['pageContent']['photos'], $data['pageContent']['settings']);
+    $out = [];
+
+    $pageContent = is_array($data['pageContent'] ?? null) ? $data['pageContent'] : [];
+    $out['pageContent'] = [];
+    if (is_array($pageContent['over-ons'] ?? null)) {
+        $out['pageContent']['over-ons'] = [
+            'intro' => (string) ($pageContent['over-ons']['intro'] ?? ''),
+        ];
     }
-    if (isset($data['photos']) && is_array($data['photos'])) {
-        unset(
-            $data['photos']['logo'],
-            $data['photos']['homeHero'],
-            $data['photos']['uniform'],
-            $data['photos']['branchLogos'],
-            $data['photos']['letters'],
-            $data['photos']['pageBackgroundsPrevious']
-        );
+    if (is_array($pageContent['inschrijven'] ?? null)) {
+        $out['pageContent']['inschrijven'] = [
+            'lidgeld' => (string) ($pageContent['inschrijven']['lidgeld'] ?? ''),
+            'rekeningnummer' => (string) ($pageContent['inschrijven']['rekeningnummer'] ?? ''),
+        ];
     }
 
-    if (!isset($data['news']) || !is_array($data['news'])) {
-        $data['news'] = [];
-        return $data;
-    }
-
-    // Fail closed: only exact boolean true (or legacy missing key) is public.
-    $data['news'] = array_values(array_filter(
-        $data['news'],
-        static function ($item): bool {
+    $out['agenda'] = [];
+    if (is_array($data['agenda'] ?? null)) {
+        foreach ($data['agenda'] as $item) {
             if (!is_array($item)) {
-                return false;
+                continue;
             }
-            if (!array_key_exists('published', $item)) {
-                return true; // legacy items without the flag stay visible
-            }
-            return $item['published'] === true;
+            $out['agenda'][] = [
+                'day' => (string) ($item['day'] ?? ''),
+                'month' => (string) ($item['month'] ?? ''),
+                'endDay' => (string) ($item['endDay'] ?? ''),
+                'endMonth' => (string) ($item['endMonth'] ?? ''),
+                'title' => (string) ($item['title'] ?? ''),
+                'text' => (string) ($item['text'] ?? ''),
+                'link' => (string) ($item['link'] ?? ''),
+                'linkText' => (string) ($item['linkText'] ?? ''),
+                'image' => (string) ($item['image'] ?? ''),
+            ];
         }
-    ));
+    }
 
-    return $data;
+    $out['news'] = [];
+    if (is_array($data['news'] ?? null)) {
+        foreach ($data['news'] as $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+            if (array_key_exists('published', $item)) {
+                if ($item['published'] !== true) {
+                    continue;
+                }
+            }
+            $images = [];
+            if (is_array($item['images'] ?? null)) {
+                foreach ($item['images'] as $img) {
+                    if (is_string($img) && trim($img) !== '') {
+                        $images[] = $img;
+                    }
+                }
+            }
+            $out['news'][] = [
+                'id' => (string) ($item['id'] ?? ''),
+                'title' => (string) ($item['title'] ?? ''),
+                'date' => (string) ($item['date'] ?? ''),
+                'text' => (string) ($item['text'] ?? ''),
+                'summary' => (string) ($item['summary'] ?? ''),
+                'image' => (string) ($item['image'] ?? ''),
+                'images' => $images,
+                'link' => (string) ($item['link'] ?? ''),
+                'linkText' => (string) ($item['linkText'] ?? ''),
+                'published' => true,
+            ];
+        }
+    }
+
+    $out['faq'] = [];
+    if (is_array($data['faq'] ?? null)) {
+        foreach ($data['faq'] as $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+            $out['faq'][] = [
+                'question' => (string) ($item['question'] ?? ''),
+                'answer' => (string) ($item['answer'] ?? ''),
+            ];
+        }
+    }
+
+    $contact = is_array($data['contact'] ?? null) ? $data['contact'] : [];
+    $out['contact'] = [
+        'email' => (string) ($contact['email'] ?? ''),
+        'address' => (string) ($contact['address'] ?? ''),
+    ];
+
+    // Names only — no personal phone numbers in the public payload.
+    $out['groupLeadership'] = [];
+    if (is_array($data['groupLeadership'] ?? null)) {
+        foreach ($data['groupLeadership'] as $person) {
+            if (!is_array($person)) {
+                continue;
+            }
+            $name = trim((string) ($person['name'] ?? ''));
+            if ($name === '') {
+                continue;
+            }
+            $out['groupLeadership'][] = ['name' => $name];
+        }
+    }
+
+    $out['branchLeadership'] = [];
+    $branches = is_array($data['branchLeadership'] ?? null) ? $data['branchLeadership'] : [];
+    foreach ($branches as $branch => $list) {
+        if (!is_string($branch) || !is_array($list)) {
+            continue;
+        }
+        $out['branchLeadership'][$branch] = [];
+        foreach ($list as $person) {
+            if (!is_array($person)) {
+                continue;
+            }
+            $name = trim((string) ($person['name'] ?? ''));
+            if ($name === '') {
+                continue;
+            }
+            $entry = ['name' => $name];
+            if (!empty($person['takleider'])) {
+                $entry['takleider'] = true;
+            }
+            $out['branchLeadership'][$branch][] = $entry;
+        }
+    }
+
+    $out['secondhand'] = [];
+    if (is_array($data['secondhand'] ?? null)) {
+        foreach ($data['secondhand'] as $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+            $out['secondhand'][] = [
+                'title' => (string) ($item['title'] ?? ''),
+                'category' => (string) ($item['category'] ?? ''),
+                'size' => (string) ($item['size'] ?? ''),
+                'info' => (string) ($item['info'] ?? ''),
+                'price' => (string) ($item['price'] ?? ''),
+                'image' => (string) ($item['image'] ?? ''),
+                'contact' => (string) ($item['contact'] ?? ''),
+            ];
+        }
+    }
+
+    $out['letters'] = [];
+    if (is_array($data['letters'] ?? null)) {
+        foreach ($data['letters'] as $branch => $list) {
+            if (!is_string($branch) || !is_array($list)) {
+                continue;
+            }
+            $out['letters'][$branch] = [];
+            foreach ($list as $letter) {
+                if (!is_array($letter)) {
+                    continue;
+                }
+                $out['letters'][$branch][] = [
+                    'title' => (string) ($letter['title'] ?? ''),
+                    'path' => (string) ($letter['path'] ?? ''),
+                ];
+            }
+        }
+    }
+
+    $photos = is_array($data['photos'] ?? null) ? $data['photos'] : [];
+    $mapOrObject = static function (mixed $value): array|object {
+        if (!is_array($value) || $value === []) {
+            return new stdClass();
+        }
+        return $value;
+    };
+    $out['photos'] = [
+        'aboutHero' => (string) ($photos['aboutHero'] ?? ''),
+        'branches' => $mapOrObject($photos['branches'] ?? null),
+        'monthlyPlanning' => $mapOrObject($photos['monthlyPlanning'] ?? null),
+        'monthlyPlanningTitle' => $mapOrObject($photos['monthlyPlanningTitle'] ?? null),
+        'pageBackgrounds' => $mapOrObject($photos['pageBackgrounds'] ?? null),
+    ];
+
+    return $out;
 }
 
 /**
@@ -865,8 +1024,8 @@ function scouts_public_site_data(array $data): array
 function scouts_public_site_data_bundle(): array
 {
     $version = scouts_site_data_version();
-    // format 2 = HEX_* flags for safe <script> inlining
-    $format = 2;
+    // format 3 = HEX_* inline safety + allowlisted public fields (no leader phones)
+    $format = 3;
     $etag = '"' . $version . '-p' . $format . '"';
 
     if (is_file(SCOUTS_PUBLIC_DATA_CACHE)) {
