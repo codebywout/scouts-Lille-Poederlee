@@ -54,7 +54,7 @@ const SCOUTS_MAX_PDF_UPLOAD_BYTES = 20971520;
  * Bump this on every deploy so HTML/CSS/JS URLs change and old caches are skipped.
  * Format: YYYYMMDD-N
  */
-const SCOUTS_ASSET_VERSION = '20261027-15';
+const SCOUTS_ASSET_VERSION = '20261027-21';
 /** Microsoft Clarity project ID (public site only; loaded after analytics consent). */
 const SCOUTS_CLARITY_PROJECT_ID = 'z4c8od8ljm';
 const SCOUTS_LOGIN_ATTEMPTS_FILE = SCOUTS_ROOT . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . '.login-attempts.json';

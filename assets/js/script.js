@@ -130,7 +130,7 @@
       });
   }
 
-  const IMAGE_ASSET_VERSION = "20261027-15";
+  const IMAGE_ASSET_VERSION = "20261027-21";
 
   function formatLidgeldLabel(amount) {
     const amountNumber = Number(String(amount || "").replace(",", ".").replace(/[^\d.]/g, ""));
@@ -842,17 +842,35 @@
                     </div>`;
     }
 
-    return `
-                    <div class="agenda-date is-range" aria-label="${escapeHtml(parts.day)} ${escapeHtml(parts.month)} tot ${escapeHtml(parts.endDay)} ${escapeHtml(parts.endMonth)}">
-                      <span class="agenda-date-part">
+    const sameMonth = parts.month === parts.endMonth;
+    const label = `${parts.day} ${parts.month} tot ${parts.endDay} ${parts.endMonth}`;
+
+    // Compact period badge: "12 → 14" + month (same height as a single date).
+    if (sameMonth) {
+      return `
+                    <div class="agenda-date is-range is-same-month" aria-label="${escapeHtml(label)}">
+                      <div class="agenda-date-range">
                         <strong>${escapeHtml(parts.day)}</strong>
-                        <span>${escapeHtml(parts.month)}</span>
-                      </span>
-                      <span class="agenda-date-sep" aria-hidden="true"></span>
-                      <span class="agenda-date-part">
+                        <span class="agenda-date-arrow" aria-hidden="true"></span>
                         <strong>${escapeHtml(parts.endDay)}</strong>
-                        <span>${escapeHtml(parts.endMonth)}</span>
-                      </span>
+                      </div>
+                      <span>${escapeHtml(parts.month)}</span>
+                    </div>`;
+    }
+
+    return `
+                    <div class="agenda-date is-range" aria-label="${escapeHtml(label)}">
+                      <div class="agenda-date-range">
+                        <span class="agenda-date-side">
+                          <strong>${escapeHtml(parts.day)}</strong>
+                          <span>${escapeHtml(parts.month)}</span>
+                        </span>
+                        <span class="agenda-date-arrow" aria-hidden="true"></span>
+                        <span class="agenda-date-side">
+                          <strong>${escapeHtml(parts.endDay)}</strong>
+                          <span>${escapeHtml(parts.endMonth)}</span>
+                        </span>
+                      </div>
                     </div>`;
   }
 
