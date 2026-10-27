@@ -809,6 +809,83 @@ function scouts_page_background_upload_names(): array
     return $names;
 }
 
+/**
+ * Create the runtime datastore from the default seed when it is absent.
+ *
+ * Explicit bootstrap only — not called automatically on web requests.
+ * Never overwrites an existing runtime file (race-safe via exclusive create).
+ *
+ * @return 'created'|'exists'
+ */
+function scouts_bootstrap_site_data(?string $runtimeFile = null, ?string $defaultFile = null): string
+{
+    $runtimeFile = $runtimeFile ?? SCOUTS_DATA_FILE;
+    $defaultFile = $defaultFile ?? SCOUTS_DEFAULT_DATA_FILE;
+
+    if (is_file($runtimeFile)) {
+        return 'exists';
+    }
+
+    if (!is_file($defaultFile)) {
+        throw new RuntimeException('Default datastorebestand ontbreekt.');
+    }
+
+    $data = scouts_normalize_page_backgrounds(scouts_decode_json_file($defaultFile));
+    if ($defaultFile === SCOUTS_DEFAULT_DATA_FILE) {
+        scouts_validate_site_data($data);
+    } elseif ($data === []) {
+        throw new RuntimeException('Default datastore bevat geen geldige gegevens.');
+    }
+
+    $json = json_encode($data, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+    if ($json === false) {
+        throw new RuntimeException('Default datastore kon niet worden gecodeerd.');
+    }
+    $json .= PHP_EOL;
+
+    $dir = dirname($runtimeFile);
+    if (!is_dir($dir) && !mkdir($dir, 0755, true) && !is_dir($dir)) {
+        throw new RuntimeException('Datamap kon niet worden aangemaakt.');
+    }
+
+    // Exclusive create: fails if another process won the race.
+    $handle = @fopen($runtimeFile, 'x');
+    if ($handle === false) {
+        if (is_file($runtimeFile)) {
+            return 'exists';
+        }
+        throw new RuntimeException('Runtime datastore kon niet worden aangemaakt.');
+    }
+
+    $complete = false;
+    try {
+        if (!flock($handle, LOCK_EX)) {
+            throw new RuntimeException('Runtime datastore kon niet worden vergrendeld.');
+        }
+        if (fwrite($handle, $json) === false) {
+            throw new RuntimeException('Runtime datastore kon niet worden geschreven.');
+        }
+        if (!fflush($handle)) {
+            throw new RuntimeException('Runtime datastore kon niet worden weggeschreven.');
+        }
+        flock($handle, LOCK_UN);
+        $complete = true;
+    } finally {
+        fclose($handle);
+        if (!$complete && is_file($runtimeFile)) {
+            @unlink($runtimeFile);
+        }
+    }
+
+    scouts_decode_json_file($runtimeFile);
+
+    if ($runtimeFile === SCOUTS_DATA_FILE) {
+        scouts_invalidate_public_site_data_cache();
+    }
+
+    return 'created';
+}
+
 function scouts_read_site_data(): array
 {
     return scouts_normalize_page_backgrounds(scouts_decode_json_file(SCOUTS_DATA_FILE));

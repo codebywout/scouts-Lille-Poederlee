@@ -41,8 +41,14 @@ jobs:
       - name: Security regression tests
         run: php tools/test-security.php
 
+      - name: Site-data bootstrap tests
+        run: php tools/test-site-data-bootstrap.php
+
       - name: HTTP smoke tests
         run: |
+          # Clean runtime (never committed) then seed from fictional default.
+          rm -f data/site-data.json data/.site-data.public.json
+          php tools/bootstrap-site-data.php
           php -d upload_max_filesize=20M -d post_max_size=25M -d memory_limit=256M \
             -S 127.0.0.1:8000 router.php >/tmp/scouts-php-server.log 2>&1 &
           for i in 1 2 3 4 5 6 7 8 9 10; do

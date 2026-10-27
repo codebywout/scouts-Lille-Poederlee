@@ -5,7 +5,11 @@ declare(strict_types=1);
  * Non-destructive HTTP smoke tests against a running local server.
  * Usage: php tools/smoke-http.php [baseUrl]
  * Default baseUrl: http://localhost:8000
+ *
+ * Ensures runtime site-data exists via explicit bootstrap (never overwrites).
  */
+
+require dirname(__DIR__) . DIRECTORY_SEPARATOR . 'config.php';
 
 $base = rtrim($argv[1] ?? 'http://localhost:8000', '/');
 $failed = 0;
@@ -70,6 +74,17 @@ function smoke_expect_status(string $name, string $method, string $url, int $exp
 }
 
 echo "=== HTTP smoke against {$base} ===\n";
+
+try {
+    $boot = scouts_bootstrap_site_data();
+    smoke_assert(
+        'bootstrap runtime site-data',
+        $boot === 'created' || $boot === 'exists',
+        $boot
+    );
+} catch (Throwable $e) {
+    smoke_assert('bootstrap runtime site-data', false, $e->getMessage());
+}
 
 $pages = [
     '/' => 200,
