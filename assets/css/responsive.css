@@ -368,7 +368,7 @@
     }
 
     .agenda-summary {
-        grid-template-columns: 78px minmax(0, 1fr);
+        grid-template-columns: auto minmax(0, 1fr);
         gap: 14px;
     }
 
@@ -561,7 +561,6 @@
     }
 
     .agenda-item {
-        grid-template-columns: 66px minmax(0, 1fr);
         gap: 10px;
         padding: 11px;
     }
@@ -578,8 +577,8 @@
 
     .agenda-date {
         flex-shrink: 0;
-        min-width: 0;
         width: 66px;
+        height: 66px;
         flex-direction: column;
         align-items: center;
         justify-content: center;
@@ -588,20 +587,21 @@
     }
 
     .agenda-date.is-range {
-        width: 66px;
-        min-width: 66px;
-        max-width: 66px;
-        gap: 3px;
+        width: 86px;
+        min-width: 86px;
+        max-width: 86px;
+        height: 66px;
+        min-height: 66px;
+        max-height: 66px;
         padding-inline: 6px;
     }
 
-    .agenda-date strong,
-    .agenda-date-part strong {
+    .agenda-date strong {
         white-space: nowrap;
     }
 
     .agenda-date > span,
-    .agenda-date-part > span {
+    .agenda-date-side > span {
         margin-top: 6px;
         font-size: 10px;
         white-space: nowrap;
@@ -682,12 +682,8 @@
         font-size: 30px;
     }
 
-    .agenda-item {
-        grid-template-columns: 58px minmax(0, 1fr);
-    }
-
     .agenda-summary {
-        grid-template-columns: 58px minmax(0, 1fr);
+        grid-template-columns: auto minmax(0, 1fr);
     }
 
     .agenda-details {
@@ -696,6 +692,16 @@
 
     .agenda-date {
         width: 58px;
+        height: 58px;
+    }
+
+    .agenda-date.is-range {
+        width: 76px;
+        min-width: 76px;
+        max-width: 76px;
+        height: 58px;
+        min-height: 58px;
+        max-height: 58px;
     }
 }
 
