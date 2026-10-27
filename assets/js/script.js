@@ -130,7 +130,7 @@
       });
   }
 
-  const IMAGE_ASSET_VERSION = "20261027-14";
+  const IMAGE_ASSET_VERSION = "20261027-15";
 
   function formatLidgeldLabel(amount) {
     const amountNumber = Number(String(amount || "").replace(",", ".").replace(/[^\d.]/g, ""));
