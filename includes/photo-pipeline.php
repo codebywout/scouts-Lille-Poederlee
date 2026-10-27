@@ -808,6 +808,25 @@ function scouts_photo_resolve_responsive_stem(string $publicUrl): ?array
 }
 
 /**
+ * Query string for photo URLs embedded in first-paint HTML/CSS.
+ * Uses SCOUTS_ASSET_VERSION so preload hrefs and CSS url() share one cache key
+ * after (and before) the attribute version rewriter in scouts_send_html_file.
+ */
+function scouts_photo_html_cache_query(string $query = ''): string
+{
+    $params = [];
+    $query = trim($query);
+    if (str_starts_with($query, '?')) {
+        $query = substr($query, 1);
+    }
+    if ($query !== '') {
+        parse_str($query, $params);
+    }
+    $params['v'] = scouts_asset_version();
+    return '?' . http_build_query($params);
+}
+
+/**
  * Align homepage hero preload + <picture> with photos.pageBackgrounds.home
  * (or keep the static domein defaults when empty).
  */
@@ -831,46 +850,57 @@ function scouts_html_apply_home_hero_background(string $html): string
         return $html;
     }
 
+    $cacheQuery = scouts_photo_html_cache_query($resolved['query']);
     $webp = scouts_photo_build_srcset(
         $resolved['fs'],
         $resolved['web'],
         'webp',
         $heroWidths,
-        $resolved['query']
+        $cacheQuery
     );
     $jpg = scouts_photo_build_srcset(
         $resolved['fs'],
         $resolved['web'],
         'jpg',
         $heroWidths,
-        $resolved['query']
+        $cacheQuery
     );
     $avif = scouts_photo_build_srcset(
         $resolved['fs'],
         $resolved['web'],
         'avif',
         $heroWidths,
-        $resolved['query']
+        $cacheQuery
     );
     if ($webp['srcset'] === '' && $jpg['srcset'] === '') {
         return $html;
     }
 
-    // Preload the best widely supported candidate. Never put JPEG URLs in a
-    // type="image/webp" source/preload — browsers would fail to decode them.
-    $useWebpPreload = $webp['srcset'] !== '' && $webp['fallback'] !== '';
-    $preloadHref = $useWebpPreload ? $webp['fallback'] : $jpg['fallback'];
-    $preloadSrcset = $useWebpPreload ? $webp['srcset'] : $jpg['srcset'];
-    $preloadType = $useWebpPreload ? 'image/webp' : 'image/jpeg';
+    // Preload the same format <picture> prefers (AVIF → WebP → JPEG).
+    // Browsers that lack AVIF skip a type="image/avif" preload and use <source>.
+    // Never put JPEG URLs in a typed WebP/AVIF preload — decode would fail.
+    if ($avif['srcset'] !== '' && $avif['fallback'] !== '') {
+        $preloadHref = $avif['fallback'];
+        $preloadSrcset = $avif['srcset'];
+        $preloadType = 'image/avif';
+    } elseif ($webp['srcset'] !== '' && $webp['fallback'] !== '') {
+        $preloadHref = $webp['fallback'];
+        $preloadSrcset = $webp['srcset'];
+        $preloadType = 'image/webp';
+    } else {
+        $preloadHref = $jpg['fallback'];
+        $preloadSrcset = $jpg['srcset'];
+        $preloadType = 'image/jpeg';
+    }
     $sourceWidth = max($webp['source_width'], $jpg['source_width'], $avif['source_width']);
     $imgSrc = $jpg['fallback'] !== '' ? $jpg['fallback'] : $preloadHref;
     $imgSrcset = $jpg['srcset'] !== '' ? $jpg['srcset'] : $webp['srcset'];
-    $fullSrc = $resolved['web'] . '.jpg' . $resolved['query'];
+    $fullSrc = $resolved['web'] . '.jpg' . $cacheQuery;
     $dataSw = $sourceWidth > 0 ? ' data-source-width="' . $sourceWidth . '"' : '';
 
     if ($preloadSrcset !== '' && $preloadHref !== '') {
         $html = preg_replace(
-            '#<link\s+rel="preload"\s+as="image"\s+type="image/(?:webp|jpeg)"\s+href="[^"]*"\s+imagesrcset="[^"]*"\s+imagesizes="100vw"\s+fetchpriority="high"\s*/?>#i',
+            '#<link\s+rel="preload"\s+as="image"\s+type="image/(?:avif|webp|jpeg)"\s+href="[^"]*"\s+imagesrcset="[^"]*"\s+imagesizes="100vw"\s+fetchpriority="high"\s*/?>#i',
             '<link rel="preload" as="image" type="'
                 . $preloadType
                 . '" href="'
@@ -921,6 +951,231 @@ function scouts_html_apply_home_hero_background(string $html): string
         $html,
         1
     ) ?? $html;
+
+    return $html;
+}
+
+/**
+ * Map a served page id to photos.pageBackgrounds slot (null = no CSS page bg).
+ */
+function scouts_page_background_slot_for_page(string $pageId): ?string
+{
+    return match ($pageId) {
+        'inschrijven' => 'registration',
+        'nieuws' => 'news',
+        'over-ons' => 'about',
+        'tweedehands' => 'secondhand',
+        'uniform' => 'uniform',
+        'kapoenen', 'welpen', 'jongverkenners', 'verkenners', 'jins' => 'branch',
+        '404' => 'error',
+        default => null,
+    };
+}
+
+/**
+ * Build a CSS image-set() value for a responsive stem (WebP + JPEG, optional AVIF).
+ */
+function scouts_photo_css_image_set(string $fsStem, string $webStem, int $width, string $query = ''): string
+{
+    $query = trim($query);
+    if ($query !== '' && !str_starts_with($query, '?')) {
+        $query = '?' . $query;
+    }
+
+    $candidates = [];
+    foreach (['avif' => 'image/avif', 'webp' => 'image/webp', 'jpg' => 'image/jpeg'] as $ext => $type) {
+        $path = $fsStem . '-w' . $width . '.' . $ext;
+        if (!is_file($path)) {
+            continue;
+        }
+        $url = $webStem . '-w' . $width . '.' . $ext . $query;
+        $candidates[] = 'url("' . $url . '") type("' . $type . '")';
+    }
+
+    if ($candidates === []) {
+        $jpg = $webStem . '-w' . $width . '.jpg' . $query;
+        return 'url("' . $jpg . '")';
+    }
+
+    return 'image-set(' . implode(', ', $candidates) . ')';
+}
+
+/**
+ * Prefer AVIF → WebP → JPEG for a named width variant (matches image-set order).
+ *
+ * @return array{href:string,type:string}|null
+ */
+function scouts_photo_best_variant_link(string $fsStem, string $webStem, int $width, string $query = ''): ?array
+{
+    $query = trim($query);
+    if ($query !== '' && !str_starts_with($query, '?')) {
+        $query = '?' . $query;
+    }
+
+    foreach (['avif' => 'image/avif', 'webp' => 'image/webp', 'jpg' => 'image/jpeg'] as $ext => $type) {
+        if (!is_file($fsStem . '-w' . $width . '.' . $ext)) {
+            continue;
+        }
+        return [
+            'href' => $webStem . '-w' . $width . '.' . $ext . $query,
+            'type' => $type,
+        ];
+    }
+
+    return null;
+}
+
+/**
+ * Media-scoped preloads matching pages.css (w800 ≤768px, w1600 ≥769px).
+ * Avoids mobile downloading w1600 while CSS paints w800.
+ */
+function scouts_html_page_bg_preload_links(string $fsStem, string $webStem, string $query = ''): string
+{
+    $mobile = scouts_photo_best_variant_link($fsStem, $webStem, 800, $query);
+    $desktop = scouts_photo_best_variant_link($fsStem, $webStem, 1600, $query);
+    if ($mobile === null && $desktop === null) {
+        return '';
+    }
+
+    $links = [];
+    if ($mobile !== null) {
+        $links[] = '<link rel="preload" as="image" type="'
+            . $mobile['type']
+            . '" href="'
+            . htmlspecialchars($mobile['href'], ENT_QUOTES | ENT_HTML5, 'UTF-8')
+            . '" media="(max-width: 768px)" fetchpriority="high">';
+    }
+    if ($desktop !== null) {
+        $links[] = '<link rel="preload" as="image" type="'
+            . $desktop['type']
+            . '" href="'
+            . htmlspecialchars($desktop['href'], ENT_QUOTES | ENT_HTML5, 'UTF-8')
+            . '" media="(min-width: 769px)" fetchpriority="high">';
+    }
+
+    return implode("\n    ", $links);
+}
+
+/**
+ * Boot custom page backgrounds in the first HTML response so CSS does not
+ * download the static domein2 default before JavaScript runs.
+ */
+function scouts_html_boot_page_background(string $html, string $pageId): string
+{
+    try {
+        $data = scouts_read_site_data();
+    } catch (Throwable) {
+        return $html;
+    }
+
+    $slot = scouts_page_background_slot_for_page($pageId);
+    $custom = $slot
+        ? trim((string) ($data['photos']['pageBackgrounds'][$slot] ?? ''))
+        : '';
+
+    if ($slot !== null && $custom !== '') {
+        $resolved = scouts_photo_resolve_responsive_stem($custom);
+        if ($resolved !== null) {
+            $cacheQuery = scouts_photo_html_cache_query($resolved['query']);
+            $set800 = scouts_photo_css_image_set(
+                $resolved['fs'],
+                $resolved['web'],
+                800,
+                $cacheQuery
+            );
+            $set1600 = scouts_photo_css_image_set(
+                $resolved['fs'],
+                $resolved['web'],
+                1600,
+                $cacheQuery
+            );
+
+            $style = '<style id="scouts-page-bg-boot">'
+                . ':root{--scouts-custom-bg-800:' . $set800 . ';--scouts-custom-bg-1600:' . $set1600 . ';}'
+                . '</style>';
+
+            if (!str_contains($html, 'id="scouts-page-bg-boot"')) {
+                $html = preg_replace('/<\/head>/i', $style . "\n</head>", $html, 1) ?? $html;
+            }
+
+            if (!preg_match('/<body[^>]*\bscouts-has-custom-bg\b/i', $html)) {
+                $html = preg_replace(
+                    '/<body([^>]*)\bclass=("|\')([^"\']*)\2/i',
+                    '<body$1class=$2$3 scouts-has-custom-bg$2',
+                    $html,
+                    1
+                ) ?? $html;
+            }
+
+            if (!preg_match('/<body[^>]*\bdata-bg-boot=/i', $html)) {
+                $html = preg_replace('/<body\b/i', '<body data-bg-boot="1"', $html, 1) ?? $html;
+            }
+
+            // Replace static domein* preload with media-scoped custom bg preloads.
+            $preloadLinks = scouts_html_page_bg_preload_links(
+                $resolved['fs'],
+                $resolved['web'],
+                $cacheQuery
+            );
+            if ($preloadLinks !== '') {
+                $html = preg_replace(
+                    '#<link\s+rel="preload"\s+as="image"[^>]*>#i',
+                    $preloadLinks,
+                    $html,
+                    1
+                ) ?? $html;
+            }
+        }
+    } elseif (preg_match(
+        '#<link\s+rel="preload"\s+as="image"[^>]*href="([^"]+)"[^>]*>#i',
+        $html,
+        $preloadMatch
+    )) {
+        // No custom bg: still fix static w1600-only preload so mobile gets w800.
+        $hrefPath = parse_url($preloadMatch[1], PHP_URL_PATH) ?: $preloadMatch[1];
+        $hrefPath = preg_replace('#^(\.\./)+#', '', str_replace('\\', '/', $hrefPath)) ?? $hrefPath;
+        $hrefPath = ltrim($hrefPath, '/');
+        $defaultResolved = scouts_photo_resolve_responsive_stem($hrefPath);
+        if ($defaultResolved !== null) {
+            $preloadLinks = scouts_html_page_bg_preload_links(
+                $defaultResolved['fs'],
+                $defaultResolved['web'],
+                scouts_photo_html_cache_query($defaultResolved['query'])
+            );
+            if ($preloadLinks !== '') {
+                $html = preg_replace(
+                    '#<link\s+rel="preload"\s+as="image"[^>]*>#i',
+                    $preloadLinks,
+                    $html,
+                    1
+                ) ?? $html;
+            }
+        }
+    }
+
+    // Over-ons content hero: set first-paint background from aboutHero (no Unsplash).
+    if ($pageId === 'over-ons') {
+        $aboutHero = trim((string) ($data['photos']['aboutHero'] ?? ''));
+        if ($aboutHero !== '') {
+            $aboutResolved = scouts_photo_resolve_responsive_stem($aboutHero);
+            if ($aboutResolved !== null) {
+                $aboutSet = scouts_photo_css_image_set(
+                    $aboutResolved['fs'],
+                    $aboutResolved['web'],
+                    1600,
+                    scouts_photo_html_cache_query($aboutResolved['query'])
+                );
+                $html = preg_replace(
+                    '/<div class="about-hero">/',
+                    '<div class="about-hero" data-about-hero-boot="1" style="background-image:'
+                        . htmlspecialchars($aboutSet, ENT_QUOTES | ENT_HTML5, 'UTF-8')
+                        . '">',
+                    $html,
+                    1
+                ) ?? $html;
+            }
+        }
+    }
 
     return $html;
 }

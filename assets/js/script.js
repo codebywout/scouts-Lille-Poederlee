@@ -368,6 +368,12 @@
     const parts = splitResponsiveAsset(custom);
     if (!parts) return;
 
+    // PHP may already have set class + CSS variables for first paint.
+    if (document.body.getAttribute("data-bg-boot") === "1") {
+      document.body.classList.add("scouts-has-custom-bg");
+      return;
+    }
+
     document.body.style.setProperty(
       "--scouts-custom-bg-800",
       buildBackgroundImageSet(parts.stem, 800, parts.query),
@@ -3076,14 +3082,17 @@
 
       const aboutHero = qs(".about-hero");
       if (aboutHero && data.photos.aboutHero) {
-        const aboutParts = splitResponsiveAsset(data.photos.aboutHero);
-        if (aboutParts) {
-          const q = aboutParts.query;
-          const webp = withAssetQuery(`${aboutParts.stem}-w1600.webp`, q);
-          const jpg = withAssetQuery(`${aboutParts.stem}-w1600.jpg`, q);
-          aboutHero.style.backgroundImage = `image-set(url("${webp}") type("image/webp"), url("${jpg}") type("image/jpeg")), url("${jpg}")`;
-        } else {
-          aboutHero.style.backgroundImage = `url("${data.photos.aboutHero}")`;
+        // PHP may already set the hero background for first paint.
+        if (aboutHero.getAttribute("data-about-hero-boot") !== "1") {
+          const aboutParts = splitResponsiveAsset(data.photos.aboutHero);
+          if (aboutParts) {
+            const q = aboutParts.query;
+            const webp = withAssetQuery(`${aboutParts.stem}-w1600.webp`, q);
+            const jpg = withAssetQuery(`${aboutParts.stem}-w1600.jpg`, q);
+            aboutHero.style.backgroundImage = `image-set(url("${webp}") type("image/webp"), url("${jpg}") type("image/jpeg")), url("${jpg}")`;
+          } else {
+            aboutHero.style.backgroundImage = `url("${data.photos.aboutHero}")`;
+          }
         }
       }
 

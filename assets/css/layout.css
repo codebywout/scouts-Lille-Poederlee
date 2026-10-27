@@ -277,7 +277,8 @@ body.home-page .hero {
     align-items: end;
     border-radius: 32px;
     overflow: hidden;
-    background-image: url('https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&w=1800&q=80');
+    /* Photo comes from site-data (PHP first paint / JS). No third-party fallback. */
+    background-color: #173f2b;
     background-size: cover;
     background-position: center;
     box-shadow: 0 28px 60px rgba(43, 24, 14, 0.12);
