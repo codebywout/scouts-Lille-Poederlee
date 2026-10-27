@@ -1,10 +1,11 @@
 # Technische handleiding — scoutswebsite
 
-Publieke website en beheeromgeving. Oorspronkelijk voor [Scouts Lille-Poederlee](https://scoutslille.be); andere groepen kunnen dezelfde codebasis gebruiken.
+Dit bestand is alleen nodig als je zelf aan de **programmacode** of de server werkt.  
+Voor gewone inhoud (teksten, foto’s, agenda) gebruik je de [README](../README.md) en [handleiding-scoutsleiding.md](handleiding-scoutsleiding.md).
 
-**Voor wie:** ontwikkelaars en technisch onderlegde vrijwilligers. Voor gewoon websitebeheer (teksten, foto’s, agenda) start bij de [README](../README.md) en [handleiding-scoutsleiding.md](handleiding-scoutsleiding.md).
+Oorspronkelijk gemaakt voor [Scouts Lille-Poederlee](https://scoutslille.be); andere groepen kunnen dezelfde basis gebruiken.
 
-Deze handleiding is gebaseerd op de bestanden in deze repository. Claims over routes, configuratie en tooling zijn nagekeken in de code. Waar iets hostingspecifiek is (exacte document root, provider), staat dat als niet vastgelegd in de tracked codebase.
+Claims hieronder zijn nagekeken in de projectbestanden. Exacte hostingpaden en providers staan niet vast in dit project.
 
 ---
 
