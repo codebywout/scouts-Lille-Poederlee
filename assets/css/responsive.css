@@ -21,6 +21,16 @@
 
 }
 
+/* Brieven + maandplanning: één kolom tot tabletbreedte (voorkomt krappe 2-koloms layout). */
+@media (max-width: 900px) {
+    .document-resource-grid,
+    .branch-page .document-resource-grid,
+    .branch-page .document-resource-grid:has(> :nth-child(2)) {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 18px;
+    }
+}
+
 /* Subpagina's (uniform, over-ons, inschrijven, ...) */
 @media (max-width: 760px) {
     .page-hero:empty {
@@ -336,16 +346,17 @@
         letter-spacing: -1.5px;
     }
 
+    .branch-page .page-hero .hero-content h1.eyebrow {
+        max-width: 100%;
+        min-width: 0;
+        font-size: clamp(26px, 7.8vw, 52px);
+    }
+
     .page-hero .hero-content p,
     .about-hero-copy p,
     .section-heading p {
         max-width: 100%;
         font-size: clamp(15px, 3.8vw, 18px);
-    }
-
-    .document-resource-grid {
-        grid-template-columns: 1fr;
-        gap: 18px;
     }
 
     .document-resource-grid .planning-download-card {
@@ -373,12 +384,19 @@
         display: block;
     }
 
-    .agenda-item.has-agenda-image .agenda-details-inner img {
+    .agenda-item.has-agenda-image .agenda-details-inner .responsive-full-link,
+    .agenda-item.has-agenda-image .agenda-details-inner picture {
         width: min(100%, 360px);
+        margin-top: 12px;
+    }
+
+    .agenda-item.has-agenda-image .agenda-details-inner img,
+    .agenda-item.has-agenda-image .agenda-details-inner picture img {
+        width: 100%;
+        max-width: 360px;
         height: auto;
         max-height: none;
         object-fit: contain;
-        margin-top: 16px;
     }
 
     .document-resource-grid .document-action-button {
@@ -559,6 +577,7 @@
     }
 
     .agenda-date {
+        flex-shrink: 0;
         min-width: 0;
         width: 66px;
         flex-direction: column;
@@ -569,10 +588,11 @@
     }
 
     .agenda-date.is-range {
-        width: auto;
-        min-width: 96px;
-        gap: 6px;
-        padding-inline: 8px;
+        width: 66px;
+        min-width: 66px;
+        max-width: 66px;
+        gap: 3px;
+        padding-inline: 6px;
     }
 
     .agenda-date strong,
@@ -585,6 +605,11 @@
         margin-top: 6px;
         font-size: 10px;
         white-space: nowrap;
+    }
+
+    .agenda-body {
+        min-width: 0;
+        overflow: hidden;
     }
 
     .branch {
@@ -808,6 +833,11 @@
         background: rgba(255, 255, 255, 0.06);
     }
 
+    .mobile-menu a:focus-visible {
+        outline: 2px solid rgba(78, 43, 26, 0.55);
+        outline-offset: 2px;
+    }
+
     .mobile-menu a:last-child {
         justify-content: center;
         margin-top: 6px;
@@ -952,21 +982,24 @@
     }
 
     .branch {
-        min-height: 140px;
-        padding: 18px 16px 18px 18px;
+        min-height: 152px;
+        padding: 20px 76px 20px 18px;
     }
 
     .branch-main h3 {
-        font-size: clamp(23px, 6vw, 27px);
+        color: #2f1810;
+        font-size: clamp(26px, 7vw, 30px);
         line-height: 1.12;
+        font-weight: 800;
     }
 
     .branch-main span,
     .branch-main p,
     .branch-age {
-        font-size: 15px;
-        line-height: 1.4;
-        font-weight: 600;
+        color: color-mix(in srgb, var(--branch-accent, var(--scout-orange)) 40%, #2f1810);
+        font-size: 16px;
+        line-height: 1.35;
+        font-weight: 700;
     }
 
     .agenda-item,
@@ -1155,7 +1188,7 @@
     }
 
     .branch-main h3 {
-        font-size: 23px;
+        font-size: 25px;
     }
 
     .branch-age,

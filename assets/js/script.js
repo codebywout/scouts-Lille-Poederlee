@@ -130,7 +130,7 @@
       });
   }
 
-  const IMAGE_ASSET_VERSION = "20261020-60";
+  const IMAGE_ASSET_VERSION = "20261026-8";
 
   function formatLidgeldLabel(amount) {
     const amountNumber = Number(String(amount || "").replace(",", ".").replace(/[^\d.]/g, ""));
@@ -172,17 +172,8 @@
   const RESPONSIVE_WIDTHS = {
     card: [480, 800, 1200],
     content: [480, 800, 1200, 1600],
-    hero: [800, 1200, 1600, 2400],
     branch: [480, 800, 1200, 1600, 2400],
   };
-
-  function uploadPathname(value) {
-    try {
-      return new URL(value, window.location.origin).pathname;
-    } catch {
-      return "";
-    }
-  }
 
   function splitResponsiveAsset(src) {
     const raw = String(src || "").trim();
@@ -219,12 +210,103 @@
       .join(", ");
   }
 
-  function defaultResponsiveWidth(widths) {
+  function defaultResponsiveWidth(widths, preferredWidth = 0) {
     // Prefer a mid-size default so fallback `src` is never the largest file.
+    if (preferredWidth && widths.includes(preferredWidth)) return preferredWidth;
     if (widths.includes(800)) return 800;
     if (widths.includes(480)) return 480;
     if (widths.includes(1200)) return 1200;
     return widths[Math.max(0, Math.floor((widths.length - 1) / 2))];
+  }
+
+  /** Maps body class → site-data photos.pageBackgrounds key. */
+  const PAGE_BACKGROUND_SLOT_BY_BODY = {
+    "registration-page": "registration",
+    "news-page": "news",
+    "about-page": "about",
+    "secondhand-page": "secondhand",
+    "uniform-page": "uniform",
+    "branch-page": "branch",
+    "error-page": "error",
+  };
+
+  function buildBackgroundImageSet(stem, width, query) {
+    const webp = withAssetQuery(`${stem}-w${width}.webp`, query);
+    const jpg = withAssetQuery(`${stem}-w${width}.jpg`, query);
+    return `image-set(url("${webp}") type("image/webp"), url("${jpg}") type("image/jpeg"))`;
+  }
+
+  function applyHomeHeroBackground(src) {
+    const picture = qs(".hero-media");
+    if (!picture) return;
+    const parts = splitResponsiveAsset(src);
+    if (!parts) return;
+    const widths = [800, 1200, 1600, 2400];
+    const q = parts.query;
+    const webpSrcset = widths
+      .map((w) => `${withAssetQuery(`${parts.stem}-w${w}.webp`, q)} ${w}w`)
+      .join(", ");
+    const jpgSrcset = widths
+      .map((w) => `${withAssetQuery(`${parts.stem}-w${w}.jpg`, q)} ${w}w`)
+      .join(", ");
+    const source = picture.querySelector('source[type="image/webp"]');
+    const img = picture.querySelector("img");
+    if (source) {
+      source.srcset = webpSrcset;
+      source.sizes = "100vw";
+    }
+    if (img) {
+      img.srcset = jpgSrcset;
+      img.sizes = "100vw";
+      img.src = withAssetQuery(`${parts.stem}-w1200.jpg`, q);
+      img.removeAttribute("data-fallback-applied");
+      img.setAttribute("data-full-src", withAssetQuery(`${parts.stem}.jpg`, q));
+    }
+  }
+
+  function applyConfigurablePageBackgrounds(data) {
+    const backgrounds =
+      data?.photos?.pageBackgrounds && typeof data.photos.pageBackgrounds === "object"
+        ? data.photos.pageBackgrounds
+        : {};
+
+    if (document.body.classList.contains("home-page")) {
+      const homeBg = String(backgrounds.home || "").trim();
+      if (homeBg) {
+        applyHomeHeroBackground(homeBg);
+      }
+      return;
+    }
+
+    let slot = "";
+    for (const [bodyClass, key] of Object.entries(PAGE_BACKGROUND_SLOT_BY_BODY)) {
+      if (document.body.classList.contains(bodyClass)) {
+        slot = key;
+        break;
+      }
+    }
+    if (!slot) return;
+
+    const custom = String(backgrounds[slot] || "").trim();
+    if (!custom) {
+      document.body.classList.remove("scouts-has-custom-bg");
+      document.body.style.removeProperty("--scouts-custom-bg-800");
+      document.body.style.removeProperty("--scouts-custom-bg-1600");
+      return;
+    }
+
+    const parts = splitResponsiveAsset(custom);
+    if (!parts) return;
+
+    document.body.style.setProperty(
+      "--scouts-custom-bg-800",
+      buildBackgroundImageSet(parts.stem, 800, parts.query),
+    );
+    document.body.style.setProperty(
+      "--scouts-custom-bg-1600",
+      buildBackgroundImageSet(parts.stem, 1600, parts.query),
+    );
+    document.body.classList.add("scouts-has-custom-bg");
   }
 
   if (typeof window !== "undefined" && !window.__scoutsImgFallback) {
@@ -246,6 +328,7 @@
       pictureClass = "",
       sizes = "100vw",
       widths = RESPONSIVE_WIDTHS.content,
+      preferredWidth = 0,
       loading = "lazy",
       fetchpriority = "",
       decoding = "async",
@@ -258,13 +341,24 @@
     if (!parts) return "";
 
     const query = parts.query;
-    const defaultWidth = defaultResponsiveWidth(widths);
+    const defaultWidth = defaultResponsiveWidth(widths, preferredWidth);
     const defaultJpg = withAssetQuery(
       `${parts.stem}-w${defaultWidth}.jpg`,
       query,
     );
+    // Fallback `src` must always be a concrete URL (never empty) for parsers/Lighthouse.
+    const fallbackSrc =
+      defaultJpg ||
+      withAssetQuery(parts.originalPath, query) ||
+      parts.original;
     const webpSrcset = buildWidthSrcset(parts.stem, ".webp", widths, query);
     const jpgSrcset = buildWidthSrcset(parts.stem, ".jpg", widths, query);
+    // Upload pipeline writes AVIF alongside WebP; emit only for /uploads/ so missing
+    // AVIFs on static assets never break picture selection.
+    const useAvif = parts.stem.includes("/uploads/");
+    const avifSrcset = useAvif
+      ? buildWidthSrcset(parts.stem, ".avif", widths, query)
+      : "";
     const imgClass = className ? ` class="${escapeHtml(className)}"` : "";
     const pictureClassAttr = pictureClass
       ? ` class="${escapeHtml(pictureClass)}"`
@@ -275,12 +369,16 @@
       ? ` fetchpriority="${escapeHtml(fetchpriority)}"`
       : "";
     const loadingAttr = loading ? ` loading="${escapeHtml(loading)}"` : "";
+    const avifSource = avifSrcset
+      ? `<source type="image/avif" srcset="${escapeHtml(avifSrcset)}" sizes="${escapeHtml(sizes)}">`
+      : "";
 
     const picture = `
       <picture${pictureClassAttr}>
+        ${avifSource}
         <source type="image/webp" srcset="${escapeHtml(webpSrcset)}" sizes="${escapeHtml(sizes)}">
         <img${imgClass}
-          src="${escapeHtml(defaultJpg)}"
+          src="${escapeHtml(fallbackSrc)}"
           srcset="${escapeHtml(jpgSrcset)}"
           sizes="${escapeHtml(sizes)}"
           alt="${escapeHtml(alt)}"${loadingAttr}${priorityAttr}
@@ -293,24 +391,14 @@
     return `<a class="responsive-full-link" href="${escapeHtml(parts.original)}" target="_blank" rel="noopener noreferrer" aria-label="${escapeHtml(alt || "Originale foto openen")}">${picture}</a>`;
   }
 
-  function toThumbUrl(src) {
-    const parts = splitResponsiveAsset(src);
-    if (!parts) return src;
-    return withAssetQuery(`${parts.stem}-w800.jpg`, parts.query);
-  }
-
-  function toMediumUploadUrl(src) {
-    const parts = splitResponsiveAsset(src);
-    if (!parts) return src;
-    return withAssetQuery(`${parts.stem}-w1200.jpg`, parts.query);
-  }
-
   function thumbImageHtml(src, { alt = "", className = "" } = {}) {
+    // Measured: news/agenda thumbs are 84×84 (56×56 ≤768). Avoid 42vw over-fetch.
     return responsivePictureHtml(src, {
       alt,
       className,
-      sizes: "(max-width: 700px) 42vw, 120px",
+      sizes: "(max-width: 768px) 56px, 84px",
       widths: [480, 800],
+      preferredWidth: 480,
       loading: "lazy",
       width: 480,
       height: 480,
@@ -406,7 +494,18 @@
         }
         showCopied();
       } catch {
-        window.prompt("Kopieer deze link naar het bericht:", url);
+        await openDialog({
+          title: "Link naar dit bericht",
+          description: "Selecteer de link en kopieer ze.",
+          confirmLabel: "Sluiten",
+          cancelLabel: "",
+          input: {
+            type: "text",
+            label: "Link",
+            value: url,
+            readOnly: true,
+          },
+        });
       }
     });
   }
@@ -454,11 +553,19 @@
     const mobileMenu = document.getElementById("mobileMenu");
     if (!menuButton || !mobileMenu) return;
 
-    const setMenuOpen = (isOpen) => {
+    const menuItems = () => [menuButton, ...qsa("a", mobileMenu)];
+
+    const setMenuOpen = (isOpen, { restoreFocus = false } = {}) => {
+      const wasOpen = mobileMenu.classList.contains("open");
       mobileMenu.classList.toggle("open", isOpen);
       menuButton.classList.toggle("is-open", isOpen);
       menuButton.setAttribute("aria-expanded", isOpen ? "true" : "false");
       menuButton.setAttribute("aria-label", isOpen ? "Menu sluiten" : "Menu openen");
+      if (isOpen && !wasOpen) {
+        qsa("a", mobileMenu)[0]?.focus();
+      } else if (!isOpen && wasOpen && restoreFocus) {
+        menuButton.focus();
+      }
     };
 
     menuButton.addEventListener("click", () => {
@@ -476,7 +583,21 @@
     });
 
     document.addEventListener("keydown", (event) => {
-      if (event.key === "Escape") setMenuOpen(false);
+      if (!mobileMenu.classList.contains("open")) return;
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setMenuOpen(false, { restoreFocus: true });
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const items = menuItems();
+      if (!items.length) return;
+      const index = items.indexOf(document.activeElement);
+      event.preventDefault();
+      const next = event.shiftKey
+        ? items[(index <= 0 ? items.length : index) - 1]
+        : items[index === items.length - 1 || index === -1 ? 0 : index + 1];
+      next.focus();
     });
   }
 
@@ -830,7 +951,6 @@
   function initRegistrationForm() {
     const registrationForm = document.getElementById("registrationForm");
     const paymentCard = document.getElementById("registrationPayment");
-    const paymentReference = document.getElementById("registrationPaymentReference");
     if (!registrationForm) return;
 
     const hidePaymentStep = () => {
@@ -854,7 +974,6 @@
       if (paymentIban) paymentIban.textContent = formatIban(rekeningnummer);
       if (paymentMessage) paymentMessage.textContent = remittance;
       if (paymentDetails) paymentDetails.hidden = false;
-      if (paymentReference) paymentReference.textContent = remittance;
 
       paymentCard.hidden = false;
       paymentCard.classList.add("is-visible");
@@ -872,9 +991,51 @@
       paymentCard.scrollIntoView({ behavior: "smooth", block: "start" });
     };
 
+    const registrationFields = [
+      { name: "voornaam", message: "Vul de voornaam in." },
+      { name: "achternaam", message: "Vul de achternaam in." },
+      { name: "tak", message: "Kies een tak." },
+    ];
+
+    const setRegistrationFieldError = (field, message) => {
+      const error = document.getElementById(`${field.name}Error`);
+      if (!error) return;
+      if (message) {
+        field.setAttribute("aria-invalid", "true");
+        field.setAttribute("aria-describedby", error.id);
+        error.hidden = false;
+        error.textContent = message;
+      } else {
+        field.removeAttribute("aria-invalid");
+        field.removeAttribute("aria-describedby");
+        error.hidden = true;
+        error.textContent = "";
+      }
+    };
+
+    registrationForm.addEventListener("input", (event) => {
+      const field = event.target;
+      if (!field?.name || !document.getElementById(`${field.name}Error`)) return;
+      if (String(field.value || "").trim()) setRegistrationFieldError(field, "");
+    });
+
     registrationForm.addEventListener("submit", (event) => {
       event.preventDefault();
-      if (!registrationForm.reportValidity()) return;
+      let firstInvalid = null;
+      registrationFields.forEach(({ name, message }) => {
+        const field = registrationForm.elements.namedItem(name);
+        if (!field) return;
+        if (!String(field.value || "").trim()) {
+          setRegistrationFieldError(field, message);
+          firstInvalid ||= field;
+        } else {
+          setRegistrationFieldError(field, "");
+        }
+      });
+      if (firstInvalid) {
+        firstInvalid.focus();
+        return;
+      }
 
       const formData = new FormData(registrationForm);
       const voornaam = String(formData.get("voornaam") || "").trim();
@@ -1655,7 +1816,6 @@
         sizes: "(max-width: 800px) 100vw, 42vw",
         widths: RESPONSIVE_WIDTHS.content,
         loading: "lazy",
-        linkFull: true,
       })}</figure>`;
     }
 
@@ -1669,7 +1829,6 @@
                           sizes: "(max-width: 800px) 100vw, 42vw",
                           widths: RESPONSIVE_WIDTHS.content,
                           loading: index === 0 ? "eager" : "lazy",
-                          linkFull: true,
                         }).replaceAll("<img", '<img draggable="false"')}
                       </div>`,
       )
@@ -2157,6 +2316,7 @@
     _cache: null,
     _version: null,
     _saveQueue: Promise.resolve(),
+    _storageKey: "scouts_site_data_cache",
 
     _readVersion(response) {
       const header = response.headers.get("X-Scouts-Data-Version");
@@ -2170,14 +2330,77 @@
         .replace(/-[ap]$/, "");
     },
 
+    _readSessionCache() {
+      try {
+        const raw = sessionStorage.getItem(this._storageKey);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        if (!parsed || typeof parsed !== "object" || !parsed.data) return null;
+        return parsed;
+      } catch {
+        return null;
+      }
+    },
+
+    _writeSessionCache(etag, version, data) {
+      try {
+        sessionStorage.setItem(
+          this._storageKey,
+          JSON.stringify({ etag, version, data }),
+        );
+      } catch {
+        // Quota / private mode — ignore.
+      }
+    },
+
     async load({ force = false } = {}) {
       if (this._cache && !force) return this._cache;
 
+      // Fastest path: data already inlined in the HTML (no network wait).
+      if (!force && window.__SCOUTS_SITE_DATA__) {
+        this._cache = window.__SCOUTS_SITE_DATA__;
+        this._version =
+          window.__SCOUTS_SITE_DATA_META__?.version ||
+          this._version ||
+          null;
+        normalizeNewsItems(this._cache);
+        normalizeBranchLeadership(this._cache);
+        this._writeSessionCache(
+          window.__SCOUTS_SITE_DATA_META__?.etag || null,
+          this._version,
+          this._cache,
+        );
+        window.__SCOUTS_SITE_DATA__ = null;
+        return this._cache;
+      }
+
+      const cached = force ? null : this._readSessionCache();
+      const headers = {};
+      if (!force && cached?.etag) {
+        headers["If-None-Match"] = cached.etag;
+      }
       const response = await fetch("/api/site-data", {
-        cache: "no-store",
+        credentials: "same-origin",
+        headers,
+        cache: force ? "no-store" : "default",
       });
 
+      if (response.status === 304 && cached?.data) {
+        this._version = cached.version || this._readVersion(response);
+        this._cache = cached.data;
+        normalizeNewsItems(this._cache);
+        normalizeBranchLeadership(this._cache);
+        return this._cache;
+      }
+
       if (!response.ok) {
+        if (cached?.data) {
+          this._version = cached.version || null;
+          this._cache = cached.data;
+          normalizeNewsItems(this._cache);
+          normalizeBranchLeadership(this._cache);
+          return this._cache;
+        }
         throw new Error("Kon gegevens niet laden");
       }
 
@@ -2185,6 +2408,11 @@
       this._cache = await response.json();
       normalizeNewsItems(this._cache);
       normalizeBranchLeadership(this._cache);
+      this._writeSessionCache(
+        response.headers.get("ETag"),
+        this._version,
+        this._cache,
+      );
       return this._cache;
     },
 
@@ -2249,6 +2477,11 @@
         this._version =
           result.version || this._readVersion(response) || this._version;
         this._cache = data;
+        try {
+          sessionStorage.removeItem(this._storageKey);
+        } catch {
+          // ignore
+        }
         return data;
       });
 
@@ -2548,7 +2781,8 @@
           alt: "",
           className: "branch-bg",
           pictureClass: "branch-bg-picture",
-          sizes: "(max-width: 900px) 100vw, 380px",
+          // Measured: mobile cards ≈ calc(100vw − 48px) (~343px at 390vw); desktop ≈ 380px.
+          sizes: "(max-width: 900px) calc(100vw - 48px), 380px",
           widths: RESPONSIVE_WIDTHS.card,
           loading: "lazy",
           width: 1200,
@@ -2709,10 +2943,9 @@
                         image
                           ? responsivePictureHtml(image, {
                               alt: item.title || "",
-                              sizes: "(max-width: 800px) 100vw, 420px",
-                              widths: RESPONSIVE_WIDTHS.content,
+                              sizes: "(max-width: 700px) 90vw, 360px",
+                              widths: RESPONSIVE_WIDTHS.card,
                               loading: "lazy",
-                              linkFull: true,
                             })
                           : ""
                       }
@@ -2771,6 +3004,8 @@
         }
       }
 
+      applyConfigurablePageBackgrounds(data);
+
       if (data.photos.branches[pageName]) {
         const branchPhoto = qs(".branch-photo");
         const branchImage = branchPhoto?.querySelector("img, picture");
@@ -2790,7 +3025,6 @@
               loading: "lazy",
               width: 1600,
               height: 1200,
-              linkFull: true,
             });
           }
         }
@@ -2812,7 +3046,6 @@
                                     loading: "lazy",
                                     width: 800,
                                     height: 800,
-                                    linkFull: true,
                                   },
                                 )}
                             </div>
@@ -2835,8 +3068,170 @@
     },
   };
 
+  let dialogOpen = false;
+
+  function openDialog({
+    title,
+    description = "",
+    confirmLabel = "Doorgaan",
+    cancelLabel = "Annuleren",
+    tone = "default",
+    input = null,
+  } = {}) {
+    const hasInput = Boolean(input);
+    if (dialogOpen) return Promise.resolve(hasInput ? null : false);
+    dialogOpen = true;
+
+    return new Promise((resolve) => {
+      const previouslyFocused = document.activeElement;
+      const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+      const root = document.createElement("div");
+      root.className = "alert-dialog";
+
+      const overlay = document.createElement("div");
+      overlay.className = "alert-dialog-overlay";
+
+      const dialog = document.createElement("div");
+      dialog.className = "alert-dialog-content";
+      dialog.setAttribute("role", "alertdialog");
+      dialog.setAttribute("aria-modal", "true");
+      dialog.setAttribute("aria-labelledby", "alert-dialog-title");
+
+      const header = document.createElement("div");
+      header.className = "alert-dialog-header";
+
+      const titleEl = document.createElement("h2");
+      titleEl.className = "alert-dialog-title";
+      titleEl.id = "alert-dialog-title";
+      titleEl.textContent = title || "Weet je het zeker?";
+      header.append(titleEl);
+
+      const descriptionText = String(description || "").trim();
+      if (descriptionText) {
+        const descriptionEl = document.createElement("p");
+        descriptionEl.className = "alert-dialog-description";
+        descriptionEl.id = "alert-dialog-description";
+        descriptionEl.textContent = descriptionText;
+        header.append(descriptionEl);
+        dialog.setAttribute("aria-describedby", "alert-dialog-description");
+      }
+
+      let inputEl = null;
+      if (hasInput) {
+        const field = document.createElement("label");
+        field.className = "alert-dialog-field";
+        const labelText = String(input.label || "").trim();
+        if (labelText) {
+          const labelEl = document.createElement("span");
+          labelEl.id = "alert-dialog-input-label";
+          labelEl.textContent = labelText;
+          field.append(labelEl);
+        }
+        inputEl = document.createElement("input");
+        inputEl.className = "alert-dialog-input";
+        inputEl.type = input.type === "password" ? "password" : "text";
+        inputEl.value = input.value == null ? "" : String(input.value);
+        if (input.readOnly) inputEl.readOnly = true;
+        if (input.autocomplete) inputEl.setAttribute("autocomplete", input.autocomplete);
+        if (labelText) inputEl.setAttribute("aria-labelledby", "alert-dialog-input-label");
+        field.append(inputEl);
+        header.append(field);
+      }
+
+      const footer = document.createElement("div");
+      footer.className = "alert-dialog-footer";
+
+      let cancelBtn = null;
+      if (String(cancelLabel ?? "").trim() !== "") {
+        cancelBtn = document.createElement("button");
+        cancelBtn.type = "button";
+        cancelBtn.className = "alert-dialog-cancel";
+        cancelBtn.textContent = cancelLabel;
+        footer.append(cancelBtn);
+      }
+
+      const confirmBtn = document.createElement("button");
+      confirmBtn.type = "button";
+      confirmBtn.className = "alert-dialog-action";
+      if (tone === "destructive") confirmBtn.classList.add("is-destructive");
+      confirmBtn.textContent = confirmLabel;
+      footer.append(confirmBtn);
+
+      dialog.append(header, footer);
+      root.append(overlay, dialog);
+
+      const htmlOverflow = document.documentElement.style.overflow;
+      const bodyOverflow = document.body.style.overflow;
+      document.documentElement.style.overflow = "hidden";
+      document.body.style.overflow = "hidden";
+      document.body.append(root);
+
+      let settled = false;
+      const finish = (result) => {
+        if (settled) return;
+        settled = true;
+        if (cancelBtn) cancelBtn.disabled = true;
+        confirmBtn.disabled = true;
+        if (inputEl) inputEl.disabled = true;
+        root.classList.add("is-closing");
+        window.setTimeout(() => {
+          root.remove();
+          document.documentElement.style.overflow = htmlOverflow;
+          document.body.style.overflow = bodyOverflow;
+          dialogOpen = false;
+          if (previouslyFocused instanceof HTMLElement && previouslyFocused.isConnected) {
+            previouslyFocused.focus();
+          }
+          resolve(result);
+        }, reduceMotion ? 0 : 150);
+      };
+
+      const confirm = () => finish(hasInput ? inputEl.value : true);
+      const cancel = () => finish(hasInput ? null : false);
+
+      cancelBtn?.addEventListener("click", cancel);
+      confirmBtn.addEventListener("click", confirm);
+      dialog.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          event.stopPropagation();
+          cancel();
+          return;
+        }
+        if (event.key === "Enter" && event.target === inputEl) {
+          event.preventDefault();
+          confirm();
+          return;
+        }
+        if (event.key !== "Tab") return;
+        const focusable = [inputEl, cancelBtn, confirmBtn].filter(Boolean);
+        const index = focusable.indexOf(document.activeElement);
+        event.preventDefault();
+        const nextIndex = event.shiftKey
+          ? index <= 0
+            ? focusable.length - 1
+            : index - 1
+          : index === focusable.length - 1 || index === -1
+            ? 0
+            : index + 1;
+        focusable[nextIndex].focus();
+      });
+
+      if (inputEl) {
+        inputEl.focus();
+        if (inputEl.readOnly) inputEl.select();
+      } else if (cancelBtn) {
+        cancelBtn.focus();
+      } else {
+        confirmBtn.focus();
+      }
+    });
+  }
+
   window.ScoutsSite = {
     escapeHtml,
+    openDialog,
     qs,
     qsa,
     Auth,

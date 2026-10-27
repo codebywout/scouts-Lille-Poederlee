@@ -148,7 +148,7 @@ HTML;
 function scouts_page_share_meta(string $page): array
 {
     $base = 'https://scoutslille.be';
-    $defaultImage = $base . '/assets/images/domein-display.jpg';
+    $defaultImage = $base . '/assets/images/domein-w1200.jpg';
 
     $pages = [
         'index' => [
@@ -160,7 +160,7 @@ function scouts_page_share_meta(string $page): array
         'over-ons' => [
             'title' => 'Over ons | Scouts Lille-Poederlee',
             'description' => 'Meer informatie over Scouts Lille-Poederlee, de groepsleiding en onze scouting.',
-            'image' => $base . '/assets/images/domein4-display.jpg',
+            'image' => $base . '/assets/images/domein4-w1200.jpg',
             'url' => $base . '/over-ons',
         ],
         'inschrijven' => [
@@ -172,19 +172,19 @@ function scouts_page_share_meta(string $page): array
         'nieuws' => [
             'title' => 'Nieuws | Scouts Lille-Poederlee',
             'description' => 'Het laatste nieuws van Scouts Lille-Poederlee.',
-            'image' => $base . '/assets/images/domein2-display.jpg',
+            'image' => $base . '/assets/images/domein2-w1200.jpg',
             'url' => $base . '/nieuws',
         ],
         'tweedehands' => [
             'title' => 'Tweedehands | Scouts Lille-Poederlee',
             'description' => 'Ontdek en deel tweedehands uniformen en scoutsmateriaal bij Scouts Lille-Poederlee.',
-            'image' => $base . '/assets/images/domein3-display.jpg',
+            'image' => $base . '/assets/images/domein3-w1200.jpg',
             'url' => $base . '/tweedehands',
         ],
         'uniform' => [
             'title' => 'Uniform | Scouts Lille-Poederlee',
             'description' => 'Alles over het scoutsuniform bij Scouts Lille-Poederlee.',
-            'image' => $base . '/assets/images/domein5-display.jpg',
+            'image' => $base . '/assets/images/domein5-w1200.jpg',
             'url' => $base . '/uniform',
         ],
         'kapoenen' => [

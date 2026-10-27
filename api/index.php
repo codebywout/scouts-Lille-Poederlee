@@ -2,25 +2,37 @@
 declare(strict_types=1);
 
 require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . 'config.php';
-require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . 'google-drive.php';
 ini_set('display_errors', '0');
 
 $route = trim((string) ($_GET['route'] ?? ''), '/');
 $method = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
 
 try {
-    if ($route === 'site-data' && $method === 'GET') {
-        scouts_start_session();
+    // Fast path: public/admin site-data without loading Google Drive helpers.
+    if ($route === 'site-data' && ($method === 'GET' || $method === 'HEAD')) {
         $modifiedAt = filemtime(SCOUTS_DATA_FILE);
         if ($modifiedAt === false) {
             throw new RuntimeException('Datastorebestand kan niet worden gelezen.');
         }
 
-        $isAdmin = scouts_session_is_admin();
+        // Only open a session when a cookie already exists (admins).
+        // Anonymous visitors skip session I/O and Set-Cookie overhead.
+        $isAdmin = false;
+        if (!empty($_COOKIE['scouts_session'])) {
+            scouts_start_session();
+            $isAdmin = scouts_session_is_admin();
+        }
+
         $version = scouts_site_data_version();
-        $etag = '"' . $version . ($isAdmin ? '-a' : '-p') . '"';
+        $etagToken = $version . ($isAdmin ? '-a' : '-p');
+        $etag = '"' . $etagToken . '"';
         header('Content-Type: application/json; charset=utf-8');
-        header('Cache-Control: no-store');
+        if ($isAdmin) {
+            header('Cache-Control: private, no-store');
+        } else {
+            // Short public cache + SWR; ETag still validates after expiry.
+            header('Cache-Control: public, max-age=300, stale-while-revalidate=600');
+        }
         header('ETag: ' . $etag);
         header('X-Scouts-Data-Version: ' . $version);
         header('Vary: Cookie');
@@ -30,28 +42,47 @@ try {
             static fn (string $value): string => trim($value, " \t\""),
             explode(',', (string) ($_SERVER['HTTP_IF_NONE_MATCH'] ?? ''))
         );
-        if (in_array(trim($etag, '"'), $clientEtags, true)) {
+        if (in_array($etagToken, $clientEtags, true)) {
             http_response_code(304);
             exit;
         }
 
-        $data = scouts_read_site_data();
-        if (!$isAdmin) {
-            $data = scouts_public_site_data($data);
+        $ifModifiedSince = strtotime((string) ($_SERVER['HTTP_IF_MODIFIED_SINCE'] ?? ''));
+        if (
+            $ifModifiedSince !== false
+            && $ifModifiedSince >= $modifiedAt
+            && ($_SERVER['HTTP_IF_NONE_MATCH'] ?? '') === ''
+        ) {
+            http_response_code(304);
+            exit;
         }
 
-        $json = json_encode(
-            $data,
-            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
-        );
-        if ($json === false) {
-            throw new RuntimeException('Sitegegevens konden niet worden gecodeerd.');
+        if ($isAdmin) {
+            $data = scouts_read_site_data();
+            $json = json_encode(
+                $data,
+                JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+            );
+            if ($json === false) {
+                throw new RuntimeException('Sitegegevens konden niet worden gecodeerd.');
+            }
+        } else {
+            $bundle = scouts_public_site_data_bundle();
+            $json = $bundle['json'];
+            // Prefer bundle etag (same token) in case version raced.
+            $etag = $bundle['etag'];
+            header('ETag: ' . $etag);
+            header('X-Scouts-Data-Version: ' . $bundle['version']);
         }
         header('Content-Length: ' . strlen($json));
+        if ($method === 'HEAD') {
+            exit;
+        }
         echo $json;
         exit;
     }
 
+    require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . 'google-drive.php';
     scouts_start_session();
 
     if ($route === 'session' && $method === 'GET') {
@@ -81,8 +112,11 @@ try {
             'folderId' => (string) ($settings['folderId'] ?? scouts_env('SCOUTS_GOOGLE_DRIVE_FOLDER_ID', '')),
             'serviceAccountConfigured' => $credentials !== null,
             'serviceAccountEmail' => (string) ($credentials['client_email'] ?? ''),
-            'oauthConfigured' => ($oauth = scouts_google_oauth_data()) !== null && isset($oauth['refresh_token']),
+            'oauthConfigured' => ($oauth = scouts_google_oauth_data()) !== null && !empty($oauth['refresh_token']),
+            'oauthClientConfigured' => scouts_google_oauth_client() !== null,
             'oauthEmail' => (string) (($oauth['email'] ?? '') ?: ''),
+            'redirectUri' => scouts_google_oauth_redirect_uri(),
+            'authorizedRedirectUris' => scouts_google_oauth_authorized_redirect_uris(),
         ]);
     }
 
@@ -108,6 +142,9 @@ try {
         if (($file['error'] ?? UPLOAD_ERR_OK) !== UPLOAD_ERR_OK || (int) $file['size'] > 256 * 1024) {
             scouts_json_response(['message' => 'Het Google JSON-bestand is ongeldig of groter dan 256 KB.'], 400);
         }
+        if (!is_uploaded_file($file['tmp_name'])) {
+            scouts_json_response(['message' => 'Geen geldige credentials-upload ontvangen.'], 400);
+        }
         $credentials = json_decode((string) file_get_contents($file['tmp_name']), true);
         if (!is_array($credentials)
             || ($credentials['type'] ?? '') !== 'service_account'
@@ -123,7 +160,14 @@ try {
     if ($route === 'google-drive/oauth-reset' && $method === 'POST') {
         scouts_require_google_settings_access();
         scouts_require_same_origin();
-        scouts_write_google_oauth([]);
+        $existing = scouts_google_oauth_data() ?? [];
+        $kept = [];
+        foreach (['client_id', 'client_secret', 'redirect_uri', 'redirect_uris'] as $key) {
+            if (array_key_exists($key, $existing)) {
+                $kept[$key] = $existing[$key];
+            }
+        }
+        scouts_write_google_oauth($kept);
         scouts_json_response(['success' => true]);
     }
 
@@ -134,6 +178,12 @@ try {
             scouts_json_response(['message' => 'Selecteer eerst het Google OAuth-clientbestand.'], 400);
         }
         $clientFile = $_FILES['client'];
+        if (($clientFile['error'] ?? UPLOAD_ERR_OK) !== UPLOAD_ERR_OK || (int) $clientFile['size'] > 256 * 1024) {
+            scouts_json_response(['message' => 'Het Google OAuth-clientbestand is ongeldig of groter dan 256 KB.'], 400);
+        }
+        if (!is_uploaded_file($clientFile['tmp_name'])) {
+            scouts_json_response(['message' => 'Geen geldige OAuth-clientupload ontvangen.'], 400);
+        }
         $clientJson = json_decode((string) file_get_contents($clientFile['tmp_name']), true);
         $client = is_array($clientJson) ? ($clientJson['web'] ?? $clientJson['installed'] ?? $clientJson) : null;
         if (!is_array($client)
@@ -142,12 +192,34 @@ try {
             || !is_string(($client['redirect_uris'][0] ?? null))) {
             scouts_json_response(['message' => 'Dit is geen geldig Google OAuth-clientbestand.'], 400);
         }
-        scouts_write_google_oauth([
+        $existing = scouts_google_oauth_data() ?? [];
+        $redirectUris = [];
+        if (is_array($client['redirect_uris'] ?? null)) {
+            foreach ($client['redirect_uris'] as $uri) {
+                if (is_string($uri) && trim($uri) !== '') {
+                    $redirectUris[] = trim($uri);
+                }
+            }
+        }
+        $payload = [
             'client_id' => $client['client_id'],
             'client_secret' => $client['client_secret'],
-            'redirect_uri' => $client['redirect_uris'][0],
+            'redirect_uris' => array_values(array_unique($redirectUris)),
+            'redirect_uri' => $redirectUris[0] ?? scouts_google_oauth_current_host_callback(),
+        ];
+        // Keep an existing Drive connection when only the client JSON is replaced.
+        if (!empty($existing['refresh_token']) && is_string($existing['refresh_token'])) {
+            $payload['refresh_token'] = $existing['refresh_token'];
+        }
+        if (!empty($existing['email']) && is_string($existing['email'])) {
+            $payload['email'] = $existing['email'];
+        }
+        scouts_write_google_oauth($payload);
+        scouts_json_response([
+            'success' => true,
+            'redirectUri' => scouts_google_oauth_redirect_uri(),
+            'authorizedRedirectUris' => scouts_google_oauth_authorized_redirect_uris(),
         ]);
-        scouts_json_response(['success' => true]);
     }
 
     if ($route === 'google-drive/oauth/start' && $method === 'GET') {
@@ -156,11 +228,21 @@ try {
         if ($client === null) {
             scouts_json_response(['message' => 'Upload eerst een Google OAuth-clientbestand.'], 400);
         }
+        $redirectUri = scouts_google_oauth_redirect_uri();
+        $authorized = scouts_google_oauth_authorized_redirect_uris();
+        $authorizedExact = array_map('strtolower', $authorized);
+        if ($authorized !== [] && !in_array(strtolower($redirectUri), $authorizedExact, true)) {
+            scouts_json_response([
+                'message' => 'Redirect-URI ontbreekt in Google Cloud.',
+                'redirectUri' => $redirectUri,
+                'authorizedRedirectUris' => $authorized,
+            ], 400);
+        }
         $state = bin2hex(random_bytes(24));
         $_SESSION['google_oauth_state'] = $state;
         $query = http_build_query([
             'client_id' => $client['client_id'],
-            'redirect_uri' => scouts_google_oauth_redirect_uri(),
+            'redirect_uri' => $redirectUri,
             'response_type' => 'code',
             'scope' => 'https://www.googleapis.com/auth/drive.file',
             'access_type' => 'offline',
@@ -171,50 +253,90 @@ try {
     }
 
     if ($route === 'google-drive/oauth/callback' && $method === 'GET') {
-        scouts_require_google_settings_access();
-        $state = (string) ($_GET['state'] ?? '');
-        $code = (string) ($_GET['code'] ?? '');
-        if ($state === '' || !hash_equals((string) ($_SESSION['google_oauth_state'] ?? ''), $state) || $code === '') {
-            throw new RuntimeException('Ongeldige Google OAuth-callback.');
+        try {
+            if (!scouts_session_is_admin()) {
+                header('Location: /login?next=' . rawurlencode('/admin?google=error'));
+                exit;
+            }
+            if (!isset($_SESSION['google_settings_unlocked_until'])
+                || (int) $_SESSION['google_settings_unlocked_until'] < time()) {
+                throw new RuntimeException('Instellingen vergrendeld. Probeer opnieuw.');
+            }
+            $state = (string) ($_GET['state'] ?? '');
+            $code = (string) ($_GET['code'] ?? '');
+            $oauthError = trim((string) ($_GET['error'] ?? ''));
+            if ($oauthError !== '') {
+                throw new RuntimeException('Google weigerde de koppeling.');
+            }
+            if ($state === '' || !hash_equals((string) ($_SESSION['google_oauth_state'] ?? ''), $state) || $code === '') {
+                throw new RuntimeException('Ongeldige callback. Probeer opnieuw.');
+            }
+            unset($_SESSION['google_oauth_state']);
+            $client = scouts_google_oauth_client();
+            if ($client === null) {
+                throw new RuntimeException('OAuth-client ontbreekt.');
+            }
+            $redirectUri = scouts_google_oauth_redirect_uri();
+            $ch = curl_init('https://oauth2.googleapis.com/token');
+            curl_setopt_array($ch, [
+                CURLOPT_POST => true,
+                CURLOPT_POSTFIELDS => http_build_query([
+                    'code' => $code,
+                    'client_id' => $client['client_id'],
+                    'client_secret' => $client['client_secret'],
+                    'redirect_uri' => $redirectUri,
+                    'grant_type' => 'authorization_code',
+                ]),
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_TIMEOUT => 30,
+                CURLOPT_HTTPHEADER => ['Content-Type: application/x-www-form-urlencoded'],
+            ]);
+            if (defined('CURLSSLOPT_NATIVE_CA')) {
+                curl_setopt($ch, CURLOPT_SSL_OPTIONS, CURLSSLOPT_NATIVE_CA);
+            }
+            $response = curl_exec($ch);
+            $status = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+            $error = curl_error($ch);
+            if ($response === false || $status < 200 || $status >= 300) {
+                throw new RuntimeException(
+                    'Koppeling mislukt'
+                    . ($error !== '' ? '' : ': ' . scouts_google_error_message((string) $response, $status))
+                );
+            }
+            $token = json_decode($response, true);
+            if (!is_array($token)) {
+                throw new RuntimeException('Ongeldig antwoord van Google.');
+            }
+            $refreshToken = is_string($token['refresh_token'] ?? null) ? $token['refresh_token'] : '';
+            if ($refreshToken === '' && is_string($client['refresh_token'] ?? null)) {
+                $refreshToken = $client['refresh_token'];
+            }
+            if ($refreshToken === '') {
+                throw new RuntimeException('Geen refresh-token. Trek toegang in en verbind opnieuw.');
+            }
+            $accessToken = is_string($token['access_token'] ?? null) ? $token['access_token'] : '';
+            $email = $accessToken !== '' ? scouts_google_oauth_fetch_email($accessToken) : '';
+            if ($email === '' && is_string($client['email'] ?? null)) {
+                $email = $client['email'];
+            }
+            $client['refresh_token'] = $refreshToken;
+            if ($email !== '') {
+                $client['email'] = $email;
+            } else {
+                unset($client['email']);
+            }
+            $client['redirect_uri'] = $redirectUri;
+            scouts_write_google_oauth($client);
+            $saved = scouts_google_oauth_data();
+            if (!is_array($saved) || empty($saved['refresh_token'])) {
+                throw new RuntimeException('Koppeling kon niet worden bewaard. Probeer opnieuw.');
+            }
+            $_SESSION['google_settings_unlocked_until'] = time() + 900;
+            scouts_google_oauth_admin_redirect('connected');
+        } catch (Throwable $oauthCallbackError) {
+            error_log('Scouts Google OAuth callback: ' . $oauthCallbackError->getMessage());
+            scouts_google_oauth_admin_redirect('error', $oauthCallbackError->getMessage());
         }
-        unset($_SESSION['google_oauth_state']);
-        $client = scouts_google_oauth_client();
-        if ($client === null) {
-            throw new RuntimeException('Google OAuth-client ontbreekt.');
-        }
-        $ch = curl_init('https://oauth2.googleapis.com/token');
-        curl_setopt_array($ch, [
-            CURLOPT_POST => true,
-            CURLOPT_POSTFIELDS => http_build_query([
-                'code' => $code,
-                'client_id' => $client['client_id'],
-                'client_secret' => $client['client_secret'],
-                'redirect_uri' => scouts_google_oauth_redirect_uri(),
-                'grant_type' => 'authorization_code',
-            ]),
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT => 30,
-            CURLOPT_HTTPHEADER => ['Content-Type: application/x-www-form-urlencoded'],
-        ]);
-        if (defined('CURLSSLOPT_NATIVE_CA')) {
-            curl_setopt($ch, CURLOPT_SSL_OPTIONS, CURLSSLOPT_NATIVE_CA);
-        }
-        $response = curl_exec($ch);
-        $status = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
-        $error = curl_error($ch);
-        curl_close($ch);
-        if ($response === false || $status < 200 || $status >= 300) {
-            throw new RuntimeException('Google OAuth-koppeling mislukt: ' . ($error !== '' ? $error : scouts_google_error_message((string) $response, $status)));
-        }
-        $token = json_decode($response, true);
-        if (!is_array($token) || !is_string($token['refresh_token'] ?? null)) {
-            throw new RuntimeException('Google gaf geen refresh-token terug.');
-        }
-        $client['refresh_token'] = $token['refresh_token'];
-        $client['email'] = 'Google-account gekoppeld';
-        scouts_write_google_oauth($client);
-        header('Location: /admin?google=connected');
-        exit;
     }
 
     if ($route === 'login' && $method === 'POST') {
@@ -399,8 +521,17 @@ try {
             scouts_json_response(['message' => $e->getMessage()], 400);
         } catch (Throwable $e) {
             error_log('scouts photo upload failed: ' . $e->getMessage());
+            // Surface known config/setup errors; keep other failures generic.
+            $detail = $e->getMessage();
+            $safeSetup = str_contains($detail, 'PHP GD')
+                || str_contains($detail, 'GD-extensie')
+                || str_contains($detail, 'niet leesbaar')
+                || str_contains($detail, 'niet worden bewaard')
+                || str_contains($detail, 'niet worden geplaatst');
             scouts_json_response([
-                'message' => 'Foto verwerken mislukt. Probeer het opnieuw of kies een andere foto.',
+                'message' => $safeSetup
+                    ? $detail
+                    : 'Foto verwerken mislukt. Probeer het opnieuw of kies een andere foto.',
             ], 500);
         }
         scouts_json_response(['success' => true, 'path' => $path]);
@@ -566,6 +697,9 @@ try {
         $filename = basename(rawurldecode($matches[1]));
         if ($filename !== $matches[1] || !str_ends_with(strtolower($filename), '.pdf')) {
             scouts_json_response(['message' => 'Ongeldige documentnaam.'], 400);
+        }
+        if (in_array(strtolower($filename), array_map('strtolower', scouts_protected_upload_filenames()), true)) {
+            scouts_json_response(['message' => 'Dit document mag niet worden verwijderd.'], 403);
         }
         $path = SCOUTS_UPLOADS_DIR . DIRECTORY_SEPARATOR . $filename;
         if (is_file($path) && !unlink($path)) {

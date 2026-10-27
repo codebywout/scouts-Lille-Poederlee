@@ -21,6 +21,20 @@ function scouts_photo_gd_available(): bool
         && function_exists('imagescale');
 }
 
+/** Free a GD image; no-op on PHP 8.5+ where imagedestroy is deprecated. */
+function scouts_photo_destroy(mixed $image): void
+{
+    if ($image === null || $image === false) {
+        return;
+    }
+    if (\PHP_VERSION_ID >= 80500) {
+        return;
+    }
+    if (function_exists('imagedestroy')) {
+        @imagedestroy($image);
+    }
+}
+
 function scouts_photo_webp_available(): bool
 {
     return function_exists('imagewebp');
@@ -149,7 +163,7 @@ function scouts_photo_apply_orientation($image, int $orientation)
         return $image;
     }
 
-    imagedestroy($image);
+    scouts_photo_destroy($image);
     return $rotated;
 }
 
@@ -170,7 +184,7 @@ function scouts_photo_flatten_to_canvas($image)
     $background = imagecolorallocate($canvas, 245, 239, 231);
     imagefilledrectangle($canvas, 0, 0, $width, $height, $background);
     imagecopy($canvas, $image, 0, 0, 0, 0, $width, $height);
-    imagedestroy($image);
+    scouts_photo_destroy($image);
     return $canvas;
 }
 
@@ -195,7 +209,7 @@ function scouts_photo_scale_to_max_edge($image, int $maxEdge)
     if ($scaled === false) {
         return $image;
     }
-    imagedestroy($image);
+    scouts_photo_destroy($image);
     return $scaled;
 }
 
@@ -324,7 +338,7 @@ function scouts_photo_write_width_variants($source, string $dir, string $basenam
         $written[] = $requestedWidth;
 
         if ($scaled !== $source) {
-            imagedestroy($scaled);
+            scouts_photo_destroy($scaled);
         }
     }
 
@@ -476,14 +490,14 @@ function scouts_store_uploaded_photo(string $sourcePath, string $basename, strin
         // Legacy thumb (max edge 800) for older tooling / orphan marking.
         $thumbSource = @imagecreatefromjpeg($stagedMaster);
         if ($thumbSource === false) {
-            imagedestroy($image);
+            scouts_photo_destroy($image);
             throw new RuntimeException('Thumbnail kon niet worden gemaakt.');
         }
         $thumb = scouts_photo_scale_to_max_edge($thumbSource, SCOUTS_PHOTO_THUMB_EDGE);
         scouts_photo_write_jpeg($thumb, $stagedThumb, SCOUTS_PHOTO_THUMB_JPEG_QUALITY);
-        imagedestroy($thumb);
+        scouts_photo_destroy($thumb);
 
-        imagedestroy($image);
+        scouts_photo_destroy($image);
 
         // Require at least JPEG variants for every configured width (capped naming).
         foreach (SCOUTS_PHOTO_VARIANT_WIDTHS as $w) {
@@ -653,10 +667,10 @@ function scouts_photo_regenerate_variants(string $basename, bool $overwrite = tr
     if ($thumbSource !== false) {
         $thumb = scouts_photo_scale_to_max_edge($thumbSource, SCOUTS_PHOTO_THUMB_EDGE);
         scouts_photo_write_jpeg($thumb, $thumbPath, SCOUTS_PHOTO_THUMB_JPEG_QUALITY);
-        imagedestroy($thumb);
+        scouts_photo_destroy($thumb);
     }
 
-    imagedestroy($image);
+    scouts_photo_destroy($image);
 
     return ['basename' => $basename, 'widths' => $widths, 'master' => $master];
 }

@@ -33,6 +33,7 @@ fwrite(STDOUT, 'GD: ' . (scouts_photo_gd_available() ? 'yes' : 'NO') . PHP_EOL);
 
 // Naming / guards (no GD required).
 expect(scouts_allowed_photo_name('kapoenenleiding'), 'allowed fixed name');
+expect(scouts_allowed_photo_name('bg-registration'), 'allowed background name');
 expect(scouts_allowed_photo_name('news-123-abc'), 'allowed news name');
 expect(!scouts_allowed_photo_name('../etc/passwd'), 'reject path traversal name');
 expect(!scouts_allowed_photo_name('photo.svg'), 'reject odd name');
@@ -67,7 +68,7 @@ try {
     imagefilledrectangle($img, 0, 0, 639, 479, $bg);
     $jpegPath = $tmpDir . DIRECTORY_SEPARATOR . 'sample.jpg';
     imagejpeg($img, $jpegPath, 90);
-    imagedestroy($img);
+    scouts_photo_destroy($img);
 
     $basename = 'news-' . time() . '-testpipe';
     $info = getimagesize($jpegPath);
@@ -100,7 +101,7 @@ try {
     imagefilledellipse($png, 100, 100, 120, 120, $red);
     $pngPath = $tmpDir . DIRECTORY_SEPARATOR . 'alpha.png';
     imagepng($png, $pngPath);
-    imagedestroy($png);
+    scouts_photo_destroy($png);
 
     $basename2 = 'news-' . time() . '-alphatest';
     $info2 = getimagesize($pngPath);

@@ -29,6 +29,12 @@ DirectoryIndex page.php
         Header set Pragma "no-cache"
         Header set Expires "0"
     </FilesMatch>
+    <!-- Sitemap is rewritten to sitemap.php; allow short public cache for crawlers. -->
+    <Files "sitemap.php">
+        Header unset Pragma
+        Header unset Expires
+        Header set Cache-Control "public, max-age=3600"
+    </Files>
     <FilesMatch "\.(?:css|js)$">
         Header set Cache-Control "public, max-age=31536000, immutable"
     </FilesMatch>
@@ -66,7 +72,7 @@ RewriteRule ^includes(?:/|$) - [F,END]
 RewriteRule ^tools(?:/|$) - [F,END]
 RewriteRule ^uploads/originals(?:/|$) - [F,END]
 RewriteRule ^(?:\.env|\.git|node_modules)(?:/|$) - [F,END]
-RewriteRule ^(?:config\.php|router\.php|server(?:/|$)|sitemap\.php) - [F,END]
+RewriteRule ^(?:config\.php|router\.php|google-drive\.php|server(?:/|$)|sitemap\.php) - [F,END]
 RewriteRule ^auth-config\.php$ - [F,END]
 
 # Unknown public paths → styled 404 (keeps HTTP 404 via page.php).
@@ -75,6 +81,6 @@ RewriteCond %{REQUEST_FILENAME} !-d
 RewriteCond %{REQUEST_URI} !^/(api|assets|uploads)/
 RewriteRule ^ page.php?page=404 [END,QSA]
 
-<FilesMatch "^(?:config\.php|router\.php|auth-config\.php|Dockerfile|docker-compose\.yml|package(?:-lock)?\.json)$">
+<FilesMatch "^(?:config\.php|router\.php|google-drive\.php|auth-config\.php|Dockerfile|docker-compose\.yml|package(?:-lock)?\.json)$">
     Require all denied
 </FilesMatch>

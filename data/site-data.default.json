@@ -113,6 +113,26 @@
     "logo": "/assets/images/scouts.png",
     "homeHero": "/assets/images/domein.jpg",
     "aboutHero": "/uploads/over-ons.jpg?v=1788904389483",
+    "pageBackgrounds": {
+      "home": "",
+      "registration": "",
+      "news": "",
+      "about": "",
+      "secondhand": "",
+      "uniform": "",
+      "branch": "",
+      "error": ""
+    },
+    "pageBackgroundsPrevious": {
+      "home": "",
+      "registration": "",
+      "news": "",
+      "about": "",
+      "secondhand": "",
+      "uniform": "",
+      "branch": "",
+      "error": ""
+    },
     "uniform": [
       "https://images.unsplash.com/photo-1472162072942-cd5147eb3902?auto=format&fit=crop&w=900&q=80",
       "https://images.unsplash.com/photo-1504150558240-0b4fd8946624?auto=format&fit=crop&w=900&q=80",

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Served dynamically via sitemap.php (lastmod from site-data). Static fallback: -->
+<!-- Fallback only. Prefer /sitemap.xml → sitemap.php (lastmod from site-data). Keep URLs in sync with scouts_sitemap_paths() in config.php. -->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url><loc>https://scoutslille.be/</loc></url>
     <url><loc>https://scoutslille.be/over-ons</loc></url>

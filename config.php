@@ -4,6 +4,8 @@ declare(strict_types=1);
 const SCOUTS_ROOT = __DIR__;
 const SCOUTS_DATA_FILE = SCOUTS_ROOT . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . 'site-data.json';
 const SCOUTS_DEFAULT_DATA_FILE = SCOUTS_ROOT . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . 'site-data.default.json';
+/** Precomputed public JSON for fast HTML inline + API responses. */
+const SCOUTS_PUBLIC_DATA_CACHE = SCOUTS_ROOT . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . '.site-data.public.json';
 const SCOUTS_GOOGLE_DRIVE_SETTINGS_FILE = SCOUTS_ROOT . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . 'google-drive.json';
 const SCOUTS_GOOGLE_SERVICE_ACCOUNT_FILE = SCOUTS_ROOT . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . '.google-service-account.json';
 const SCOUTS_GOOGLE_OAUTH_FILE = SCOUTS_ROOT . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . '.google-oauth.json';
@@ -33,7 +35,7 @@ const SCOUTS_MAX_PDF_UPLOAD_BYTES = 20971520;
  * Bump this on every deploy so HTML/CSS/JS URLs change and old caches are skipped.
  * Format: YYYYMMDD-N
  */
-const SCOUTS_ASSET_VERSION = '20261020-60';
+const SCOUTS_ASSET_VERSION = '20261027-6';
 const SCOUTS_LOGIN_ATTEMPTS_FILE = SCOUTS_ROOT . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . '.login-attempts.json';
 const SCOUTS_LOGIN_MAX_ATTEMPTS = 5;
 const SCOUTS_LOGIN_LOCKOUT_SECONDS = 900;
@@ -341,6 +343,37 @@ function scouts_asset_version(): string
     return SCOUTS_ASSET_VERSION;
 }
 
+/** Canonical public origin (sitemap, robots, OG). */
+function scouts_public_origin(): string
+{
+    return 'https://scoutslille.be';
+}
+
+/**
+ * Indexable public URL paths for the XML sitemap (home = '/').
+ * Keep aligned with page.php / router.php / .htaccess.
+ * Excludes login, admin, and 404 (not for Google indexing).
+ *
+ * @return list<string>
+ */
+function scouts_sitemap_paths(): array
+{
+    return [
+        '/',
+        '/over-ons',
+        '/inschrijven',
+        '/nieuws',
+        '/uniform',
+        '/tweedehands',
+        '/kapoenen',
+        '/welpen',
+        '/jongverkenners',
+        '/verkenners',
+        '/jins',
+        '/privacybeleid',
+    ];
+}
+
 /** HTML documents: never keep a stale shell that points at old CSS/JS. */
 function scouts_send_html_cache_headers(): void
 {
@@ -431,24 +464,106 @@ function scouts_send_html_file(string $absolutePath, ?string $pageId = null): ne
                 $html = preg_replace('/<\/head>/i', $jsonLd . "\n</head>", $html, 1) ?? $html;
             }
         }
+
+        // Inline public site-data so the first paint needs no extra API round-trip.
+        if (!str_contains($html, '__SCOUTS_SITE_DATA__')) {
+            try {
+                $bundle = scouts_public_site_data_bundle();
+                $meta = json_encode(
+                    [
+                        'version' => $bundle['version'],
+                        'etag' => $bundle['etag'],
+                    ],
+                    JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+                );
+                if ($meta !== false) {
+                    $boot = '<script>window.__SCOUTS_SITE_DATA__='
+                        . $bundle['json']
+                        . ';window.__SCOUTS_SITE_DATA_META__='
+                        . $meta
+                        . ';</script>';
+                    $html = preg_replace('/<\/head>/i', $boot . "\n</head>", $html, 1) ?? $html;
+                }
+            } catch (Throwable) {
+                // Fall back to JS fetch via DataStore.load().
+            }
+        }
     }
 
     $version = scouts_asset_version();
+    $cssBundle = match ($resolvedPage) {
+        'index', 'login' => 'core',
+        'admin' => 'admin',
+        default => 'public',
+    };
+    $versionLocalAssetUrl = static function (string $url) use ($version, $cssBundle): string {
+        $url = html_entity_decode(trim($url), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        if ($url === '' || preg_match('#^(https?:)?//#i', $url) === 1 || str_starts_with($url, 'data:')) {
+            return $url;
+        }
+        if (preg_match('#\.(?:css|js|png|jpe?g|webp|avif|gif|svg|ico)(?:\?|$)#i', $url) !== 1) {
+            return $url;
+        }
+        $parts = parse_url($url);
+        if (!is_array($parts) || empty($parts['path'])) {
+            return $url;
+        }
+        $query = [];
+        if (!empty($parts['query'])) {
+            parse_str($parts['query'], $query);
+        }
+        $path = $parts['path'];
+        $baseName = strtolower(basename($path));
+        if ($baseName === 'style.css') {
+            if ($cssBundle === 'public') {
+                unset($query['bundle']);
+            } else {
+                $query['bundle'] = $cssBundle;
+            }
+        } elseif ($baseName === 'script.js') {
+            // Production serves the checked-in minified build; source stays script.js.
+            if (preg_match('#^(.*)/script\.js$#i', $path, $pathParts) === 1) {
+                $path = $pathParts[1] . '/script.min.js';
+            } else {
+                $path = 'script.min.js';
+            }
+        }
+        $query['v'] = $version;
+        return $path . '?' . http_build_query($query);
+    };
+
     $html = preg_replace_callback(
-        '/\b(href|src)=(["\'])([^"\'?]+\.(?:css|js|png|jpe?g|webp|gif|svg|ico))(?:\?([^"\']*))?\2/i',
-        static function (array $matches) use ($version): string {
-            $path = $matches[3];
-            // Only version local site assets (not CDNs / external URLs).
-            if (preg_match('#^(https?:)?//#i', $path) === 1) {
+        '/\b(href|src)=(["\'])([^"\']+)\2/i',
+        static function (array $matches) use ($versionLocalAssetUrl): string {
+            $next = $versionLocalAssetUrl($matches[3]);
+            if ($next === $matches[3]) {
                 return $matches[0];
             }
-            $query = [];
-            if (!empty($matches[4])) {
-                parse_str(str_replace('&amp;', '&', $matches[4]), $query);
+            return $matches[1] . '=' . $matches[2] . $next . $matches[2];
+        },
+        $html
+    ) ?? $html;
+
+    // Keep preload/srcset candidates on the same cache-busted versions.
+    $html = preg_replace_callback(
+        '/\b(imagesrcset|srcset)=(["\'])([^"\']+)\2/i',
+        static function (array $matches) use ($versionLocalAssetUrl): string {
+            $parts = preg_split('/\s*,\s*/', $matches[3]) ?: [];
+            $rewritten = [];
+            foreach ($parts as $part) {
+                $part = trim($part);
+                if ($part === '') {
+                    continue;
+                }
+                if (preg_match('/^(.*?)(?:\s+(\d+[wx]|\d+(\.\d+)?x))?$/i', $part, $bit) !== 1) {
+                    $rewritten[] = $part;
+                    continue;
+                }
+                $url = $versionLocalAssetUrl($bit[1]);
+                $descriptor = isset($bit[2]) ? ' ' . $bit[2] : '';
+                $rewritten[] = $url . $descriptor;
             }
-            // Keep params like bundle=admin; always refresh cache buster.
-            $query['v'] = $version;
-            return $matches[1] . '=' . $matches[2] . $path . '?' . http_build_query($query) . $matches[2];
+            return $matches[1] . '=' . $matches[2] . implode(', ', $rewritten) . $matches[2];
         },
         $html
     ) ?? $html;
@@ -548,9 +663,66 @@ function scouts_decode_json_file(string $file): array
     return $data;
 }
 
+/**
+ * Ensure photos.pageBackgrounds(+Previous) exist with known string keys.
+ *
+ * @param array<string, mixed> $data
+ * @return array<string, mixed>
+ */
+function scouts_normalize_page_backgrounds(array $data): array
+{
+    if (!isset($data['photos']) || !is_array($data['photos'])) {
+        $data['photos'] = [];
+    }
+
+    $keys = scouts_page_background_keys();
+    foreach (['pageBackgrounds', 'pageBackgroundsPrevious'] as $bucket) {
+        if (!isset($data['photos'][$bucket]) || !is_array($data['photos'][$bucket])) {
+            $data['photos'][$bucket] = [];
+        }
+        foreach ($keys as $key) {
+            $value = $data['photos'][$bucket][$key] ?? '';
+            $data['photos'][$bucket][$key] = is_string($value) ? $value : '';
+        }
+    }
+
+    return $data;
+}
+
+/**
+ * @return list<string>
+ */
+function scouts_page_background_keys(): array
+{
+    return [
+        'home',
+        'registration',
+        'news',
+        'about',
+        'secondhand',
+        'uniform',
+        'branch',
+        'error',
+    ];
+}
+
+/**
+ * Upload stems for configurable page backgrounds (bg-home, …).
+ *
+ * @return list<string>
+ */
+function scouts_page_background_upload_names(): array
+{
+    $names = [];
+    foreach (scouts_page_background_keys() as $key) {
+        $names[] = 'bg-' . $key;
+    }
+    return $names;
+}
+
 function scouts_read_site_data(): array
 {
-    return scouts_decode_json_file(SCOUTS_DATA_FILE);
+    return scouts_normalize_page_backgrounds(scouts_decode_json_file(SCOUTS_DATA_FILE));
 }
 
 function scouts_site_data_version(): string
@@ -572,6 +744,22 @@ function scouts_site_data_version(): string
  */
 function scouts_public_site_data(array $data): array
 {
+    // Editor / unused keys — keep the public payload small.
+    unset($data['activePage']);
+    if (isset($data['pageContent']) && is_array($data['pageContent'])) {
+        unset($data['pageContent']['photos'], $data['pageContent']['settings']);
+    }
+    if (isset($data['photos']) && is_array($data['photos'])) {
+        unset(
+            $data['photos']['logo'],
+            $data['photos']['homeHero'],
+            $data['photos']['uniform'],
+            $data['photos']['branchLogos'],
+            $data['photos']['letters'],
+            $data['photos']['pageBackgroundsPrevious']
+        );
+    }
+
     if (!isset($data['news']) || !is_array($data['news'])) {
         $data['news'] = [];
         return $data;
@@ -588,6 +776,75 @@ function scouts_public_site_data(array $data): array
     ));
 
     return $data;
+}
+
+/**
+ * Public site-data as JSON string + version (file-cached, rebuilt on write / miss).
+ *
+ * @return array{version: string, etag: string, json: string}
+ */
+function scouts_public_site_data_bundle(): array
+{
+    $version = scouts_site_data_version();
+    $etag = '"' . $version . '-p"';
+
+    if (is_file(SCOUTS_PUBLIC_DATA_CACHE)) {
+        $raw = @file_get_contents(SCOUTS_PUBLIC_DATA_CACHE);
+        if (is_string($raw) && $raw !== '') {
+            $cached = json_decode($raw, true);
+            if (
+                is_array($cached)
+                && ($cached['version'] ?? null) === $version
+                && is_string($cached['json'] ?? null)
+                && $cached['json'] !== ''
+            ) {
+                return [
+                    'version' => $version,
+                    'etag' => $etag,
+                    'json' => $cached['json'],
+                ];
+            }
+        }
+    }
+
+    $data = scouts_public_site_data(scouts_read_site_data());
+    $json = json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    if ($json === false) {
+        throw new RuntimeException('Sitegegevens konden niet worden gecodeerd.');
+    }
+
+    $payload = json_encode(
+        ['version' => $version, 'json' => $json],
+        JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+    );
+    if ($payload !== false) {
+        $dir = dirname(SCOUTS_PUBLIC_DATA_CACHE);
+        if (!is_dir($dir)) {
+            @mkdir($dir, 0755, true);
+        }
+        $temp = @tempnam($dir, 'pub-');
+        if ($temp !== false) {
+            if (@file_put_contents($temp, $payload, LOCK_EX) !== false) {
+                @rename($temp, SCOUTS_PUBLIC_DATA_CACHE);
+            }
+            if (is_file($temp)) {
+                @unlink($temp);
+            }
+        }
+    }
+
+    return [
+        'version' => $version,
+        'etag' => $etag,
+        'json' => $json,
+    ];
+}
+
+function scouts_invalidate_public_site_data_cache(): void
+{
+    if (is_file(SCOUTS_PUBLIC_DATA_CACHE)) {
+        @unlink(SCOUTS_PUBLIC_DATA_CACHE);
+    }
 }
 
 /**
@@ -649,6 +906,7 @@ function scouts_validate_site_data(array $data): void
 
 function scouts_write_site_data(array $data): void
 {
+    $data = scouts_normalize_page_backgrounds($data);
     scouts_validate_site_data($data);
 
     json_encode($data, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
@@ -670,6 +928,13 @@ function scouts_write_site_data(array $data): void
 
         if (!rename($tempFile, SCOUTS_DATA_FILE)) {
             throw new RuntimeException('Sitegegevens konden niet atomair worden vervangen.');
+        }
+        scouts_invalidate_public_site_data_cache();
+        // Rebuild eagerly so the next HTML/API hit is a cache read.
+        try {
+            scouts_public_site_data_bundle();
+        } catch (Throwable) {
+            // Cache rebuild is best-effort; API/HTML can rebuild on demand.
         }
     } finally {
         if (is_file($tempFile)) {
@@ -693,6 +958,7 @@ function scouts_allowed_photo_name(string $filename): bool
     return in_array($filename, [
         'over-ons', 'kapoenenleiding', 'welpenleiding',
         'jongverkennersleiding', 'verkennersleiding', 'jinsleiding',
+        ...scouts_page_background_upload_names(),
     ], true)
         || (bool) preg_match('/^(?:tweedehands|agenda|news)-[0-9]+-[a-z0-9]+$/', $filename);
 }
@@ -720,13 +986,20 @@ function scouts_protected_upload_filenames(): array
         '.htaccess',
         'htaccess',
         'privacybeleid.pdf',
-        'privacybeleid.docx',
         'over-ons.jpg',
         'kapoenenleiding.jpg',
         'welpenleiding.jpg',
         'jongverkennersleiding.jpg',
         'verkennersleiding.jpg',
         'jinsleiding.jpg',
+        'bg-home.jpg',
+        'bg-registration.jpg',
+        'bg-news.jpg',
+        'bg-about.jpg',
+        'bg-secondhand.jpg',
+        'bg-uniform.jpg',
+        'bg-branch.jpg',
+        'bg-error.jpg',
     ];
 }
 
@@ -889,77 +1162,50 @@ function scouts_read_google_drive_settings(): array
     return scouts_decode_json_file(SCOUTS_GOOGLE_DRIVE_SETTINGS_FILE);
 }
 
-function scouts_write_google_drive_settings(array $settings): void
+function scouts_replace_file_atomic(string $targetPath, string $contents, string $errorLabel): void
 {
-    $json = json_encode($settings, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) . PHP_EOL;
-    if (!is_dir(dirname(SCOUTS_GOOGLE_DRIVE_SETTINGS_FILE)) && !mkdir(dirname(SCOUTS_GOOGLE_DRIVE_SETTINGS_FILE), 0755, true)) {
+    $dir = dirname($targetPath);
+    if (!is_dir($dir) && !mkdir($dir, 0755, true)) {
         throw new RuntimeException('Datamap kon niet worden aangemaakt.');
     }
 
-    $tempFile = tempnam(dirname(SCOUTS_GOOGLE_DRIVE_SETTINGS_FILE), 'google-drive-');
-    if ($tempFile === false || file_put_contents($tempFile, $json, LOCK_EX) === false) {
-        @unlink($tempFile);
-        throw new RuntimeException('Google Drive-instellingen konden niet worden opgeslagen.');
-    }
-
-    try {
-        if (!rename($tempFile, SCOUTS_GOOGLE_DRIVE_SETTINGS_FILE)) {
-            throw new RuntimeException('Google Drive-instellingen konden niet worden vervangen.');
-        }
-    } finally {
-        if (is_file($tempFile)) {
+    $tempFile = tempnam($dir, 'scouts-');
+    if ($tempFile === false || file_put_contents($tempFile, $contents, LOCK_EX) === false) {
+        if (is_string($tempFile) && is_file($tempFile)) {
             @unlink($tempFile);
         }
+        throw new RuntimeException($errorLabel . ' kon niet worden opgeslagen.');
     }
+
+    // Windows cannot rename() over an existing file; fall back to copy().
+    $replaced = @rename($tempFile, $targetPath);
+    if (!$replaced) {
+        $replaced = @copy($tempFile, $targetPath);
+        @unlink($tempFile);
+    }
+    if (!$replaced) {
+        throw new RuntimeException($errorLabel . ' kon niet worden vervangen.');
+    }
+}
+
+function scouts_write_google_drive_settings(array $settings): void
+{
+    $json = json_encode($settings, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) . PHP_EOL;
+    scouts_replace_file_atomic(SCOUTS_GOOGLE_DRIVE_SETTINGS_FILE, $json, 'Google Drive-instellingen');
 }
 
 function scouts_write_google_drive_credentials(array $credentials): void
 {
     $json = json_encode($credentials, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) . PHP_EOL;
-    if (!is_dir(dirname(SCOUTS_GOOGLE_SERVICE_ACCOUNT_FILE)) && !mkdir(dirname(SCOUTS_GOOGLE_SERVICE_ACCOUNT_FILE), 0755, true)) {
-        throw new RuntimeException('Datamap kon niet worden aangemaakt.');
-    }
-    $tempFile = tempnam(dirname(SCOUTS_GOOGLE_SERVICE_ACCOUNT_FILE), 'google-key-');
-    if ($tempFile === false || file_put_contents($tempFile, $json, LOCK_EX) === false) {
-        @unlink($tempFile);
-        throw new RuntimeException('Google-sleutel kon niet worden opgeslagen.');
-    }
-
-    try {
-        if (!rename($tempFile, SCOUTS_GOOGLE_SERVICE_ACCOUNT_FILE)) {
-            throw new RuntimeException('Google-sleutel kon niet worden vervangen.');
-        }
-        @chmod(SCOUTS_GOOGLE_SERVICE_ACCOUNT_FILE, 0600);
-    } finally {
-        if (is_file($tempFile)) {
-            @unlink($tempFile);
-        }
-    }
+    scouts_replace_file_atomic(SCOUTS_GOOGLE_SERVICE_ACCOUNT_FILE, $json, 'Google-sleutel');
+    @chmod(SCOUTS_GOOGLE_SERVICE_ACCOUNT_FILE, 0600);
 }
 
 function scouts_write_google_oauth(array $oauth): void
 {
     $json = json_encode($oauth, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) . PHP_EOL;
-    if (!is_dir(dirname(SCOUTS_GOOGLE_OAUTH_FILE)) && !mkdir(dirname(SCOUTS_GOOGLE_OAUTH_FILE), 0755, true)) {
-        throw new RuntimeException('Datamap kon niet worden aangemaakt.');
-    }
-
-    $tempFile = tempnam(dirname(SCOUTS_GOOGLE_OAUTH_FILE), 'google-oauth-');
-    if ($tempFile === false || file_put_contents($tempFile, $json, LOCK_EX) === false) {
-        @unlink($tempFile);
-        throw new RuntimeException('Google OAuth-configuratie kon niet worden opgeslagen.');
-    }
-
-    try {
-        if (!rename($tempFile, SCOUTS_GOOGLE_OAUTH_FILE)) {
-            throw new RuntimeException('Google OAuth-configuratie kon niet worden vervangen.');
-        }
-        @chmod(SCOUTS_GOOGLE_OAUTH_FILE, 0600);
-    } finally {
-        if (is_file($tempFile)) {
-            @unlink($tempFile);
-        }
-    }
+    scouts_replace_file_atomic(SCOUTS_GOOGLE_OAUTH_FILE, $json, 'Google OAuth-configuratie');
+    @chmod(SCOUTS_GOOGLE_OAUTH_FILE, 0600);
 }
 
 function scouts_google_settings_password_hash(): string

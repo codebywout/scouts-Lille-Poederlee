@@ -96,6 +96,13 @@ body.home-page .hero {
     color: var(--green);
 }
 
+.nav-cta:focus-visible,
+.mobile-menu-button:focus-visible,
+.desktop-nav a:focus-visible {
+    outline: 2px solid rgba(78, 43, 26, 0.55);
+    outline-offset: 2px;
+}
+
 .mobile-menu-button {
     display: none;
     width: 42px;
