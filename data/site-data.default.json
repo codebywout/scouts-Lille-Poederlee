@@ -2,117 +2,116 @@
   "activePage": "home",
   "pageContent": {
     "over-ons": {
-      "intro": "Met 22 leiders, een hoop energie en net genoeg gezond verstand zorgen wij er elke week voor dat de scouts gevuld zijn met actie, plezier en verhalen die thuis niet altijd volledig worden verteld.\n\nWij geloven dat kinderen en jongeren het best groeien in een omgeving waar ze kunnen bewegen, experimenteren, samenwerken en zichzelf ontdekken."
+      "intro": "Welkom bij onze voorbeeldgroep. Vervang deze tekst in het adminpaneel door jullie eigen verhaal.\n\nWe geloven dat kinderen en jongeren groeien door spelen, samenwerken en avontuur."
     },
     "inschrijven": {
       "lidgeld": "60",
-      "rekeningnummer": "BE42 9734 8157 7954"
-    },
-    "photos": {}
+      "rekeningnummer": "BE00 0000 0000 0000"
+    }
   },
   "agenda": [
     {
-      "day": "27",
+      "day": "1",
       "month": "SEP",
-      "title": "Start van de vergaderingen!",
-      "text": "Vandaag beginnen de activiteiten. Iedereen is welkom."
+      "title": "Voorbeeldactiviteit",
+      "text": "Vervang dit door jullie echte agenda in het adminpaneel.",
+      "link": "",
+      "linkText": "",
+      "image": "",
+      "endDay": "",
+      "endMonth": ""
     }
   ],
   "news": [
     {
-      "title": "Bouw van ons lokaal",
+      "title": "Welkom op de nieuwe site",
       "date": "2026",
-      "text": "We werken aan de bouw van ons nieuwe scoutslokaal. Hier delen we updates over de voortgang, de planning en hoe jullie de werken kunnen volgen.",
+      "text": "Dit is een voorbeeldbericht. Verwijder of bewerk het in het adminpaneel.",
       "image": "",
       "images": [],
       "link": "",
       "linkText": "",
-      "summary": "",
-      "published": true
+      "summary": "Korte voorbeeldtekst voor nieuwe groepen.",
+      "published": true,
+      "id": "welkom-op-de-nieuwe-site"
     }
   ],
   "faq": [
     {
       "question": "Wanneer zijn de activiteiten?",
-      "answer": "Onze scoutsgroep komt meestal elke zondag samen van 13u30 tot 16u30. De exacte uren kunnen per activiteit verschillen. Je vindt de juiste uren altijd terug in ons gazetje."
+      "answer": "Pas deze FAQ aan in het adminpaneel. Typisch komen groepen wekelijks samen."
     },
     {
       "question": "Waar vinden de activiteiten plaats?",
-      "answer": "De activiteiten vinden meestal plaats op ons scoutsdomein. Afhankelijk van de geplande activiteit kan de locatie echter verschillen. Wanneer een activiteit op een andere locatie doorgaat, wordt dit altijd vooraf gecommuniceerd."
+      "answer": "Vermeld hier jullie domein of afgesproken verzamelplaats."
     },
     {
       "question": "Voor welke leeftijden kan ik inschrijven?",
-      "answer": "We werken met verschillende leeftijdsgroepen, van 6 tot 18 jaar. Op basis van de leeftijd wordt je kind ingedeeld bij de juiste tak."
+      "answer": "Pas de leeftijden aan volgens jullie takkenstructuur."
     },
     {
       "question": "Hoe schrijf ik mijn kind in?",
-      "answer": "Meer informatie over het inschrijven van je kind vind je op het tabblad ‘Inschrijven’."
+      "answer": "Verwijs naar jullie inschrijfpagina of procedure."
     },
     {
       "question": "Wat moet mijn kind meenemen?",
-      "answer": "Als scouts dragen we steeds een uniform. Bij kapoenen is dit een kapoenentrui tijdens de scoutsvergaderingen. Vanaf de welpen wordt dit een scoutshemd, korte broek en das!"
+      "answer": "Uniform, drankje en goeie zin — pas aan naar jullie afspraken."
     },
     {
-      "question": "Kan ik eerst een keer komen kijken?",
-      "answer": "Zeker! Je kind mag twee keer komen proberen bij Scouts Lille. Tijdens deze activiteiten is je kind volledig verzekerd, ook als het nog niet is ingeschreven. Vanaf de derde activiteit moet het lidgeld betaald zijn."
+      "question": "Kan ik eerst een keer komen proberen?",
+      "answer": "Ja. Beschrijf hier jullie proefmomenten en verzekeringsregels."
     }
   ],
   "contact": {
-    "email": "groepsleidingscoutslille@gmail.com",
-    "address": "Zagerijstraat 29, 2275 Lille"
+    "email": "info@voorbeeldgroep.be",
+    "address": "Voorbeeldstraat 1, 2000 Antwerpen"
   },
   "groupLeadership": [
     {
-      "name": "Flor Cuylaerts",
-      "phone": "04 71 25 41 14"
+      "name": "Alex Voorbeeld",
+      "phone": "04 00 00 00 01"
     },
     {
-      "name": "Willem Van Herck",
-      "phone": "04 68 27 83 69"
-    },
-    {
-      "name": "Thiebe Mertens",
-      "phone": "04 91 98 26 13"
-    },
-    {
-      "name": "Wout Pluym",
-      "phone": "04 92 76 39 91"
+      "name": "Sam Demo",
+      "phone": "04 00 00 00 02"
     }
   ],
   "branchLeadership": {
     "kapoenen": [
       {
-        "name": "Ruben Van den Broeck",
-        "phone": "04 00 00 00 00",
+        "name": "Kim Kapoen",
+        "phone": "04 00 00 00 11",
         "takleider": true
       },
       {
-        "name": "Wies Smeyers",
-        "phone": "04 00 00 00 00"
-      },
-      {
-        "name": "Lender De Ceuster",
-        "phone": "04 00 00 00 00"
-      },
-      {
-        "name": "Thiebe Mertens",
-        "phone": "04 00 00 00 00"
-      },
-      {
-        "name": "Daan Wijnants",
-        "phone": "04 00 00 00 00"
+        "name": "Jo Kapoen",
+        "phone": "04 00 00 00 12",
+        "takleider": false
       }
     ],
-    "welpen": [],
+    "welpen": [
+      {
+        "name": "Lee Welp",
+        "phone": "04 00 00 00 21",
+        "takleider": true
+      }
+    ],
     "jongverkenners": [],
     "verkenners": [],
     "jins": []
   },
   "secondhand": [],
+  "letters": {
+    "kapoenen": [],
+    "welpen": [],
+    "jongverkenners": [],
+    "verkenners": [],
+    "jins": []
+  },
   "photos": {
     "logo": "/assets/images/scouts.png",
     "homeHero": "/assets/images/domein.jpg",
-    "aboutHero": "/uploads/over-ons.jpg?v=1788904389483",
+    "aboutHero": "",
     "pageBackgrounds": {
       "home": "",
       "registration": "",
@@ -133,19 +132,15 @@
       "branch": "",
       "error": ""
     },
-    "uniform": [
-      "https://images.unsplash.com/photo-1472162072942-cd5147eb3902?auto=format&fit=crop&w=900&q=80",
-      "https://images.unsplash.com/photo-1504150558240-0b4fd8946624?auto=format&fit=crop&w=900&q=80",
-      "https://images.unsplash.com/photo-1504150558240-0b4fd8946624?auto=format&fit=crop&w=900&q=80"
-    ],
+    "uniform": [],
     "branches": {
-      "kapoenen": "/uploads/kapoenenleiding.jpg?v=1788903767463",
-      "welpen": "/uploads/welpenleiding.jpg?v=1788903773456",
-      "jongverkenners": "/uploads/jongverkennersleiding.jpg?v=1788903777327",
-      "verkenners": "/uploads/verkennersleiding.jpg?v=1788903780844",
-      "jins": "/uploads/jinsleiding.jpg?v=1788903784051"
+      "kapoenen": "",
+      "welpen": "",
+      "jongverkenners": "",
+      "verkenners": "",
+      "jins": ""
     },
-	"monthlyPlanning": {
+    "monthlyPlanning": {
       "kapoenen": "",
       "welpen": "",
       "jongverkenners": "",

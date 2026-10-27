@@ -7,6 +7,8 @@ data/.google-oauth.json
 data/google-drive.json
 data/.login-attempts.json
 data/.site-data.public.json
+# Runtime content — never commit; seed from site-data.default.json on the server.
+data/site-data.json
 .sessions/
 .vscode/
 .idea/

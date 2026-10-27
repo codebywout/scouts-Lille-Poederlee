@@ -146,6 +146,7 @@ if ($admin['status'] === 302) {
     smoke_assert('admin Location /login', (bool) preg_match('#^Location:\s*/login#mi', $admin['headers']));
 }
 
+// 403 (Apache/LiteSpeed [F]) and 404 (PHP router) both mean "not publicly readable".
 foreach ([
     '/config.php',
     '/router.php',
@@ -157,14 +158,62 @@ foreach ([
     '/tools/smoke-http.php',
     '/uploads/originals/',
     '/.env',
+    '/.user.ini',
+    '/README.md',
+    '/docs/',
+    '/docs/technische-handleiding.md',
 ] as $blocked) {
-    smoke_expect_status("blocked {$blocked}", 'GET', $base . $blocked, 404);
+    $res = smoke_request('GET', $base . $blocked);
+    if ($res['error'] !== '') {
+        smoke_assert("blocked {$blocked}", false, $res['error']);
+        continue;
+    }
+    smoke_assert(
+        "blocked {$blocked}",
+        in_array($res['status'], [403, 404], true),
+        "expected 403 or 404, got {$res['status']}"
+    );
 }
 
 $siteData = smoke_expect_status('GET /api/site-data', 'GET', $base . '/api/site-data', 200);
+$siteDataEtag = '';
 if ($siteData['status'] === 200) {
     $json = json_decode($siteData['body'], true);
     smoke_assert('site-data JSON', is_array($json), json_last_error_msg());
+    if (is_array($json)) {
+        $leaderPhones = 0;
+        foreach ($json['groupLeadership'] ?? [] as $person) {
+            if (is_array($person) && array_key_exists('phone', $person)) {
+                $leaderPhones++;
+            }
+        }
+        foreach ($json['branchLeadership'] ?? [] as $list) {
+            if (!is_array($list)) {
+                continue;
+            }
+            foreach ($list as $person) {
+                if (is_array($person) && array_key_exists('phone', $person)) {
+                    $leaderPhones++;
+                }
+            }
+        }
+        smoke_assert('public site-data has no leadership phones', $leaderPhones === 0, "count={$leaderPhones}");
+    }
+    if (preg_match('/^ETag:\s*([^\r\n]+)/mi', $siteData['headers'], $etagMatch)) {
+        $siteDataEtag = trim($etagMatch[1]);
+    }
+    if ($siteDataEtag !== '') {
+        $revalidate = smoke_request('GET', $base . '/api/site-data', [
+            'headers' => ['If-None-Match' => $siteDataEtag],
+        ]);
+        smoke_assert(
+            'site-data If-None-Match returns 304',
+            $revalidate['status'] === 304,
+            "expected 304, got {$revalidate['status']}"
+        );
+    } else {
+        smoke_assert('site-data ETag header present', false);
+    }
 }
 
 $session = smoke_expect_status('GET /api/session', 'GET', $base . '/api/session', 200);

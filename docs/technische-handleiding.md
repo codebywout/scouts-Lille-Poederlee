@@ -130,7 +130,7 @@ scouts/
 │   └── js/                      # script.js, script.min.js, admin.js, qrcode.min.js
 ├── data/
 │   ├── .htaccess                # Require all denied
-│   ├── site-data.json           # Actieve inhoud (wel getrackt)
+│   ├── site-data.json           # Actieve inhoud (runtime, niet in Git)
 │   ├── site-data.default.json
 │   └── … (Drive/OAuth/cache: gitignored)
 ├── includes/
@@ -175,8 +175,8 @@ scouts/
 
 | Pad | Rol | In Git? |
 | --- | --- | --- |
-| `data/site-data.json` | Live inhoud | Ja (huidige setup) — zie privacy hieronder |
-| `data/site-data.default.json` | Reset-bron voor admin-reset | Ja |
+| `data/site-data.json` | Live inhoud | Nee (`.gitignore`; alleen op de server) |
+| `data/site-data.default.json` | Reset-bron / seed met fictieve voorbeelden | Ja |
 | `data/.site-data.public.json` | Cache publieke API-payload | Nee |
 | `data/.login-attempts.json` | Login rate-limit | Nee |
 | `data/google-drive.json`, `.google-oauth.json`, `.google-service-account.json` | Drive | Nee |

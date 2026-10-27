@@ -14,6 +14,21 @@ if (PHP_SAPI !== 'cli') {
 }
 
 $root = dirname(__DIR__);
+
+// Isolate encode tests from the real uploads/ directory.
+$tmpUploads = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'scouts-uploads-test-' . bin2hex(random_bytes(4));
+if (!mkdir($tmpUploads, 0700) && !is_dir($tmpUploads)) {
+    fwrite(STDERR, "Could not create temp uploads dir.\n");
+    exit(1);
+}
+@mkdir($tmpUploads . DIRECTORY_SEPARATOR . 'originals', 0700, true);
+@file_put_contents(
+    $tmpUploads . DIRECTORY_SEPARATOR . 'originals' . DIRECTORY_SEPARATOR . '.htaccess',
+    "Require all denied\n"
+);
+putenv('SCOUTS_TEST_UPLOADS_DIR=' . $tmpUploads);
+$_ENV['SCOUTS_TEST_UPLOADS_DIR'] = $tmpUploads;
+
 require_once $root . DIRECTORY_SEPARATOR . 'config.php';
 
 $failed = 0;
@@ -293,6 +308,27 @@ try {
         @unlink($f);
     }
     @rmdir($tmpDir);
+
+    $purge = static function (string $dir) use (&$purge): void {
+        if (!is_dir($dir)) {
+            return;
+        }
+        foreach (scandir($dir) ?: [] as $entry) {
+            if ($entry === '.' || $entry === '..') {
+                continue;
+            }
+            $path = $dir . DIRECTORY_SEPARATOR . $entry;
+            if (is_dir($path)) {
+                $purge($path);
+            } else {
+                @unlink($path);
+            }
+        }
+        @rmdir($dir);
+    };
+    $purge($tmpUploads);
+    putenv('SCOUTS_TEST_UPLOADS_DIR');
+    unset($_ENV['SCOUTS_TEST_UPLOADS_DIR']);
 }
 
 fwrite(STDOUT, $failed === 0 ? "All tests passed.\n" : "{$failed} failure(s).\n");

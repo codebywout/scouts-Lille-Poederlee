@@ -24,8 +24,28 @@ try {
         }
 
         $version = scouts_site_data_version();
-        $etagToken = $version . ($isAdmin ? '-a' : '-p');
+        $bundle = null;
+        $json = null;
+
+        // ETag must match exactly what we emit (public bundle uses format suffix).
+        if ($isAdmin) {
+            $etagToken = $version . '-a';
+            $data = scouts_read_site_data();
+            $json = json_encode(
+                $data,
+                JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+            );
+            if ($json === false) {
+                throw new RuntimeException('Sitegegevens konden niet worden gecodeerd.');
+            }
+        } else {
+            $bundle = scouts_public_site_data_bundle();
+            $json = $bundle['json'];
+            $etagToken = trim((string) $bundle['etag'], " \t\"");
+            $version = $bundle['version'];
+        }
         $etag = '"' . $etagToken . '"';
+
         header('Content-Type: application/json; charset=utf-8');
         if ($isAdmin) {
             header('Cache-Control: private, no-store');
@@ -57,23 +77,6 @@ try {
             exit;
         }
 
-        if ($isAdmin) {
-            $data = scouts_read_site_data();
-            $json = json_encode(
-                $data,
-                JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
-            );
-            if ($json === false) {
-                throw new RuntimeException('Sitegegevens konden niet worden gecodeerd.');
-            }
-        } else {
-            $bundle = scouts_public_site_data_bundle();
-            $json = $bundle['json'];
-            // Prefer bundle etag (same token) in case version raced.
-            $etag = $bundle['etag'];
-            header('ETag: ' . $etag);
-            header('X-Scouts-Data-Version: ' . $bundle['version']);
-        }
         header('Content-Length: ' . strlen($json));
         if ($method === 'HEAD') {
             exit;
