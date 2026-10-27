@@ -7,18 +7,28 @@ require_once __DIR__ . DIRECTORY_SEPARATOR . 'config.php';
 // files are returned to the server; /api/* requests are handled by the API.
 $requestPath = parse_url((string) ($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PATH);
 $requestPath = is_string($requestPath) ? rawurldecode($requestPath) : '/';
+// Normalize for blocklist checks (case-insensitive FS on Windows/macOS).
+$blockedPath = strtolower(str_replace('\\', '/', $requestPath));
+if (str_contains($blockedPath, "\0") || str_contains($blockedPath, '..')) {
+    http_response_code(404);
+    exit;
+}
 
-if ($requestPath === '/data' || strncmp($requestPath, '/data/', 6) === 0
-    || $requestPath === '/includes' || strncmp($requestPath, '/includes/', 10) === 0
-    || $requestPath === '/tools' || strncmp($requestPath, '/tools/', 7) === 0
-    || $requestPath === '/uploads/originals' || strncmp($requestPath, '/uploads/originals/', 19) === 0
-    || $requestPath === '/.env' || strncmp($requestPath, '/.git/', 6) === 0
-    || $requestPath === '/config.php'
-    || $requestPath === '/auth-config.php'
-    || $requestPath === '/router.php'
-    || $requestPath === '/sitemap.php'
-    || $requestPath === '/google-drive.php'
-    || strncmp($requestPath, '/server/', 8) === 0) {
+if ($blockedPath === '/data' || strncmp($blockedPath, '/data/', 6) === 0
+    || $blockedPath === '/includes' || strncmp($blockedPath, '/includes/', 10) === 0
+    || $blockedPath === '/tools' || strncmp($blockedPath, '/tools/', 7) === 0
+    || $blockedPath === '/docs' || strncmp($blockedPath, '/docs/', 6) === 0
+    || $blockedPath === '/uploads/originals' || strncmp($blockedPath, '/uploads/originals/', 19) === 0
+    || $blockedPath === '/.env' || strncmp($blockedPath, '/.git', 5) === 0
+    || $blockedPath === '/config.php'
+    || $blockedPath === '/auth-config.php'
+    || $blockedPath === '/router.php'
+    || $blockedPath === '/sitemap.php'
+    || $blockedPath === '/google-drive.php'
+    || $blockedPath === '/readme.md'
+    || $blockedPath === '/.user.ini'
+    || $blockedPath === '/texput.log'
+    || strncmp($blockedPath, '/server/', 8) === 0) {
     http_response_code(404);
     exit;
 }

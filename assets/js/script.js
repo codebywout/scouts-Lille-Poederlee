@@ -130,7 +130,7 @@
       });
   }
 
-  const IMAGE_ASSET_VERSION = "20261026-8";
+  const IMAGE_ASSET_VERSION = "20261027-12";
 
   function formatLidgeldLabel(amount) {
     const amountNumber = Number(String(amount || "").replace(",", ".").replace(/[^\d.]/g, ""));
@@ -1132,12 +1132,22 @@
       const takSelect = registrationForm.querySelector('select[name="tak"]');
       const takLabel = takSelect?.selectedOptions?.[0]?.textContent?.trim() || "";
 
+      const submitBtn = registrationForm.querySelector('button[type="submit"]');
+      if (submitBtn) submitBtn.disabled = true;
+
       submitToGoogleForm(formData);
       showPaymentStep(voornaam, achternaam, takLabel);
 
       registrationForm.reset();
       const status = document.getElementById("registrationStatus");
-      if (status) status.textContent = "Formulier verzonden. Betaal hieronder om af te ronden.";
+      if (status) {
+        status.textContent =
+          "Je gegevens zijn doorgestuurd. Controleer of de leiding je aanvraag ontvangt, en betaal hieronder. Je bent pas verzekerd na betaling én inschrijving bij Scouts en Gidsen Vlaanderen.";
+      }
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Opnieuw versturen";
+      }
     });
 
     registrationForm._hidePaymentStep = hidePaymentStep;
@@ -1866,7 +1876,12 @@
     data.news.forEach((item, index) => {
       if (!item || typeof item !== "object") return;
       if (typeof item.summary !== "string") item.summary = "";
-      if (typeof item.published !== "boolean") item.published = true;
+      // Legacy (missing key) stays published; other non-booleans fail closed.
+      if (!Object.prototype.hasOwnProperty.call(item, "published")) {
+        item.published = true;
+      } else if (typeof item.published !== "boolean") {
+        item.published = false;
+      }
       setNewsImages(item, getNewsImages(item));
 
       let id =
@@ -1888,7 +1903,7 @@
 
   function getPublishedNewsItems(items) {
     return (Array.isArray(items) ? items : []).filter(
-      (item) => item && item.published !== false,
+      (item) => item && item.published === true,
     );
   }
 

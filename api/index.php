@@ -362,7 +362,10 @@ try {
             error_log('Scouts admin credentials are not configured.');
             scouts_json_response(['message' => 'Beheerlogin is niet geconfigureerd.'], 500);
         }
-        if (!hash_equals(scouts_admin_username(), $username) || !password_verify($password, scouts_admin_password_hash())) {
+        // Always run both checks to avoid username-enumeration timing differences.
+        $usernameOk = hash_equals(scouts_admin_username(), $username);
+        $passwordOk = password_verify($password, scouts_admin_password_hash());
+        if (!$usernameOk || !$passwordOk) {
             $lockAfterFail = scouts_login_record_failure();
             if ($lockAfterFail > 0) {
                 $minutes = (int) ceil($lockAfterFail / 60);
@@ -386,7 +389,14 @@ try {
         $_SESSION = [];
         if (ini_get('session.use_cookies')) {
             $params = session_get_cookie_params();
-            setcookie(session_name(), '', time() - 42000, $params['path'], '', (bool) $params['secure'], (bool) $params['httponly']);
+            setcookie(session_name(), '', [
+                'expires' => time() - 42000,
+                'path' => $params['path'] ?? '/',
+                'domain' => $params['domain'] ?? '',
+                'secure' => (bool) ($params['secure'] ?? false),
+                'httponly' => (bool) ($params['httponly'] ?? true),
+                'samesite' => $params['samesite'] ?? 'Lax',
+            ]);
         }
         session_destroy();
         scouts_json_response(['success' => true, 'redirectTo' => '/login']);
