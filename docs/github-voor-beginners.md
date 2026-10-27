@@ -1,6 +1,7 @@
-# GitHub voor beginners (scoutsleiding)
+# GitHub voor beginners
 
-GitHub is een website waarop **broncode** en documentatie van dit project bewaard worden. Het is **niet** hetzelfde als de werkende website scoutslille.be.
+GitHub is een website waarop de **bestanden van dit project** (de code) en de handleidingen bewaard worden.  
+Dat is **niet** hetzelfde als de werkende scoutswebsite die bezoekers openen.
 
 Je hebt GitHub **niet** nodig om agenda, foto’s of brieven te beheren. Daarvoor gebruik je de [beheeromgeving](handleiding-scoutsleiding.md).
 
@@ -34,13 +35,13 @@ Wijzigingen in de admin gaan **niet** vanzelf naar GitHub. Code op GitHub gaat *
 
 ---
 
-## De repository van deze groep
+## Voorbeeldrepository
 
-Bevestigd via `git remote`:
+Een bestaande kopie van dit project staat o.a. hier:
 
 [https://github.com/codebywout/scouts-Lille-Poederlee](https://github.com/codebywout/scouts-Lille-Poederlee)
 
-Op moment van documentatie-audit was de repo **publiek** zichtbaar. Dat betekent dat iedereen de tracked bestanden kan bekijken — inclusief eventuele persoonsgegevens in `data/site-data.json`. Bespreek met de technische verantwoordelijke of privé beter is.
+Jouw groep kan een **eigen** kopie of repository gebruiken. Vraag na of die publiek of privé is. In tracked gegevensbestanden kunnen persoonsgegevens staan — bespreek met de technische verantwoordelijke wat veilig is.
 
 ---
 

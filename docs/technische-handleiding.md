@@ -1,6 +1,6 @@
-# Scouts Lille-Poederlee — technische handleiding
+# Technische handleiding — scoutswebsite
 
-Publieke website en beheeromgeving voor [Scouts Lille-Poederlee](https://scoutslille.be).
+Publieke website en beheeromgeving. Oorspronkelijk voor [Scouts Lille-Poederlee](https://scoutslille.be); andere groepen kunnen dezelfde codebasis gebruiken.
 
 **Voor wie:** ontwikkelaars en technisch onderlegde vrijwilligers. Voor gewoon websitebeheer (teksten, foto’s, agenda) start bij de [README](../README.md) en [handleiding-scoutsleiding.md](handleiding-scoutsleiding.md).
 

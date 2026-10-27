@@ -1,8 +1,9 @@
 # Hosting en back-ups
 
-Dit document beschrijft wat **in de repository bevestigd** is over hosting en herstel, en wat je nog bij de provider/beheerder moet navragen.
+**Hosting** = de plek op het internet waar je websitebestanden staan.  
+Dit document zegt alleen wat we uit **deze** projectmap kunnen afleiden, plus wat je nog zelf moet navragen bij jullie hoster.
 
-Er is **geen** automatische deploy vanuit GitHub Actions naar productie (bevestigd in `.github/workflows/ci.yml`).
+Er is **geen** automatische publicatie van GitHub naar de live site (de controles in GitHub testen alleen; ze zetten de site niet online).
 
 ---
 
@@ -10,13 +11,13 @@ Er is **geen** automatische deploy vanuit GitHub Actions naar productie (bevesti
 
 | Onderdeel | Status |
 | --- | --- |
-| Publieke site | https://scoutslille.be (bevestigd als basis-URL in code) |
-| Stack op server | PHP-website met Apache-achtige rewrite via `.htaccess` (bevestigd in repo). Lokale dev gebruikt `router.php` + PHP built-in server. |
-| Exacte provider | **Te bevestigen** (`NOG IN TE VULLEN` in [overdracht.md](overdracht.md)) |
-| Exact document root-pad | **Te bevestigen** |
-| Plesk of ander paneel | In technische docs als mogelijke context genoemd; **niet** hard bewezen door tracked config |
+| Voorbeeld live site in deze code | https://scoutslille.be — jouw groep gebruikt een eigen adres |
+| Wat de site nodig heeft | PHP; op een echte server meestal met Apache-regels uit `.htaccess`. Lokaal testen kan met `router.php` + `start-server.ps1`. |
+| Exacte provider | **Te bevestigen** (zie [overdracht.md](overdracht.md)) |
+| Exacte map op de server | **Te bevestigen** |
+| Beheerpaneel (bv. Plesk) | **Te bevestigen** — niet vastgelegd in de code |
 
-Vereisten die uit de code/CI blijken: PHP met extensies zoals **gd**, **curl**, **fileinfo** (CI gebruikt PHP 8.3). Productie-PHP-versie: **te bevestigen** bij de hoster.
+Uit de projectcontroles blijkt o.a. PHP met onderdelen zoals **gd**, **curl** en **fileinfo**. Welke PHP-versie jullie hoster draait: **te bevestigen**.
 
 ---
 

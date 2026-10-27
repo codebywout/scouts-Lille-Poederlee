@@ -1,24 +1,25 @@
 # Handleiding voor scoutsleiding — website beheren
 
-Deze handleiding is voor leiding die de **inhoud** van [scoutslille.be](https://scoutslille.be) bijwerkt. Je hebt geen programmeerkennis nodig.
+Voor leiding die de **inhoud** van de website bijwerkt. Geen programmeerkennis nodig.  
+Gemaakt rond de site van Scouts Lille-Poederlee; dezelfde stappen gelden als jouw groep deze website gebruikt.
 
-Technische termen (kort):
+Korte begrippen:
 
-- **Beheeromgeving / admin** — pagina’s achter login waar je inhoud wijzigt.
+- **Beheeromgeving** — pagina’s achter login waar je inhoud wijzigt.
 - **Publieke website** — wat bezoekers zien zonder inloggen.
-- **Opslaan** — je wijziging naar de live server sturen.
+- **Opslaan** — je wijziging naar de live website sturen.
 
-Alles hieronder is gebaseerd op de code in deze repository (`admin.html`, `assets/js/admin.js`). Handelingen die we niet live hebben kunnen uitproberen, staan als **te controleren**.
+Alles hieronder komt overeen met de beheeromgeving in deze code. Wat we niet op een live site hebben kunnen klikken, staat als **te controleren**.
 
 ---
 
 ## 1. Inloggen
 
-1. Open op de live website het pad **/login** (bijvoorbeeld `https://scoutslille.be/login`).
+1. Open op jullie website het pad **/login** (voorbeeld: `https://scoutslille.be/login` — vervang door jullie eigen adres).
 2. Vul gebruikersnaam en wachtwoord in van het **beheeraccount**.
 3. Na een geslaagde login kom je in de beheeromgeving (`/admin`).
 
-**Wachtwoorden staan niet in deze repository.** Die krijg je bij de overdracht (zie [overdracht.md](overdracht.md)).
+**Wachtwoorden staan niet in deze map op GitHub.** Die krijg je bij de overdracht (zie [overdracht.md](overdracht.md)).
 
 Lukt inloggen niet?
 
@@ -133,7 +134,7 @@ Verder:
 3. Bij een geslaagde upload kan de site de foto meteen plaatsen (bevestigd in de admin-code voor tak-/Over ons-foto’s).
 4. Controleer de publieke pagina.
 
-**Achtergronden:** sectie **Achtergronden**. Upload, bekijk voorbeeld, publiceer pas als je tevreden bent. Bij een mislukte upload blijft de oude achtergrond staan (zo geformuleerd in de admin-UI).
+**Achtergronden:** sectie **Achtergronden**. Kies of sleep een foto — die wordt meteen geüpload en op de website gezet, net als bij Foto’s. Bij een mislukte upload blijft de huidige achtergrond staan. Via **Vorige** kun je de vorige upload terugzetten als die beschikbaar is.
 
 ---
 
