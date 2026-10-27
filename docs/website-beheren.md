@@ -29,7 +29,7 @@ Stap-voor-stap beheer: [handleiding-scoutsleiding.md](handleiding-scoutsleiding.
 | Kleuren, lettertypes, layout | Nee | Technische hulp |
 | Extra pagina of ander menu | Nee | Technische hulp |
 | Loginwachtwoord op de server | Nee | Hosting / technische hulp |
-| Privacyverklaring (vaste pagina) | Deels | Tekst in vaste bestanden = vaak codewerk |
+| Privacyverklaring | Deels | Vaste pagina; tekst aanpassen is vaak codewerk |
 
 ---
 
