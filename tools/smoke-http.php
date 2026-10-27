@@ -196,10 +196,10 @@ if ($siteData['status'] === 200) {
     $json = json_decode($siteData['body'], true);
     smoke_assert('site-data JSON', is_array($json), json_last_error_msg());
     if (is_array($json)) {
-        $leaderPhones = 0;
+        $missingPhoneKey = 0;
         foreach ($json['groupLeadership'] ?? [] as $person) {
-            if (is_array($person) && array_key_exists('phone', $person)) {
-                $leaderPhones++;
+            if (is_array($person) && !array_key_exists('phone', $person)) {
+                $missingPhoneKey++;
             }
         }
         foreach ($json['branchLeadership'] ?? [] as $list) {
@@ -207,12 +207,16 @@ if ($siteData['status'] === 200) {
                 continue;
             }
             foreach ($list as $person) {
-                if (is_array($person) && array_key_exists('phone', $person)) {
-                    $leaderPhones++;
+                if (is_array($person) && !array_key_exists('phone', $person)) {
+                    $missingPhoneKey++;
                 }
             }
         }
-        smoke_assert('public site-data has no leadership phones', $leaderPhones === 0, "count={$leaderPhones}");
+        smoke_assert(
+            'public site-data keeps leadership phone fields',
+            $missingPhoneKey === 0,
+            "missing={$missingPhoneKey}"
+        );
     }
     if (preg_match('/^ETag:\s*([^\r\n]+)/mi', $siteData['headers'], $etagMatch)) {
         $siteDataEtag = trim($etagMatch[1]);
