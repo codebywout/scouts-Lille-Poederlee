@@ -20,8 +20,11 @@ uploads/originals/*
 tools/libwebp/
 tools/imgopt/
 tools/vendor/node_modules/
+tools/lighthouse/node_modules/
 npm-debug.log*
 node_modules/
+.lighthouseci/
+pagespeed-results/
 
 .DS_Store
 Thumbs.db

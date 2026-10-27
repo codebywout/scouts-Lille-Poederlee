@@ -1,0 +1,39 @@
+name: PageSpeed (mobile)
+
+on:
+  schedule:
+    # Daily 06:15 UTC
+    - cron: "15 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pagespeed:
+    name: Mobile PageSpeed Insights
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: "20"
+
+      - name: Run mobile PageSpeed report
+        env:
+          # Secret is read by the script; never echo or interpolate into logged URLs.
+          PAGESPEED_API_KEY: ${{ secrets.PAGESPEED_API_KEY }}
+        run: node tools/pagespeed-mobile-report.mjs
+
+      - name: Upload PageSpeed summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pagespeed-mobile-summary
+          path: pagespeed-results/
+          if-no-files-found: warn
+          retention-days: 30

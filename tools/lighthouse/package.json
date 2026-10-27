@@ -1,0 +1,8 @@
+{
+  "name": "scouts-lighthouse-ci",
+  "private": true,
+  "description": "Pinned Lighthouse CI tooling for PR mobile performance checks. Do not commit node_modules.",
+  "dependencies": {
+    "@lhci/cli": "0.15.1"
+  }
+}
