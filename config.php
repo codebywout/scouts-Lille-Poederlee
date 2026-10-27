@@ -28,14 +28,19 @@ const SCOUTS_PHOTO_WEBP_QUALITY = 85;
 const SCOUTS_PHOTO_AVIF_QUALITY = 50;
 /** Decompression-bomb guards (pre-decode). */
 const SCOUTS_PHOTO_MAX_DIMENSION = 10000;
-const SCOUTS_PHOTO_MAX_PIXELS = 40000000; // 40 MP
+/**
+ * Pre-decode pixel budget. Truecolor decode ≈ 4 bytes/pixel; a second
+ * scaled buffer can roughly double that. 20 MP ≈ 80–160 MB peak, which fits
+ * the 256M runtime target better than 40 MP.
+ */
+const SCOUTS_PHOTO_MAX_PIXELS = 20000000; // 20 MP
 const SCOUTS_MAX_PDF_UPLOAD_BYTES = 20971520;
 
 /**
  * Bump this on every deploy so HTML/CSS/JS URLs change and old caches are skipped.
  * Format: YYYYMMDD-N
  */
-const SCOUTS_ASSET_VERSION = '20261027-8';
+const SCOUTS_ASSET_VERSION = '20261027-10';
 const SCOUTS_LOGIN_ATTEMPTS_FILE = SCOUTS_ROOT . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . '.login-attempts.json';
 const SCOUTS_LOGIN_MAX_ATTEMPTS = 5;
 const SCOUTS_LOGIN_LOCKOUT_SECONDS = 900;
@@ -488,6 +493,12 @@ function scouts_send_html_file(string $absolutePath, ?string $pageId = null): ne
                 // Fall back to JS fetch via DataStore.load().
             }
         }
+    }
+
+    // Homepage: align preload + hero <picture> with pageBackgrounds.home before
+    // asset-version rewriting, so the browser never preloads the wrong file.
+    if ($resolvedPage === 'index') {
+        $html = scouts_html_apply_home_hero_background($html);
     }
 
     $version = scouts_asset_version();

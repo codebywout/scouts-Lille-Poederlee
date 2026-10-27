@@ -304,6 +304,7 @@ function scouts_photo_write_width_variants($source, string $dir, string $basenam
 
         // Avoid re-encoding identical pixels under multiple requested names
         // (e.g. 1080px source still needs -w1200/-w1600 URLs for srcset).
+        // Prefer a hard link (same bytes on disk); fall back to copy.
         if (isset($stemByPixelWidth[$pixelWidth])) {
             $sourceStem = $stemByPixelWidth[$pixelWidth];
             foreach (['jpg', 'webp', 'avif'] as $ext) {
@@ -315,8 +316,8 @@ function scouts_photo_write_width_variants($source, string $dir, string $basenam
                 if (is_file($to)) {
                     @unlink($to);
                 }
-                if (!@copy($from, $to)) {
-                    throw new RuntimeException('Variant ' . $requestedWidth . 'w kon niet worden gekopieerd.');
+                if (!@link($from, $to) && !@copy($from, $to)) {
+                    throw new RuntimeException('Variant ' . $requestedWidth . 'w kon niet worden gekoppeld.');
                 }
                 @chmod($to, 0644);
             }
@@ -569,7 +570,17 @@ function scouts_store_uploaded_photo(string $sourcePath, string $basename, strin
         }
         @chmod($finalOriginal, 0640);
 
-        return '/uploads/' . $basename . '.jpg?v=' . time();
+        $masterWidth = 0;
+        $masterInfo = @getimagesize($finalMaster);
+        if (is_array($masterInfo) && !empty($masterInfo[0])) {
+            $masterWidth = (int) $masterInfo[0];
+        }
+        $query = 'v=' . time();
+        if ($masterWidth > 0) {
+            $query .= '&sw=' . $masterWidth;
+        }
+
+        return '/uploads/' . $basename . '.jpg?' . $query;
     } catch (Throwable $e) {
         // Do not leave a half-written public replace: staging is discarded;
         // previously committed public files are only removed after staging succeeds.
@@ -674,3 +685,243 @@ function scouts_photo_regenerate_variants(string $basename, bool $overwrite = tr
 
     return ['basename' => $basename, 'widths' => $widths, 'master' => $master];
 }
+
+/**
+ * Build a srcset list with descriptors equal to real pixel widths.
+ * Duplicate pixel widths (from capped small masters) appear only once.
+ *
+ * @param list<int> $requestedWidths
+ * @return array{srcset: string, fallback: string, source_width: int}
+ */
+function scouts_photo_build_srcset(
+    string $filesystemStem,
+    string $webStem,
+    string $extension,
+    array $requestedWidths,
+    string $query = ''
+): array {
+    $query = trim($query);
+    if ($query !== '' && !str_starts_with($query, '?')) {
+        $query = '?' . $query;
+    }
+
+    $sourceWidth = 0;
+    $masterJpg = $filesystemStem . '.jpg';
+    if (is_file($masterJpg)) {
+        $info = @getimagesize($masterJpg);
+        if (is_array($info) && !empty($info[0])) {
+            $sourceWidth = (int) $info[0];
+        }
+    }
+
+    $seen = [];
+    $parts = [];
+    $fallback = '';
+    $fallbackWidth = 0;
+
+    foreach ($requestedWidths as $requested) {
+        $requested = (int) $requested;
+        if ($requested < 1) {
+            continue;
+        }
+        $path = $filesystemStem . '-w' . $requested . '.' . $extension;
+        if (!is_file($path)) {
+            continue;
+        }
+        $info = @getimagesize($path);
+        $pixelWidth = is_array($info) && !empty($info[0]) ? (int) $info[0] : $requested;
+        if ($sourceWidth > 0) {
+            $pixelWidth = min($pixelWidth, $sourceWidth);
+        }
+        if (isset($seen[$pixelWidth])) {
+            continue;
+        }
+        $seen[$pixelWidth] = true;
+        $url = $webStem . '-w' . $requested . '.' . $extension . $query;
+        $parts[] = $url . ' ' . $pixelWidth . 'w';
+        if ($fallback === '' || abs($pixelWidth - 1200) < abs($fallbackWidth - 1200)) {
+            $fallback = $url;
+            $fallbackWidth = $pixelWidth;
+        }
+    }
+
+    if ($fallback === '' && is_file($filesystemStem . '.' . $extension)) {
+        $fallback = $webStem . '.' . $extension . $query;
+    }
+
+    return [
+        'srcset' => implode(', ', $parts),
+        'fallback' => $fallback,
+        'source_width' => $sourceWidth,
+    ];
+}
+
+/**
+ * Resolve a public photo URL (e.g. /uploads/bg-home.jpg?v=…) to stems for srcset.
+ *
+ * @return array{fs: string, web: string, query: string, basename: string}|null
+ */
+function scouts_photo_resolve_responsive_stem(string $publicUrl): ?array
+{
+    $publicUrl = trim(html_entity_decode($publicUrl, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+    if ($publicUrl === '') {
+        return null;
+    }
+    $parts = parse_url($publicUrl);
+    if (!is_array($parts) || empty($parts['path'])) {
+        return null;
+    }
+    $path = str_replace('\\', '/', (string) $parts['path']);
+    $path = preg_replace('#^/#', '', $path) ?? $path;
+    $path = preg_replace('/-(?:thumb|md|display|w\d+)(\.[a-z0-9]+)$/i', '$1', $path) ?? $path;
+    if (preg_match('/^(.*)\.(jpe?g|png|webp|gif|avif)$/i', $path, $m) !== 1) {
+        return null;
+    }
+    $stemRel = $m[1];
+    $basename = basename($stemRel);
+    $fs = SCOUTS_ROOT . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $stemRel);
+    $web = '/' . str_replace('\\', '/', $stemRel);
+    if (str_starts_with($stemRel, 'assets/')) {
+        $web = $stemRel;
+    }
+    $query = '';
+    if (!empty($parts['query'])) {
+        $query = '?' . $parts['query'];
+    }
+    $sw = 0;
+    if (is_file($fs . '.jpg')) {
+        $info = @getimagesize($fs . '.jpg');
+        if (is_array($info) && !empty($info[0])) {
+            $sw = (int) $info[0];
+        }
+    }
+    if ($sw > 0 && !preg_match('/(?:^|&)sw=\d+/', (string) ($parts['query'] ?? ''))) {
+        $query .= ($query === '' ? '?' : '&') . 'sw=' . $sw;
+    }
+
+    return [
+        'fs' => $fs,
+        'web' => $web,
+        'query' => $query,
+        'basename' => $basename,
+    ];
+}
+
+/**
+ * Align homepage hero preload + <picture> with photos.pageBackgrounds.home
+ * (or keep the static domein defaults when empty).
+ */
+function scouts_html_apply_home_hero_background(string $html): string
+{
+    $homeBg = '';
+    try {
+        $data = scouts_read_site_data();
+        $homeBg = trim((string) ($data['photos']['pageBackgrounds']['home'] ?? ''));
+    } catch (Throwable) {
+        $homeBg = '';
+    }
+
+    $heroWidths = [800, 1200, 1600, 2400];
+    if ($homeBg === '') {
+        $resolved = scouts_photo_resolve_responsive_stem('assets/images/domein.jpg');
+    } else {
+        $resolved = scouts_photo_resolve_responsive_stem($homeBg);
+    }
+    if ($resolved === null) {
+        return $html;
+    }
+
+    $webp = scouts_photo_build_srcset(
+        $resolved['fs'],
+        $resolved['web'],
+        'webp',
+        $heroWidths,
+        $resolved['query']
+    );
+    $jpg = scouts_photo_build_srcset(
+        $resolved['fs'],
+        $resolved['web'],
+        'jpg',
+        $heroWidths,
+        $resolved['query']
+    );
+    $avif = scouts_photo_build_srcset(
+        $resolved['fs'],
+        $resolved['web'],
+        'avif',
+        $heroWidths,
+        $resolved['query']
+    );
+    if ($webp['srcset'] === '' && $jpg['srcset'] === '') {
+        return $html;
+    }
+
+    // Preload the best widely supported candidate. Never put JPEG URLs in a
+    // type="image/webp" source/preload — browsers would fail to decode them.
+    $useWebpPreload = $webp['srcset'] !== '' && $webp['fallback'] !== '';
+    $preloadHref = $useWebpPreload ? $webp['fallback'] : $jpg['fallback'];
+    $preloadSrcset = $useWebpPreload ? $webp['srcset'] : $jpg['srcset'];
+    $preloadType = $useWebpPreload ? 'image/webp' : 'image/jpeg';
+    $sourceWidth = max($webp['source_width'], $jpg['source_width'], $avif['source_width']);
+    $imgSrc = $jpg['fallback'] !== '' ? $jpg['fallback'] : $preloadHref;
+    $imgSrcset = $jpg['srcset'] !== '' ? $jpg['srcset'] : $webp['srcset'];
+    $fullSrc = $resolved['web'] . '.jpg' . $resolved['query'];
+    $dataSw = $sourceWidth > 0 ? ' data-source-width="' . $sourceWidth . '"' : '';
+
+    if ($preloadSrcset !== '' && $preloadHref !== '') {
+        $html = preg_replace(
+            '#<link\s+rel="preload"\s+as="image"\s+type="image/(?:webp|jpeg)"\s+href="[^"]*"\s+imagesrcset="[^"]*"\s+imagesizes="100vw"\s+fetchpriority="high"\s*/?>#i',
+            '<link rel="preload" as="image" type="'
+                . $preloadType
+                . '" href="'
+                . htmlspecialchars($preloadHref, ENT_QUOTES | ENT_HTML5, 'UTF-8')
+                . '" imagesrcset="'
+                . htmlspecialchars($preloadSrcset, ENT_QUOTES | ENT_HTML5, 'UTF-8')
+                . '" imagesizes="100vw" fetchpriority="high">',
+            $html,
+            1
+        ) ?? $html;
+    }
+
+    $extraSources = '';
+    if ($avif['srcset'] !== '') {
+        $extraSources .= '            <source' . "\n"
+            . '                type="image/avif"' . "\n"
+            . '                srcset="' . htmlspecialchars($avif['srcset'], ENT_QUOTES | ENT_HTML5, 'UTF-8') . '"' . "\n"
+            . '                sizes="100vw"' . "\n"
+            . '            >' . "\n";
+    }
+    if ($webp['srcset'] !== '') {
+        $extraSources .= '            <source' . "\n"
+            . '                type="image/webp"' . "\n"
+            . '                srcset="' . htmlspecialchars($webp['srcset'], ENT_QUOTES | ENT_HTML5, 'UTF-8') . '"' . "\n"
+            . '                sizes="100vw"' . "\n"
+            . '            >' . "\n";
+    }
+
+    $picture = '<picture class="hero-media"' . $dataSw . '>' . "\n"
+        . $extraSources
+        . '            <img' . "\n"
+        . '                class="hero-media-img"' . "\n"
+        . '                src="' . htmlspecialchars($imgSrc, ENT_QUOTES | ENT_HTML5, 'UTF-8') . '"' . "\n"
+        . '                srcset="' . htmlspecialchars($imgSrcset, ENT_QUOTES | ENT_HTML5, 'UTF-8') . '"' . "\n"
+        . '                sizes="100vw"' . "\n"
+        . '                width="' . ($sourceWidth > 0 ? min(1600, $sourceWidth) : 1600) . '"' . "\n"
+        . '                height="' . ($sourceWidth > 0 ? (int) round(min(1600, $sourceWidth) * 2 / 3) : 1067) . '"' . "\n"
+        . '                alt=""' . "\n"
+        . '                decoding="async"' . "\n"
+        . '                fetchpriority="high"' . "\n"
+        . '                data-full-src="' . htmlspecialchars($fullSrc, ENT_QUOTES | ENT_HTML5, 'UTF-8') . '"' . "\n"
+        . '            >' . "\n"
+        . '        </picture>';
+
+    $html = preg_replace(
+        '#<picture class="hero-media">.*?</picture>#s',
+        $picture,
+        $html,
+        1
+    ) ?? $html;
+
+    return $html;
+}
+

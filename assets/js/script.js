@@ -204,10 +204,29 @@
     return path;
   }
 
-  function buildWidthSrcset(stem, ext, widths, query) {
-    return widths
-      .map((width) => `${withAssetQuery(`${stem}-w${width}${ext}`, query)} ${width}w`)
-      .join(", ");
+  /** Source width hint from ?sw= on upload URLs (set by the photo pipeline). */
+  function parseSourceWidthHint(query, fallback = 0) {
+    const match = String(query || "").match(/(?:^\?|&)sw=(\d+)/i);
+    if (match) {
+      const value = Number(match[1]);
+      if (Number.isFinite(value) && value > 0) return value;
+    }
+    return fallback > 0 ? fallback : 0;
+  }
+
+  function buildWidthSrcset(stem, ext, widths, query, sourceWidth = 0) {
+    const maxWidth = sourceWidth || parseSourceWidthHint(query);
+    const seen = new Set();
+    const parts = [];
+    for (const width of widths) {
+      const pixelWidth = maxWidth > 0 ? Math.min(width, maxWidth) : width;
+      if (seen.has(pixelWidth)) continue;
+      seen.add(pixelWidth);
+      parts.push(
+        `${withAssetQuery(`${stem}-w${width}${ext}`, query)} ${pixelWidth}w`,
+      );
+    }
+    return parts.join(", ");
   }
 
   function defaultResponsiveWidth(widths, preferredWidth = 0) {
@@ -236,31 +255,70 @@
     return `image-set(url("${webp}") type("image/webp"), url("${jpg}") type("image/jpeg"))`;
   }
 
-  function applyHomeHeroBackground(src) {
+  function applyHomeHeroBackground(src, sourceWidthHint = 0) {
     const picture = qs(".hero-media");
     if (!picture) return;
     const parts = splitResponsiveAsset(src);
     if (!parts) return;
     const widths = [800, 1200, 1600, 2400];
     const q = parts.query;
-    const webpSrcset = widths
-      .map((w) => `${withAssetQuery(`${parts.stem}-w${w}.webp`, q)} ${w}w`)
-      .join(", ");
-    const jpgSrcset = widths
-      .map((w) => `${withAssetQuery(`${parts.stem}-w${w}.jpg`, q)} ${w}w`)
-      .join(", ");
-    const source = picture.querySelector('source[type="image/webp"]');
+    const sourceWidth =
+      sourceWidthHint ||
+      parseSourceWidthHint(q) ||
+      Number(picture.getAttribute("data-source-width") || 0) ||
+      0;
+    const webpSrcset = buildWidthSrcset(
+      parts.stem,
+      ".webp",
+      widths,
+      q,
+      sourceWidth,
+    );
+    const jpgSrcset = buildWidthSrcset(
+      parts.stem,
+      ".jpg",
+      widths,
+      q,
+      sourceWidth,
+    );
+    const avifSrcset = parts.stem.includes("/uploads/")
+      ? buildWidthSrcset(parts.stem, ".avif", widths, q, sourceWidth)
+      : "";
     const img = picture.querySelector("img");
-    if (source) {
-      source.srcset = webpSrcset;
+
+    // Keep <source type> aligned with real URLs (never put JPEG in a WebP/AVIF source).
+    const ensureSource = (type, srcset) => {
+      let source = picture.querySelector(`source[type="${type}"]`);
+      if (!srcset) {
+        source?.remove();
+        return;
+      }
+      if (!source) {
+        source = document.createElement("source");
+        source.type = type;
+        picture.insertBefore(source, img || picture.firstChild);
+      }
+      source.srcset = srcset;
       source.sizes = "100vw";
-    }
+    };
+    ensureSource("image/avif", avifSrcset);
+    ensureSource("image/webp", webpSrcset);
+
     if (img) {
+      const preferred = defaultResponsiveWidth(
+        sourceWidth > 0
+          ? widths.filter((width) => width <= sourceWidth || width === widths[0])
+          : widths,
+        1200,
+      );
       img.srcset = jpgSrcset;
       img.sizes = "100vw";
-      img.src = withAssetQuery(`${parts.stem}-w1200.jpg`, q);
+      img.src = withAssetQuery(`${parts.stem}-w${preferred}.jpg`, q);
       img.removeAttribute("data-fallback-applied");
       img.setAttribute("data-full-src", withAssetQuery(`${parts.stem}.jpg`, q));
+    }
+    if (sourceWidth > 0) {
+      picture.setAttribute("data-source-width", String(sourceWidth));
     }
   }
 
@@ -272,9 +330,21 @@
 
     if (document.body.classList.contains("home-page")) {
       const homeBg = String(backgrounds.home || "").trim();
-      if (homeBg) {
-        applyHomeHeroBackground(homeBg);
+      if (!homeBg) return;
+
+      const parts = splitResponsiveAsset(homeBg);
+      const img = qs(".hero-media img");
+      const currentSrc = img?.getAttribute("src") || "";
+      const current = splitResponsiveAsset(currentSrc);
+      // PHP already aligned preload + picture with site-data; avoid a second swap.
+      if (
+        parts &&
+        current &&
+        current.stem.replace(/^\//, "") === parts.stem.replace(/^\//, "")
+      ) {
+        return;
       }
+      applyHomeHeroBackground(homeBg);
       return;
     }
 
@@ -351,13 +421,26 @@
       defaultJpg ||
       withAssetQuery(parts.originalPath, query) ||
       parts.original;
-    const webpSrcset = buildWidthSrcset(parts.stem, ".webp", widths, query);
-    const jpgSrcset = buildWidthSrcset(parts.stem, ".jpg", widths, query);
+    const sourceWidth = parseSourceWidthHint(query);
+    const webpSrcset = buildWidthSrcset(
+      parts.stem,
+      ".webp",
+      widths,
+      query,
+      sourceWidth,
+    );
+    const jpgSrcset = buildWidthSrcset(
+      parts.stem,
+      ".jpg",
+      widths,
+      query,
+      sourceWidth,
+    );
     // Upload pipeline writes AVIF alongside WebP; emit only for /uploads/ so missing
     // AVIFs on static assets never break picture selection.
     const useAvif = parts.stem.includes("/uploads/");
     const avifSrcset = useAvif
-      ? buildWidthSrcset(parts.stem, ".avif", widths, query)
+      ? buildWidthSrcset(parts.stem, ".avif", widths, query, sourceWidth)
       : "";
     const imgClass = className ? ` class="${escapeHtml(className)}"` : "";
     const pictureClassAttr = pictureClass
