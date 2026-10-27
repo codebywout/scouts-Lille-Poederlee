@@ -44,11 +44,59 @@ jobs:
       - name: Site-data bootstrap tests
         run: php tools/test-site-data-bootstrap.php
 
+      # Isolated Actions workspace only — never run this reset against production.
+      - name: Initialize runtime site-data for smoke
+        run: |
+          set -euo pipefail
+          if [ "${GITHUB_ACTIONS:-}" != "true" ]; then
+            echo "Refusing to reset runtime site-data outside GitHub Actions."
+            exit 1
+          fi
+          if git ls-files --error-unmatch data/site-data.json >/dev/null 2>&1; then
+            echo "data/site-data.json must not be tracked by Git."
+            exit 1
+          fi
+          if [ -f data/site-data.json ]; then
+            echo "Removing leftover runtime site-data.json in CI workspace only."
+            rm -f data/site-data.json
+          else
+            echo "No runtime site-data.json present after checkout (expected)."
+          fi
+          rm -f data/.site-data.public.json
+          php tools/bootstrap-site-data.php
+          php -r '
+            $file = "data/site-data.json";
+            if (!is_file($file)) {
+                fwrite(STDERR, "Bootstrap did not create data/site-data.json\n");
+                exit(1);
+            }
+            $raw = file_get_contents($file);
+            if ($raw === false || trim($raw) === "") {
+                fwrite(STDERR, "Runtime site-data.json is empty\n");
+                exit(1);
+            }
+            try {
+                $data = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
+            } catch (Throwable $e) {
+                fwrite(STDERR, "Runtime site-data.json is not valid JSON: " . $e->getMessage() . "\n");
+                exit(1);
+            }
+            if (!is_array($data) || $data === []) {
+                fwrite(STDERR, "Runtime site-data.json has no usable data\n");
+                exit(1);
+            }
+            $email = (string) ($data["contact"]["email"] ?? "");
+            if (!str_contains($email, "voorbeeld") && !str_contains($email, "example")) {
+                fwrite(STDERR, "CI seed contact email does not look fictional\n");
+                exit(1);
+            }
+            echo "Runtime site-data.json OK (valid fictional seed)\n";
+          '
+
       - name: HTTP smoke tests
         run: |
-          # Clean runtime (never committed) then seed from fictional default.
-          rm -f data/site-data.json data/.site-data.public.json
-          php tools/bootstrap-site-data.php
+          # Runtime already seeded by the previous step; smoke may idempotently
+          # assert bootstrap (exists) but will not overwrite.
           php -d upload_max_filesize=20M -d post_max_size=25M -d memory_limit=256M \
             -S 127.0.0.1:8000 router.php >/tmp/scouts-php-server.log 2>&1 &
           for i in 1 2 3 4 5 6 7 8 9 10; do
