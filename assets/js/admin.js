@@ -645,8 +645,7 @@
   const PAGE_BACKGROUND_CONFIG = [
     {
       key: "home",
-      label: "Homepage (hero)",
-      hint: "Grote hero-foto bovenaan de startpagina.",
+      label: "Homepage",
       livePath: "/",
       defaultPreview: "/assets/images/domein-w800.webp",
       filename: "bg-home",
@@ -654,7 +653,6 @@
     {
       key: "registration",
       label: "Inschrijven",
-      hint: "Achtergrond van /inschrijven.",
       livePath: "/inschrijven",
       defaultPreview: "/assets/images/domein2-w800.webp",
       filename: "bg-registration",
@@ -662,15 +660,13 @@
     {
       key: "news",
       label: "Nieuws",
-      hint: "Achtergrond van /nieuws.",
       livePath: "/nieuws",
       defaultPreview: "/assets/images/domein2-w800.webp",
       filename: "bg-news",
     },
     {
       key: "about",
-      label: "Over ons (pagina-achtergrond)",
-      hint: "Volledige pagina-achtergrond (los van de Over ons-inhoudfoto).",
+      label: "Over ons",
       livePath: "/over-ons",
       defaultPreview: "/assets/images/domein4-w800.webp",
       filename: "bg-about",
@@ -678,7 +674,6 @@
     {
       key: "secondhand",
       label: "Tweedehands",
-      hint: "Achtergrond van /tweedehands.",
       livePath: "/tweedehands",
       defaultPreview: "/assets/images/domein3-w800.webp",
       filename: "bg-secondhand",
@@ -686,23 +681,20 @@
     {
       key: "uniform",
       label: "Uniform",
-      hint: "Achtergrond van /uniform.",
       livePath: "/uniform",
       defaultPreview: "/assets/images/domein5-w800.webp",
       filename: "bg-uniform",
     },
     {
       key: "branch",
-      label: "Takpagina's (gedeeld)",
-      hint: "Gedeelde achtergrond voor alle takpagina's.",
+      label: "Takpagina's",
       livePath: "/kapoenen",
       defaultPreview: "/assets/images/domein2-w800.webp",
       filename: "bg-branch",
     },
     {
       key: "error",
-      label: "404-pagina",
-      hint: "Achtergrond van de foutpagina.",
+      label: "404",
       livePath: "/404",
       defaultPreview: "/assets/images/domein2-w800.webp",
       filename: "bg-error",
@@ -1776,31 +1768,26 @@
       ).trim();
       const pending = pendingBackgroundUploads[slot.key];
       const preview = backgroundPreviewSrc(data, slot.key, slot.defaultPreview);
-      const status = pending
-        ? "Nieuwe foto klaar om te publiceren"
-        : current
-          ? "Aangepaste achtergrond actief"
-          : "Standaardachtergrond actief";
 
       return `
         <article class="admin-bg-card ${pending ? "is-pending" : ""} ${current ? "has-custom" : ""}" data-bg-key="${escapeHtml(slot.key)}">
           <div class="admin-bg-preview">
             <img src="${escapeHtml(preview)}" alt="" loading="lazy">
             <label class="admin-bg-dropzone">
-              <span>Kies of sleep een foto</span>
+              <span>${pending ? "Andere foto" : "Foto kiezen"}</span>
               <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" data-bg-pick="${escapeHtml(slot.key)}">
             </label>
           </div>
           <div class="admin-bg-body">
-            <h3>${escapeHtml(slot.label)}</h3>
-            <p class="admin-bg-hint">${escapeHtml(slot.hint)}</p>
-            <p class="admin-bg-status" data-bg-status>${escapeHtml(status)}</p>
+            <div class="admin-bg-heading">
+              <h3>${escapeHtml(slot.label)}</h3>
+              ${pending ? `<p class="admin-bg-status" data-bg-status>Klaar om te publiceren</p>` : ""}
+            </div>
             <div class="admin-bg-actions">
-              <button type="button" class="button" data-bg-publish="${escapeHtml(slot.key)}" ${pending ? "" : "disabled"}>Publiceren</button>
-              <button type="button" class="admin-utility-link" data-bg-clear-pending="${escapeHtml(slot.key)}" ${pending ? "" : "hidden"}>Voorbeeld annuleren</button>
-              <button type="button" class="admin-utility-link" data-bg-reset="${escapeHtml(slot.key)}" ${current && !pending ? "" : "hidden"}>Standaard herstellen</button>
-              <button type="button" class="admin-utility-link" data-bg-restore="${escapeHtml(slot.key)}" ${previous && !pending ? "" : "hidden"}>Vorige herstellen</button>
-              <a class="admin-utility-link" href="${escapeHtml(slot.livePath)}" target="_blank" rel="noopener">Bekijk live</a>
+              <button type="button" class="mini-button admin-bg-publish" data-bg-publish="${escapeHtml(slot.key)}" ${pending ? "" : "disabled"}>Publiceren</button>
+              <button type="button" class="admin-utility-link" data-bg-clear-pending="${escapeHtml(slot.key)}" ${pending ? "" : "hidden"}>Annuleren</button>
+              <button type="button" class="admin-utility-link" data-bg-restore="${escapeHtml(slot.key)}" ${previous && !pending ? "" : "hidden"}>Vorige</button>
+              <a class="admin-utility-link" href="${escapeHtml(slot.livePath)}" target="_blank" rel="noopener">Live</a>
             </div>
           </div>
         </article>
@@ -1847,10 +1834,7 @@
       file,
       previewUrl: URL.createObjectURL(file),
     };
-    setSaveStatus(
-      "Voorbeeld klaar. Klik op Publiceren om de achtergrond live te zetten.",
-      "dirty",
-    );
+    setSaveStatus("Voorbeeld klaar — publiceer om live te zetten.", "dirty");
     renderAdminPanel();
   }
 
@@ -1896,27 +1880,6 @@
     } finally {
       endPhotoUpload(document.querySelector(`[data-bg-key="${key}"]`) || null);
     }
-  }
-
-  async function resetBackgroundToDefault(data, key) {
-    ensurePageBackgroundBuckets(data);
-    const slot = PAGE_BACKGROUND_CONFIG.find((item) => item.key === key);
-    if (!slot) return;
-    const current = String(data.photos.pageBackgrounds[key] || "").trim();
-    if (!current) return;
-
-    const ok = await confirmDelete(
-      "Standaardachtergrond herstellen?",
-      "De aangepaste achtergrond verdwijnt van de website. Je kunt daarna nog terug naar de vorige upload.",
-    );
-    if (!ok) return;
-
-    data.photos.pageBackgroundsPrevious[key] = current;
-    data.photos.pageBackgrounds[key] = "";
-    clearPendingBackground(key);
-    await persist(data, {
-      message: `${slot.label}: standaardachtergrond hersteld.`,
-    });
   }
 
   async function restorePreviousBackground(data, key) {
@@ -2193,12 +2156,7 @@
     if (activePage === "achtergronden") {
       container.innerHTML = `
                 <section class="admin-card compact-card admin-backgrounds-card">
-                    <div class="admin-card-head">
-                        <div>
-                            <h2>Afbeeldingen en achtergronden</h2>
-                            <p class="admin-card-lede">Upload een foto, bekijk het voorbeeld, en publiceer pas wanneer je tevreden bent. Bij een mislukte upload blijft de huidige achtergrond staan.</p>
-                        </div>
-                    </div>
+                    <div class="admin-card-head"><h2>Achtergronden</h2></div>
                     <div id="backgroundEditor" class="admin-bg-grid"></div>
                 </section>
             `;
@@ -3335,18 +3293,6 @@
         clearPendingBackground(bgClearPending.dataset.bgClearPending);
         setSaveStatus("Voorbeeld geannuleerd.", "clean");
         renderAdminPanel();
-        return;
-      }
-
-      const bgReset = event.target.closest("[data-bg-reset]");
-      if (bgReset) {
-        try {
-          await resetBackgroundToDefault(DataStore.get(), bgReset.dataset.bgReset);
-          renderAdminPanel();
-        } catch (error) {
-          console.error(error);
-          setSaveStatus(error.message || "Herstellen mislukt.", "error");
-        }
         return;
       }
 
