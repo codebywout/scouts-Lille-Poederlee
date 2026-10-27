@@ -33,8 +33,10 @@ function scouts_render_site_header(array $options = []): string
     };
 
     $verhuur = 'https://www.kampas.be/nl/domein/scoutsheem-lille-poederlee';
+    $skipHref = $page === 'index' ? '#top' : '#main';
 
     return <<<HTML
+<a class="skip-link" href="{$skipHref}">Ga naar inhoud</a>
 <header class="navbar">
     <div class="nav-inner">
         <a href="{$brandHref}" class="brand" aria-label="Scouts Lille-Poederlee home">

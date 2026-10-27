@@ -40,7 +40,7 @@ const SCOUTS_MAX_PDF_UPLOAD_BYTES = 20971520;
  * Bump this on every deploy so HTML/CSS/JS URLs change and old caches are skipped.
  * Format: YYYYMMDD-N
  */
-const SCOUTS_ASSET_VERSION = '20261027-11';
+const SCOUTS_ASSET_VERSION = '20261027-12';
 const SCOUTS_LOGIN_ATTEMPTS_FILE = SCOUTS_ROOT . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . '.login-attempts.json';
 const SCOUTS_LOGIN_MAX_ATTEMPTS = 5;
 const SCOUTS_LOGIN_LOCKOUT_SECONDS = 900;
@@ -159,6 +159,7 @@ function scouts_start_session(): void
     $isHttps = (!empty($_SERVER['HTTPS']) && strtolower((string) $_SERVER['HTTPS']) !== 'off')
         || strtolower((string) ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')) === 'https';
 
+    ini_set('session.use_strict_mode', '1');
     session_name('scouts_session');
     session_set_cookie_params([
         'lifetime' => 86400,
@@ -181,20 +182,37 @@ function scouts_json_response(array $payload, int $status = 200): never
 
 function scouts_client_ip(): string
 {
-    $candidates = [
+    $remote = trim((string) ($_SERVER['REMOTE_ADDR'] ?? ''));
+    if ($remote === '' || !filter_var($remote, FILTER_VALIDATE_IP)) {
+        return 'unknown';
+    }
+
+    // Never trust client-supplied proxy headers unless REMOTE_ADDR is an
+    // explicitly configured trusted proxy (comma-separated SCOUTS_TRUSTED_PROXY_IPS).
+    $trustedRaw = trim((string) scouts_env('SCOUTS_TRUSTED_PROXY_IPS', ''));
+    if ($trustedRaw === '') {
+        return $remote;
+    }
+
+    $trusted = array_values(array_filter(array_map(
+        static fn (string $ip): string => trim($ip),
+        explode(',', $trustedRaw)
+    )));
+    if (!in_array($remote, $trusted, true)) {
+        return $remote;
+    }
+
+    foreach ([
         (string) ($_SERVER['HTTP_CF_CONNECTING_IP'] ?? ''),
         (string) ($_SERVER['HTTP_X_FORWARDED_FOR'] ?? ''),
-        (string) ($_SERVER['REMOTE_ADDR'] ?? ''),
-    ];
-
-    foreach ($candidates as $candidate) {
+    ] as $candidate) {
         $ip = trim(explode(',', $candidate)[0]);
         if ($ip !== '' && filter_var($ip, FILTER_VALIDATE_IP)) {
             return $ip;
         }
     }
 
-    return 'unknown';
+    return $remote;
 }
 
 /**
@@ -231,23 +249,28 @@ function scouts_login_attempts_for_ip(string $ip): array
 }
 
 /**
- * @param array{attempts: int, first_at: int, locked_until: int}|null $entry
+ * Atomically read/mutate/write login-attempt state under an exclusive lock.
+ *
+ * @param callable(array{attempts: int, first_at: int, locked_until: int}): (?array{attempts: int, first_at: int, locked_until: int}) $mutator
+ *        Receives the current entry for $ip; return null to clear, or the next entry.
+ * @return mixed Value returned by $mutator, or null if the file could not be locked.
  */
-function scouts_login_attempts_write(string $ip, ?array $entry): void
+function scouts_login_attempts_mutate(string $ip, callable $mutator): mixed
 {
     $dir = dirname(SCOUTS_LOGIN_ATTEMPTS_FILE);
     if (!is_dir($dir) && !mkdir($dir, 0755, true) && !is_dir($dir)) {
-        return;
+        return null;
     }
 
     $handle = fopen(SCOUTS_LOGIN_ATTEMPTS_FILE, 'c+');
     if ($handle === false) {
-        return;
+        return null;
     }
 
+    $mutatorResult = null;
     try {
         if (!flock($handle, LOCK_EX)) {
-            return;
+            return null;
         }
 
         rewind($handle);
@@ -279,19 +302,30 @@ function scouts_login_attempts_write(string $ip, ?array $entry): void
             }
         }
 
+        $current = is_array($all[$ip] ?? null)
+            ? [
+                'attempts' => max(0, (int) ($all[$ip]['attempts'] ?? 0)),
+                'first_at' => max(0, (int) ($all[$ip]['first_at'] ?? 0)),
+                'locked_until' => max(0, (int) ($all[$ip]['locked_until'] ?? 0)),
+            ]
+            : ['attempts' => 0, 'first_at' => 0, 'locked_until' => 0];
+
+        $entry = $mutator($current);
+        $mutatorResult = $entry;
         if ($entry === null) {
             unset($all[$ip]);
-        } else {
+        } elseif (is_array($entry)) {
             $all[$ip] = [
                 'attempts' => max(0, (int) ($entry['attempts'] ?? 0)),
                 'first_at' => max(0, (int) ($entry['first_at'] ?? 0)),
                 'locked_until' => max(0, (int) ($entry['locked_until'] ?? 0)),
             ];
+            $mutatorResult = $all[$ip];
         }
 
         $json = json_encode($all, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         if ($json === false) {
-            return;
+            return null;
         }
 
         ftruncate($handle, 0);
@@ -302,6 +336,21 @@ function scouts_login_attempts_write(string $ip, ?array $entry): void
         flock($handle, LOCK_UN);
         fclose($handle);
     }
+
+    return $mutatorResult;
+}
+
+/**
+ * @param array{attempts: int, first_at: int, locked_until: int}|null $entry
+ */
+function scouts_login_attempts_write(string $ip, ?array $entry): void
+{
+    scouts_login_attempts_mutate(
+        $ip,
+        static function (array $current) use ($entry): ?array {
+            return $entry;
+        }
+    );
 }
 
 function scouts_login_lock_remaining_seconds(string $ip = ''): int
@@ -315,26 +364,34 @@ function scouts_login_lock_remaining_seconds(string $ip = ''): int
 function scouts_login_record_failure(string $ip = ''): int
 {
     $ip = $ip !== '' ? $ip : scouts_client_ip();
-    $now = time();
-    $entry = scouts_login_attempts_for_ip($ip);
+    $remaining = 0;
 
-    if ($entry['locked_until'] > $now) {
-        return $entry['locked_until'] - $now;
-    }
+    scouts_login_attempts_mutate(
+        $ip,
+        static function (array $entry) use (&$remaining): array {
+            $now = time();
+            if ($entry['locked_until'] > $now) {
+                $remaining = $entry['locked_until'] - $now;
+                return $entry;
+            }
 
-    if ($entry['first_at'] <= 0 || $now - $entry['first_at'] > SCOUTS_LOGIN_LOCKOUT_SECONDS) {
-        $entry = ['attempts' => 0, 'first_at' => $now, 'locked_until' => 0];
-    }
+            if ($entry['first_at'] <= 0 || $now - $entry['first_at'] > SCOUTS_LOGIN_LOCKOUT_SECONDS) {
+                $entry = ['attempts' => 0, 'first_at' => $now, 'locked_until' => 0];
+            }
 
-    $entry['attempts']++;
-    if ($entry['attempts'] >= SCOUTS_LOGIN_MAX_ATTEMPTS) {
-        $entry['locked_until'] = $now + SCOUTS_LOGIN_LOCKOUT_SECONDS;
-        $entry['attempts'] = 0;
-        $entry['first_at'] = $now;
-    }
+            $entry['attempts']++;
+            if ($entry['attempts'] >= SCOUTS_LOGIN_MAX_ATTEMPTS) {
+                $entry['locked_until'] = $now + SCOUTS_LOGIN_LOCKOUT_SECONDS;
+                $entry['attempts'] = 0;
+                $entry['first_at'] = $now;
+            }
 
-    scouts_login_attempts_write($ip, $entry);
-    return max(0, $entry['locked_until'] - $now);
+            $remaining = max(0, $entry['locked_until'] - $now);
+            return $entry;
+        }
+    );
+
+    return $remaining;
 }
 
 function scouts_login_clear_failures(string $ip = ''): void
@@ -457,6 +514,10 @@ function scouts_send_html_file(string $absolutePath, ?string $pageId = null): ne
         }
         if (str_contains($html, '<!--SITE_FOOTER-->')) {
             $html = str_replace('<!--SITE_FOOTER-->', scouts_render_site_footer($chromeOptions), $html);
+        }
+        // Skip-link target for subpages (homepage already uses id="top").
+        if ($resolvedPage !== 'index' && !preg_match('/<main[^>]*\bid\s*=/i', $html)) {
+            $html = preg_replace('/<main\b/i', '<main id="main"', $html, 1) ?? $html;
         }
 
         if (!str_contains($html, 'property="og:title"')) {
@@ -779,13 +840,17 @@ function scouts_public_site_data(array $data): array
         return $data;
     }
 
+    // Fail closed: only exact boolean true (or legacy missing key) is public.
     $data['news'] = array_values(array_filter(
         $data['news'],
         static function ($item): bool {
             if (!is_array($item)) {
                 return false;
             }
-            return ($item['published'] ?? true) !== false;
+            if (!array_key_exists('published', $item)) {
+                return true; // legacy items without the flag stay visible
+            }
+            return $item['published'] === true;
         }
     ));
 
@@ -800,7 +865,9 @@ function scouts_public_site_data(array $data): array
 function scouts_public_site_data_bundle(): array
 {
     $version = scouts_site_data_version();
-    $etag = '"' . $version . '-p"';
+    // format 2 = HEX_* flags for safe <script> inlining
+    $format = 2;
+    $etag = '"' . $version . '-p' . $format . '"';
 
     if (is_file(SCOUTS_PUBLIC_DATA_CACHE)) {
         $raw = @file_get_contents(SCOUTS_PUBLIC_DATA_CACHE);
@@ -809,6 +876,7 @@ function scouts_public_site_data_bundle(): array
             if (
                 is_array($cached)
                 && ($cached['version'] ?? null) === $version
+                && (int) ($cached['format'] ?? 0) === $format
                 && is_string($cached['json'] ?? null)
                 && $cached['json'] !== ''
             ) {
@@ -822,13 +890,22 @@ function scouts_public_site_data_bundle(): array
     }
 
     $data = scouts_public_site_data(scouts_read_site_data());
-    $json = json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    // HEX_TAG/AMP/APOS/QUOT so the same JSON is safe inside <script> boot tags.
+    $json = json_encode(
+        $data,
+        JSON_UNESCAPED_UNICODE
+        | JSON_UNESCAPED_SLASHES
+        | JSON_HEX_TAG
+        | JSON_HEX_AMP
+        | JSON_HEX_APOS
+        | JSON_HEX_QUOT
+    );
     if ($json === false) {
         throw new RuntimeException('Sitegegevens konden niet worden gecodeerd.');
     }
 
     $payload = json_encode(
-        ['version' => $version, 'json' => $json],
+        ['version' => $version, 'format' => $format, 'json' => $json],
         JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
     );
     if ($payload !== false) {

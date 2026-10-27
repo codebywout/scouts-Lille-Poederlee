@@ -1,3 +1,25 @@
+.skip-link {
+    position: absolute;
+    left: 5%;
+    top: 0;
+    z-index: 100;
+    padding: 0.65rem 1rem;
+    background: #173f2b;
+    color: #fff;
+    font-weight: 600;
+    text-decoration: none;
+    border-radius: 0 0 8px 8px;
+    transform: translateY(-120%);
+    transition: transform 0.15s ease;
+}
+
+.skip-link:focus,
+.skip-link:focus-visible {
+    transform: translateY(0);
+    outline: 2px solid #f0c56a;
+    outline-offset: 2px;
+}
+
 .navbar {
     position: absolute;
     top: 0;
