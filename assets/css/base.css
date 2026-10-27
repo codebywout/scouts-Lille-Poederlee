@@ -18,12 +18,14 @@ body {
     overflow-x: clip;
 }
 
-/* Subtle content settle — never cover the page (no white/dark veil flash). */
+/* Subtle content settle — never cover the page (no white/dark veil flash).
+   Exclude .uniform-section: it has its own enter animation; page-enter would
+   override it and restart the fade after the tab is already visible. */
 body.page-enter .navbar,
 body.page-enter .footer,
 body.page-enter .page-hero,
 body.page-enter .page-main,
-body.page-enter main > *:not(.hero),
+body.page-enter main > *:not(.hero):not(.uniform-section),
 body.page-enter .hero-content {
     animation: pageContentIn 0.28s ease;
 }
@@ -43,7 +45,7 @@ body.page-enter .hero-content {
     body.page-enter .footer,
     body.page-enter .page-hero,
     body.page-enter .page-main,
-    body.page-enter main > *:not(.hero),
+    body.page-enter main > *:not(.hero):not(.uniform-section),
     body.page-enter .hero-content {
         animation: none;
     }
