@@ -2082,7 +2082,7 @@
               <div class="admin-settings-side">
                 <section class="admin-card compact-card admin-settings-card">
                   <div class="admin-card-head"><h2>Backup</h2></div>
-                  <p class="form-help admin-settings-side-help">Download of herstel alle sitegegevens als JSON. Op de server kan wekelijks automatisch een kopie naar Google Drive gaan.</p>
+                  <p class="form-help admin-settings-side-help">Download of herstel alle sitegegevens als JSON.</p>
                   <div class="admin-actions">
                     <button type="button" class="button button-secondary" data-download-backup>Downloaden</button>
                     <label class="button button-ghost-dark admin-restore-button">
@@ -2094,7 +2094,6 @@
 
                 <section class="admin-card compact-card admin-settings-card admin-settings-card--orphans">
                   <div class="admin-card-head"><h2>Uploads opruimen</h2></div>
-                  <p class="form-help admin-settings-side-help">Zoek bestanden in uploads die nergens meer gebruikt worden.</p>
                   <div class="admin-actions admin-orphan-actions">
                     <button type="button" class="button button-secondary admin-orphan-scan" data-orphan-scan>
                       <span class="admin-orphan-scan-icon" aria-hidden="true"></span>
