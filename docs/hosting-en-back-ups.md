@@ -29,13 +29,54 @@ Concrete serverinstellingen (mapnamen, paneelklikken) verschillen per hoster. Vu
 Maak onderscheid:
 
 1. **Teksten en gegevens** (agenda, nieuws, contact, …)  
-   → In de beheeromgeving: **Backup downloaden**. Bewaar dat bestand veilig.
+   → In de beheeromgeving: **Backup downloaden**. Bewaar dat bestand veilig.  
+   → Optioneel: **wekelijks automatisch** naar Google Drive (zie hieronder).
 2. **Foto’s en PDF’s**  
    → Die staan op de hosting. Vraag na hoe jullie die ook kunnen downloaden of laten backuppen.
 3. **De programmacode van de website**  
    → Vaak apart bewaard (bijvoorbeeld op GitHub). Dat is geen volledige backup van al jullie foto’s.
 
 **Belangrijk:** een kopie van alleen de programmacode bevat niet automatisch alle recente foto’s en brieven.
+
+## Wekelijkse backup naar Google Drive
+
+De site kan elke week `site-data.json` uploaden naar Drive-map  
+`1d494gLWlxCcxmUN7b9TdPer1IbliEp_6` (of een andere map via `SCOUTS_GOOGLE_DRIVE_BACKUP_FOLDER_ID`).
+
+Bestandsnaam per ISO-week, bv. `scouts-site-data-2026-W44.json`. Dezelfde week opnieuw draaien overschrijft dat bestand; een nieuwe week maakt een nieuw bestand.
+
+**Voorwaarden**
+
+1. Google Drive is verbonden in **Instellingen** (zelfde account als maandplanningen).
+2. Dat Google-account mag schrijven in de backup-map.
+3. Op de server een lange geheime sleutel (min. 16 tekens), op één van deze manieren:
+   - bestand `.env` in de projectmap (vaak verborgen omdat de naam met een punt begint), regel `SCOUTS_CRON_SECRET=...`
+   - of in `auth-config.php` (vaak één map **boven** de website, of naast `config.php`):  
+     `define('SCOUTS_CRON_SECRET', 'jouw-lange-geheime-sleutel');`
+
+**.env zie je niet?** Dat is normaal: het staat niet in Git en is op de server soms verborgen. Gebruik dan `auth-config.php` — dezelfde plek waar ook de admin-login staat.
+
+**Cron hoort niet in de website-admin**, maar in het **hostingcontrolepaneel** (Combell, Superhosting, Hostinger, …): zoek naar “Cronjobs”, “Geplande taken” of “Scheduled tasks”.
+
+**Cron via hostingpaneel (HTTP)** — bv. elke maandag 03:15:
+
+```text
+curl -fsS -H "X-Scouts-Cron-Secret: JOUW-GEHEIME-SLEUTEL" https://JOUWDOMEIN.be/api/cron/backup-drive
+```
+
+Of met token in de URL (minder ideaal, wel handig bij beperkte cron-UI):
+
+```text
+https://JOUWDOMEIN.be/api/cron/backup-drive?token=JOUW-GEHEIME-SLEUTEL
+```
+
+**Cron via CLI op de server:**
+
+```text
+php /pad/naar/scouts/tools/backup-site-data-to-drive.php
+```
+
+Test één keer handmatig na deploy; controleer daarna of het JSON-bestand in de Drive-map staat.
 
 ## Als iets misging na een upload naar de server
 

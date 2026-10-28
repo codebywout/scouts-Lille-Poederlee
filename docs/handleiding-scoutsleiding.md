@@ -23,7 +23,7 @@ Lukt inloggen niet? Controleer typfouten. Probeer niet eindeloos opnieuw. Vraag 
 
 Bovenaan staan knoppen:
 
-**Site:** Home · Nieuws · Over ons · Inschrijven · Foto’s · Achtergronden · Tweedehands  
+**Site:** Home · Nieuws · Over ons · Inschrijven · Foto’s · Tweedehands · Instellingen  
 
 **Takken:** Kapoenen · Welpen · Jongverkenners · Verkenners · Jins  
 
@@ -165,11 +165,12 @@ Verwijderen: **Verwijderen** bij die brief, daarna de site controleren.
 
 ## Achtergronden (grote pagina-foto’s)
 
-1. Klik **Achtergronden**.
-2. Kies de pagina (bijvoorbeeld Homepage).
-3. Klik **Foto kiezen** of sleep een afbeelding op de preview.
-4. Wacht tot de upload klaar is. Die staat meteen live.
-5. Klik **Live** of open die pagina op de gewone website.
+1. Open **Instellingen** (tandwiel).
+2. Scroll naar **Achtergronden**.
+3. Kies de pagina (bijvoorbeeld Homepage).
+4. Klik **Foto kiezen** of sleep een afbeelding op de preview.
+5. Wacht tot de upload klaar is. Die staat meteen live.
+6. Klik **Live** of open die pagina op de gewone website.
 
 Lukt de upload niet? De oude achtergrond blijft staan.
 

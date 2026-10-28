@@ -137,6 +137,29 @@ function scouts_google_drive_folder_id(): string
         ?? scouts_env('SCOUTS_GOOGLE_DRIVE_FOLDER_ID', '')));
 }
 
+/** Default weekly site-data backup folder (override with SCOUTS_GOOGLE_DRIVE_BACKUP_FOLDER_ID). */
+const SCOUTS_GOOGLE_DRIVE_BACKUP_FOLDER_ID_DEFAULT = '1d494gLWlxCcxmUN7b9TdPer1IbliEp_6';
+
+function scouts_google_drive_backup_folder_id(): string
+{
+    $settings = scouts_read_google_drive_settings();
+    $fromSettings = trim((string) ($settings['backupFolderId'] ?? ''));
+    if ($fromSettings !== '') {
+        return $fromSettings;
+    }
+    $fromEnv = trim((string) scouts_env('SCOUTS_GOOGLE_DRIVE_BACKUP_FOLDER_ID', ''));
+    return $fromEnv !== '' ? $fromEnv : SCOUTS_GOOGLE_DRIVE_BACKUP_FOLDER_ID_DEFAULT;
+}
+
+/**
+ * Stable weekly backup name: scouts-site-data-2026-W44.json (ISO week).
+ */
+function scouts_google_drive_backup_filename(?DateTimeInterface $now = null): string
+{
+    $now = $now ?? new DateTimeImmutable('now');
+    return 'scouts-site-data-' . $now->format('o') . '-W' . $now->format('W') . '.json';
+}
+
 function scouts_google_base64url(string $value): string
 {
     return rtrim(strtr(base64_encode($value), '+/', '-_'), '=');
@@ -607,7 +630,9 @@ function scouts_google_drive_update_file_media(
     string $accessToken,
     string $fileId,
     string $contents,
+    string $mimeType = 'application/pdf',
 ): void {
+    $mimeType = trim($mimeType) !== '' ? trim($mimeType) : 'application/octet-stream';
     $url = 'https://www.googleapis.com/upload/drive/v3/files/'
         . rawurlencode($fileId)
         . '?uploadType=media&supportsAllDrives=true';
@@ -619,7 +644,7 @@ function scouts_google_drive_update_file_media(
         CURLOPT_TIMEOUT => 60,
         CURLOPT_HTTPHEADER => [
             'Authorization: Bearer ' . $accessToken,
-            'Content-Type: application/pdf',
+            'Content-Type: ' . $mimeType,
             'Content-Length: ' . (string) strlen($contents),
         ],
     ]);
@@ -647,18 +672,20 @@ function scouts_google_drive_create_file(
     string $folderId,
     string $filename,
     string $contents,
+    string $mimeType = 'application/pdf',
 ): string {
+    $mimeType = trim($mimeType) !== '' ? trim($mimeType) : 'application/octet-stream';
     $boundary = 'scouts-' . bin2hex(random_bytes(12));
     $metadata = json_encode([
         'name' => $filename,
         'parents' => [$folderId],
-        'mimeType' => 'application/pdf',
+        'mimeType' => $mimeType,
     ], JSON_THROW_ON_ERROR);
     $body = '--' . $boundary . "\r\n"
         . "Content-Type: application/json; charset=UTF-8\r\n\r\n"
         . $metadata . "\r\n"
         . '--' . $boundary . "\r\n"
-        . "Content-Type: application/pdf\r\n\r\n"
+        . 'Content-Type: ' . $mimeType . "\r\n\r\n"
         . $contents . "\r\n"
         . '--' . $boundary . "--\r\n";
 
@@ -681,7 +708,7 @@ function scouts_google_drive_create_file(
     $error = curl_error($ch);
     if ($response === false || $status < 200 || $status >= 300) {
         throw new RuntimeException(
-            'PDF kon niet naar Google Drive worden geupload: '
+            'Bestand kon niet naar Google Drive worden geupload: '
             . ($error !== '' ? $error : scouts_google_error_message((string) $response, $status))
         );
     }
@@ -691,6 +718,70 @@ function scouts_google_drive_create_file(
         throw new RuntimeException('Google Drive gaf geen bestands-ID terug na upload.');
     }
     return $fileId;
+}
+
+/**
+ * Upload full site-data.json to the weekly backup Drive folder.
+ * Same ISO week overwrites; a new week creates a new file.
+ *
+ * @return array{fileId: string, updated: bool, filename: string, folderId: string}
+ */
+function scouts_google_drive_upload_site_backup(?DateTimeInterface $now = null): array
+{
+    $credentials = scouts_google_drive_credentials();
+    $folderId = scouts_google_drive_backup_folder_id();
+    // Backup folder is fixed; auth is the same OAuth/service-account as planning Drive.
+    $oauth = scouts_google_oauth_data();
+    $hasOauth = is_array($oauth) && isset($oauth['refresh_token'], $oauth['client_id'], $oauth['client_secret']);
+    if ($folderId === '' || (!$hasOauth && $credentials === null)) {
+        throw new RuntimeException('Google Drive is niet geconfigureerd voor backups.');
+    }
+    if (!function_exists('curl_init') || !function_exists('openssl_sign')) {
+        throw new RuntimeException('PHP cURL en OpenSSL zijn vereist voor Google Drive.');
+    }
+    if (!is_readable(SCOUTS_DATA_FILE)) {
+        throw new RuntimeException('Site-data bestand ontbreekt.');
+    }
+
+    $json = file_get_contents(SCOUTS_DATA_FILE);
+    if ($json === false || $json === '') {
+        throw new RuntimeException('Site-data kon niet worden gelezen.');
+    }
+    // Validate JSON before uploading.
+    json_decode($json, true, 512, JSON_THROW_ON_ERROR);
+
+    $filename = scouts_google_drive_backup_filename($now);
+    $mimeType = 'application/json';
+    $accessToken = scouts_google_drive_access_token($credentials);
+
+    $matches = scouts_google_drive_find_files_by_name($accessToken, $folderId, $filename);
+    if ($matches !== []) {
+        $fileId = $matches[0]['id'];
+        $readyId = scouts_google_drive_prepare_planning_file_id($accessToken, $fileId, $folderId);
+        if ($readyId !== null) {
+            scouts_google_drive_update_file_media($accessToken, $readyId, $json, $mimeType);
+            return [
+                'fileId' => $readyId,
+                'updated' => true,
+                'filename' => $filename,
+                'folderId' => $folderId,
+            ];
+        }
+    }
+
+    $fileId = scouts_google_drive_create_file(
+        $accessToken,
+        $folderId,
+        $filename,
+        $json,
+        $mimeType
+    );
+    return [
+        'fileId' => $fileId,
+        'updated' => false,
+        'filename' => $filename,
+        'folderId' => $folderId,
+    ];
 }
 
 /**

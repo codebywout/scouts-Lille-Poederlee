@@ -137,7 +137,7 @@ Wees voorzichtig met verwijderen. Twijfel je? Download eerst een backup via **Ba
 
 **Zelf via de beheeromgeving**
 
-- Pagina-achtergronden → knop **Achtergronden**  
+- Pagina-achtergronden → **Instellingen** → Achtergronden  
 - Foto’s op takken / Over ons → knop **Foto’s**
 
 **Niet via de beheeromgeving**

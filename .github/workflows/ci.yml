@@ -60,6 +60,9 @@ jobs:
       - name: Google Drive planning upsert tests
         run: php tools/test-google-drive-planning.php
 
+      - name: Google Drive weekly backup tests
+        run: php tools/test-google-drive-backup.php
+
       # Isolated Actions workspace only — never run this reset against production.
       - name: Initialize runtime site-data for smoke
         run: |

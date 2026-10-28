@@ -56,6 +56,7 @@
   let saveButtonTimer = 0;
   let googleDriveSettings = {
     folderId: "",
+    backupFolderId: "",
     oauthConfigured: false,
     oauthClientConfigured: false,
     oauthEmail: "",
@@ -455,6 +456,8 @@
   async function saveGoogleDriveSettingsFromForm({ quiet = false } = {}) {
     const folderId =
       qs("[data-drive-setting='folderId']")?.value.trim() || "";
+    const backupFolderId =
+      qs("[data-drive-setting='backupFolderId']")?.value.trim() || "";
     const oauthClientFile = qs("[data-drive-oauth-client]")?.files?.[0];
 
     if (oauthClientFile) {
@@ -473,7 +476,7 @@
     const response = await fetch("/api/google-drive/settings", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ folderId }),
+      body: JSON.stringify({ folderId, backupFolderId }),
     });
     if (!response.ok) {
       const result = await readResponseJson(response);
@@ -481,6 +484,7 @@
     }
 
     googleDriveSettings.folderId = folderId;
+    googleDriveSettings.backupFolderId = backupFolderId;
     if (quiet) {
       markDirtyState(false, { announce: false });
       return;
@@ -1991,6 +1995,9 @@
           ? driveEmailRaw
           : "";
       const folderId = String(googleDriveSettings.folderId || "").trim();
+      const backupFolderId = String(
+        googleDriveSettings.backupFolderId || "",
+      ).trim();
       container.innerHTML = `
           <div class="admin-settings">
             <header class="admin-settings-intro">
@@ -2018,8 +2025,13 @@
 
                 <div class="admin-drive-fields admin-fields">
                   <label class="admin-drive-field">
-                    <span class="admin-drive-field-label">Map-ID</span>
-                    <input type="text" data-drive-setting="folderId" value="${escapeHtml(folderId)}" placeholder="Map-ID" autocomplete="off" spellcheck="false">
+                    <span class="admin-drive-field-label">Map-ID maandplanningen</span>
+                    <input type="text" data-drive-setting="folderId" value="${escapeHtml(folderId)}" placeholder="Map-ID maandplanningen" autocomplete="off" spellcheck="false">
+                  </label>
+
+                  <label class="admin-drive-field">
+                    <span class="admin-drive-field-label">Map-ID backups</span>
+                    <input type="text" data-drive-setting="backupFolderId" value="${escapeHtml(backupFolderId)}" placeholder="Map-ID backups" autocomplete="off" spellcheck="false">
                   </label>
 
                   ${
@@ -2052,7 +2064,7 @@
               <div class="admin-settings-side">
                 <section class="admin-card compact-card admin-settings-card">
                   <div class="admin-card-head"><h2>Backup</h2></div>
-                  <p class="form-help admin-settings-side-help">Download of herstel alle sitegegevens als JSON.</p>
+                  <p class="form-help admin-settings-side-help">Download of herstel alle sitegegevens als JSON. Op de server kan wekelijks automatisch een kopie naar Google Drive gaan.</p>
                   <div class="admin-actions">
                     <button type="button" class="button button-secondary" data-download-backup>Downloaden</button>
                     <label class="button button-ghost-dark admin-restore-button">
@@ -2077,8 +2089,14 @@
                 </section>
               </div>
             </div>
+
+            <section class="admin-card compact-card admin-backgrounds-card admin-settings-card admin-settings-card--backgrounds">
+              <div class="admin-card-head"><h2>Achtergronden</h2></div>
+              <div id="backgroundEditor" class="admin-bg-grid"></div>
+            </section>
           </div>
         `;
+      renderBackgroundEditor(data);
       return;
     }
 
@@ -2144,17 +2162,6 @@
                 </section>
             `;
       renderPhotoEditor(data);
-      return;
-    }
-
-    if (activePage === "achtergronden") {
-      container.innerHTML = `
-                <section class="admin-card compact-card admin-backgrounds-card">
-                    <div class="admin-card-head"><h2>Achtergronden</h2></div>
-                    <div id="backgroundEditor" class="admin-bg-grid"></div>
-                </section>
-            `;
-      renderBackgroundEditor(data);
       return;
     }
 
@@ -2307,7 +2314,6 @@
     "over-ons": "/over-ons",
     inschrijven: "/inschrijven",
     photos: "/over-ons",
-    achtergronden: "/",
     kapoenen: "/kapoenen",
     welpen: "/welpen",
     jongverkenners: "/jongverkenners",
@@ -2333,6 +2339,10 @@
 
   function renderAdminPanel() {
     const data = DataStore.get();
+    // Legacy page key: backgrounds now live under Instellingen.
+    if (data.activePage === "achtergronden") {
+      data.activePage = "home";
+    }
     const activePage = data.activePage || "home";
     const isSettings = activePage === "settings";
 
