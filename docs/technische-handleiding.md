@@ -261,7 +261,7 @@ Alle routes lopen via `/api/{route}` → `api/index.php?route=…`.
 | DELETE | `uploads/document/{name}` | Admin + same-origin | Document verwijderen |
 | GET | `uploads/orphans` | Admin | Orphan-lijst |
 | POST | `uploads/orphans/purge` | Admin + same-origin | Orphans opruimen |
-| GET/POST | `cron/backup-drive` | `SCOUTS_CRON_SECRET` | Wekelijkse site-data → Drive-backupmap |
+| GET/POST | `cron/backup-drive` | `SCOUTS_CRON_SECRET` (header `X-Scouts-Cron-Secret` of fallback `?token=`) | Wekelijkse site-data → Drive-backupmap; voorkeur POST+header of CLI |
 | POST | `google-drive/settings/unlock` | Admin + same-origin | Unlock Drive-UI |
 | GET/POST | `google-drive/settings` | Google-settings access | Folder-instellingen |
 | POST | `google-drive/credentials` | Google-settings + same-origin | Service-account upload |
