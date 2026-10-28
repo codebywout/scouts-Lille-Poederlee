@@ -60,6 +60,35 @@ expect(
     'next year gets a different filename'
 );
 
+$dec2026 = new DateTimeImmutable('2026-12-15');
+$jan2027 = new DateTimeImmutable('2027-01-10');
+$okt2026 = new DateTimeImmutable('2026-10-05');
+expect(
+    scouts_google_drive_planning_year('januari', $dec2026) === 2027,
+    'januari uploaded in december uses next calendar year'
+);
+expect(
+    scouts_google_drive_planning_filename('kapoenen', 'januari', null, $dec2026)
+        === 'kapoenen_januari_2027.pdf',
+    'december upload of januari becomes …_januari_2027.pdf'
+);
+expect(
+    scouts_google_drive_planning_year('oktober', $dec2026) === 2026,
+    'oktober uploaded in december stays current autumn year'
+);
+expect(
+    scouts_google_drive_planning_year('januari', $jan2027) === 2027,
+    'januari uploaded in januari keeps that year'
+);
+expect(
+    scouts_google_drive_planning_year('oktober', $okt2026) === 2026,
+    'oktober uploaded in oktober keeps that year'
+);
+expect(
+    scouts_google_drive_planning_year('december januari', $dec2026) === 2027,
+    'span across year-end uses the later scout-year calendar year'
+);
+
 $keyOct = scouts_google_drive_planning_id_key('kapoenen', 'oktober', 2026);
 $keyNov = scouts_google_drive_planning_id_key('kapoenen', 'november', 2026);
 $keyWel = scouts_google_drive_planning_id_key('welpen', 'oktober', 2026);
@@ -125,6 +154,33 @@ $foundAgain = scouts_google_drive_resolve_planning_upsert(
 expect(
     $foundAgain['fileId'] === 'file-kap-oct-newest',
     'newest search hit is preferred when period duplicates exist'
+);
+
+// After a Drive delete: trashed/missing metadata must not count as usable.
+expect(
+    scouts_google_drive_file_usable_in_folder(null, 'folder-1') === false,
+    'missing Drive file is not usable'
+);
+expect(
+    scouts_google_drive_file_usable_in_folder(
+        ['id' => 'f1', 'trashed' => true, 'parents' => ['folder-1']],
+        'folder-1'
+    ) === false,
+    'trashed Drive file is not usable until restored'
+);
+expect(
+    scouts_google_drive_file_usable_in_folder(
+        ['id' => 'f1', 'trashed' => false, 'parents' => ['other-folder']],
+        'folder-1'
+    ) === false,
+    'file outside planning folder is not usable'
+);
+expect(
+    scouts_google_drive_file_usable_in_folder(
+        ['id' => 'f1', 'trashed' => false, 'parents' => ['folder-1']],
+        'folder-1'
+    ) === true,
+    'active file in planning folder is usable'
 );
 
 echo "---\npassed={$passed} failed={$failed}\n";
