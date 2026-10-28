@@ -1,7 +1,7 @@
 # Technische handleiding — scoutswebsite
 
 Dit bestand is alleen nodig als je zelf aan de **programmacode** of de server werkt.  
-Voor gewone inhoud (teksten, foto’s, agenda) gebruik je de [README](../README.md) en [handleiding-scoutsleiding.md](handleiding-scoutsleiding.md).
+Voor gewone inhoud (teksten, foto’s, agenda) gebruik je de [README](../README.md).
 
 Oorspronkelijk gemaakt voor [Scouts Lille-Poederlee](https://scoutslille.be); andere groepen kunnen dezelfde basis gebruiken.
 
@@ -108,7 +108,7 @@ scouts/
 ├── .user.ini                    # Uploadlimieten (PHP-FPM/CGI)
 ├── .github/workflows/ci.yml
 ├── README.md                    # Startpagina voor scoutsleiding
-├── docs/                        # Handleidingen (beheer, overdracht, techniek, …)
+├── docs/                        # Handleidingen (beheer, hosting, techniek, …)
 ├── admin-gate.php               # Gate voor /admin
 ├── admin.html
 ├── auth-config.php              # Optioneel, niet in Git
