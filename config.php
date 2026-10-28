@@ -54,7 +54,7 @@ const SCOUTS_MAX_PDF_UPLOAD_BYTES = 20971520;
  * Bump this on every deploy so HTML/CSS/JS URLs change and old caches are skipped.
  * Format: YYYYMMDD-N
  */
-const SCOUTS_ASSET_VERSION = '20261028-1';
+const SCOUTS_ASSET_VERSION = '20261028-2';
 /** Microsoft Clarity project ID (public site only; loaded after analytics consent). */
 const SCOUTS_CLARITY_PROJECT_ID = 'z4c8od8ljm';
 const SCOUTS_LOGIN_ATTEMPTS_FILE = SCOUTS_ROOT . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . '.login-attempts.json';
@@ -1566,5 +1566,32 @@ function scouts_require_google_settings_access(): void
     if (!isset($_SESSION['google_settings_unlocked_until'])
         || (int) $_SESSION['google_settings_unlocked_until'] < time()) {
         scouts_json_response(['message' => 'Google Drive-instellingen zijn vergrendeld.'], 403);
+    }
+}
+
+/**
+ * Shared-secret gate for hosting cron endpoints (header or ?token=).
+ * Set via .env SCOUTS_CRON_SECRET or constant in auth-config.php.
+ */
+function scouts_cron_secret(): string
+{
+    if (defined('SCOUTS_CRON_SECRET')) {
+        return trim((string) SCOUTS_CRON_SECRET);
+    }
+    return trim((string) scouts_env('SCOUTS_CRON_SECRET', ''));
+}
+
+function scouts_require_cron_secret(): void
+{
+    $expected = scouts_cron_secret();
+    if ($expected === '' || strlen($expected) < 16) {
+        scouts_json_response(['message' => 'Cron is niet geconfigureerd.'], 503);
+    }
+    $provided = trim((string) ($_SERVER['HTTP_X_SCOUTS_CRON_SECRET'] ?? ''));
+    if ($provided === '') {
+        $provided = trim((string) ($_GET['token'] ?? ''));
+    }
+    if ($provided === '' || !hash_equals($expected, $provided)) {
+        scouts_json_response(['message' => 'Forbidden'], 403);
     }
 }

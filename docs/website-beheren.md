@@ -16,7 +16,7 @@ Startpagina: [README.md](../README.md).
 | Brief (PDF) | Die tak → Brieven |
 | Maandplanning (PDF) | Die tak → Maandplanning |
 | Foto’s takken / Over ons | Foto’s |
-| Pagina-achtergronden | Achtergronden |
+| Pagina-achtergronden | Instellingen → Achtergronden |
 | Tweedehands | Tweedehands |
 
 **Zelf via beheer:** alles in de tabel hierboven.  

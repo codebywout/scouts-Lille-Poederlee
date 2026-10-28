@@ -111,8 +111,16 @@ try {
         scouts_require_google_settings_access();
         $settings = scouts_read_google_drive_settings();
         $credentials = scouts_google_drive_credentials();
+        $backupFolderId = trim((string) ($settings['backupFolderId'] ?? ''));
+        if ($backupFolderId === '') {
+            $backupFolderId = trim((string) scouts_env(
+                'SCOUTS_GOOGLE_DRIVE_BACKUP_FOLDER_ID',
+                SCOUTS_GOOGLE_DRIVE_BACKUP_FOLDER_ID_DEFAULT
+            ));
+        }
         scouts_json_response([
             'folderId' => (string) ($settings['folderId'] ?? scouts_env('SCOUTS_GOOGLE_DRIVE_FOLDER_ID', '')),
+            'backupFolderId' => $backupFolderId,
             'serviceAccountConfigured' => $credentials !== null,
             'serviceAccountEmail' => (string) ($credentials['client_email'] ?? ''),
             'oauthConfigured' => ($oauth = scouts_google_oauth_data()) !== null && !empty($oauth['refresh_token']),
@@ -128,12 +136,17 @@ try {
         scouts_require_same_origin();
         $body = scouts_request_json();
         $folderId = trim((string) ($body['folderId'] ?? ''));
+        $backupFolderId = trim((string) ($body['backupFolderId'] ?? ''));
         if ($folderId !== '' && !preg_match('/^[a-zA-Z0-9_-]{10,}$/', $folderId)) {
-            scouts_json_response(['message' => 'Ongeldige Google Drive-map-ID.'], 400);
+            scouts_json_response(['message' => 'Ongeldige map-ID voor maandplanningen.'], 400);
+        }
+        if ($backupFolderId !== '' && !preg_match('/^[a-zA-Z0-9_-]{10,}$/', $backupFolderId)) {
+            scouts_json_response(['message' => 'Ongeldige map-ID voor backups.'], 400);
         }
         $settings = scouts_read_google_drive_settings();
         $previousFolder = trim((string) ($settings['folderId'] ?? ''));
         $settings['folderId'] = $folderId;
+        $settings['backupFolderId'] = $backupFolderId;
         // Folder change invalidates cached planning file IDs (they belong to the old folder).
         if ($previousFolder !== $folderId) {
             unset($settings['planningFileIds']);
@@ -754,6 +767,26 @@ try {
             'count' => count($orphans),
             'totalBytes' => $totalBytes,
             'orphans' => $orphans,
+        ]);
+    }
+
+    if ($route === 'cron/backup-drive' && ($method === 'GET' || $method === 'POST')) {
+        scouts_require_cron_secret();
+        try {
+            $driveResult = scouts_google_drive_upload_site_backup();
+        } catch (Throwable $error) {
+            error_log('Wekelijkse Drive-backup mislukt: ' . $error->getMessage());
+            scouts_json_response([
+                'success' => false,
+                'message' => $error->getMessage(),
+            ], 500);
+        }
+        scouts_json_response([
+            'success' => true,
+            'updated' => !empty($driveResult['updated']),
+            'filename' => (string) ($driveResult['filename'] ?? ''),
+            'fileId' => (string) ($driveResult['fileId'] ?? ''),
+            'folderId' => (string) ($driveResult['folderId'] ?? ''),
         ]);
     }
 

@@ -2154,6 +2154,10 @@ html:has(body.admin-page) {
     max-width: 980px;
 }
 
+.admin-settings-card--backgrounds {
+    width: 100%;
+}
+
 .admin-settings-layout {
     display: grid;
     grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
