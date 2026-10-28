@@ -770,6 +770,8 @@ try {
         ]);
     }
 
+    // Prefer POST + X-Scouts-Cron-Secret (or CLI). GET/?token= remains for hosters
+    // that can only "fetch a URL", but the token may appear in access logs.
     if ($route === 'cron/backup-drive' && ($method === 'GET' || $method === 'POST')) {
         scouts_require_cron_secret();
         try {
@@ -778,15 +780,13 @@ try {
             error_log('Wekelijkse Drive-backup mislukt: ' . $error->getMessage());
             scouts_json_response([
                 'success' => false,
-                'message' => $error->getMessage(),
+                'message' => 'Backup naar Google Drive is mislukt.',
             ], 500);
         }
         scouts_json_response([
             'success' => true,
             'updated' => !empty($driveResult['updated']),
             'filename' => (string) ($driveResult['filename'] ?? ''),
-            'fileId' => (string) ($driveResult['fileId'] ?? ''),
-            'folderId' => (string) ($driveResult['folderId'] ?? ''),
         ]);
     }
 

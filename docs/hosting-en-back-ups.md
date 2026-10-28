@@ -58,23 +58,27 @@ Bestandsnaam per ISO-week, bv. `scouts-site-data-2026-W44.json`. Dezelfde week o
 
 **Cron hoort niet in de website-admin**, maar in het **hostingcontrolepaneel** (Combell, Superhosting, Hostinger, …): zoek naar “Cronjobs”, “Geplande taken” of “Scheduled tasks”.
 
-**Cron via hostingpaneel (HTTP)** — bv. elke maandag 03:15:
+**Voorkeur 1 — CLI op de server** (geen secret in URL/logs):
 
 ```text
-curl -fsS -H "X-Scouts-Cron-Secret: JOUW-GEHEIME-SLEUTEL" https://JOUWDOMEIN.be/api/cron/backup-drive
+php /pad/naar/scouts/tools/backup-site-data-to-drive.php
 ```
 
-Of met token in de URL (minder ideaal, wel handig bij beperkte cron-UI):
+**Voorkeur 2 — HTTP POST met header** (bv. cron die `curl` kan draaien):
+
+```text
+curl -fsS -X POST -H "X-Scouts-Cron-Secret: JOUW-GEHEIME-SLEUTEL" https://JOUWDOMEIN.be/api/cron/backup-drive
+```
+
+**Laatste redmiddel — URL ophalen** (sommige hosters kunnen alleen een GET-URL):
 
 ```text
 https://JOUWDOMEIN.be/api/cron/backup-drive?token=JOUW-GEHEIME-SLEUTEL
 ```
 
-**Cron via CLI op de server:**
+Let op: een token in de URL kan in serverlogs of monitoring terechtkomen. Gebruik dit alleen als header/CLI niet kan.
 
-```text
-php /pad/naar/scouts/tools/backup-site-data-to-drive.php
-```
+Bij een mislukte backup krijgt de aanroeper alleen een algemene foutmelding; details staan in de serverlog.
 
 Test één keer handmatig na deploy; controleer daarna of het JSON-bestand in de Drive-map staat.
 

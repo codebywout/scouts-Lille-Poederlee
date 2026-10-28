@@ -721,61 +721,141 @@ function scouts_google_drive_create_file(
 }
 
 /**
+ * Whether Drive auth + backup folder are usable for weekly backups.
+ *
+ * @param array<string, mixed>|null $oauthData
+ * @param array<string, mixed>|null $serviceAccount
+ */
+function scouts_google_drive_backup_config_ok(
+    ?array $oauthData,
+    ?array $serviceAccount,
+    string $folderId,
+): bool {
+    if (trim($folderId) === '') {
+        return false;
+    }
+    $hasOauth = is_array($oauthData)
+        && isset($oauthData['refresh_token'], $oauthData['client_id'], $oauthData['client_secret']);
+    return $hasOauth || $serviceAccount !== null;
+}
+
+/**
+ * Validate site-data JSON payload before Drive upload.
+ *
+ * @throws JsonException|RuntimeException
+ */
+function scouts_google_drive_backup_read_payload(string $json): string
+{
+    if ($json === '') {
+        throw new RuntimeException('Site-data kon niet worden gelezen.');
+    }
+    json_decode($json, true, 512, JSON_THROW_ON_ERROR);
+    return $json;
+}
+
+/**
+ * Decide create vs update after searching the backup folder.
+ * $usableFileId is the prepared/restored id for a found file, or empty when missing/unusable.
+ *
+ * @param list<array{id?: string}> $foundFiles
+ * @return array{action: 'update'|'create', fileId: string}
+ */
+function scouts_google_drive_resolve_backup_upsert(array $foundFiles, string $usableFileId): array
+{
+    $usableFileId = trim($usableFileId);
+    if ($usableFileId !== '') {
+        return ['action' => 'update', 'fileId' => $usableFileId];
+    }
+    // No usable hit (empty folder, permanently deleted, or unrestorable trash).
+    unset($foundFiles);
+    return ['action' => 'create', 'fileId' => ''];
+}
+
+/**
  * Upload full site-data.json to the weekly backup Drive folder.
  * Same ISO week overwrites; a new week creates a new file.
  *
+ * $hooks may override network/IO callables for tests (no real Drive I/O).
+ *
+ * @param array{
+ *   credentials?: callable(): (?array),
+ *   oauth_data?: callable(): (?array),
+ *   folder_id?: callable(): string,
+ *   read_site_data?: callable(): string,
+ *   access_token?: callable(?array): string,
+ *   find?: callable(string, string, string): list<array{id: string}>,
+ *   prepare?: callable(string, string, string): (?string),
+ *   update?: callable(string, string, string, string): void,
+ *   create?: callable(string, string, string, string, string): string
+ * } $hooks
  * @return array{fileId: string, updated: bool, filename: string, folderId: string}
  */
-function scouts_google_drive_upload_site_backup(?DateTimeInterface $now = null): array
-{
-    $credentials = scouts_google_drive_credentials();
-    $folderId = scouts_google_drive_backup_folder_id();
-    // Backup folder is fixed; auth is the same OAuth/service-account as planning Drive.
-    $oauth = scouts_google_oauth_data();
-    $hasOauth = is_array($oauth) && isset($oauth['refresh_token'], $oauth['client_id'], $oauth['client_secret']);
-    if ($folderId === '' || (!$hasOauth && $credentials === null)) {
+function scouts_google_drive_upload_site_backup(
+    ?DateTimeInterface $now = null,
+    array $hooks = [],
+): array {
+    $credentials = isset($hooks['credentials'])
+        ? $hooks['credentials']()
+        : scouts_google_drive_credentials();
+    $oauth = isset($hooks['oauth_data'])
+        ? $hooks['oauth_data']()
+        : scouts_google_oauth_data();
+    $folderId = isset($hooks['folder_id'])
+        ? $hooks['folder_id']()
+        : scouts_google_drive_backup_folder_id();
+
+    if (!scouts_google_drive_backup_config_ok($oauth, $credentials, $folderId)) {
         throw new RuntimeException('Google Drive is niet geconfigureerd voor backups.');
     }
-    if (!function_exists('curl_init') || !function_exists('openssl_sign')) {
+    if (!isset($hooks['access_token'], $hooks['find'], $hooks['prepare'], $hooks['update'], $hooks['create'])
+        && (!function_exists('curl_init') || !function_exists('openssl_sign'))
+    ) {
         throw new RuntimeException('PHP cURL en OpenSSL zijn vereist voor Google Drive.');
     }
-    if (!is_readable(SCOUTS_DATA_FILE)) {
-        throw new RuntimeException('Site-data bestand ontbreekt.');
-    }
 
-    $json = file_get_contents(SCOUTS_DATA_FILE);
-    if ($json === false || $json === '') {
-        throw new RuntimeException('Site-data kon niet worden gelezen.');
+    if (isset($hooks['read_site_data'])) {
+        $json = scouts_google_drive_backup_read_payload($hooks['read_site_data']());
+    } else {
+        if (!is_readable(SCOUTS_DATA_FILE)) {
+            throw new RuntimeException('Site-data bestand ontbreekt.');
+        }
+        $raw = file_get_contents(SCOUTS_DATA_FILE);
+        if ($raw === false) {
+            throw new RuntimeException('Site-data kon niet worden gelezen.');
+        }
+        $json = scouts_google_drive_backup_read_payload($raw);
     }
-    // Validate JSON before uploading.
-    json_decode($json, true, 512, JSON_THROW_ON_ERROR);
 
     $filename = scouts_google_drive_backup_filename($now);
     $mimeType = 'application/json';
-    $accessToken = scouts_google_drive_access_token($credentials);
+    $accessToken = isset($hooks['access_token'])
+        ? $hooks['access_token']($credentials)
+        : scouts_google_drive_access_token($credentials);
 
-    $matches = scouts_google_drive_find_files_by_name($accessToken, $folderId, $filename);
-    if ($matches !== []) {
-        $fileId = $matches[0]['id'];
-        $readyId = scouts_google_drive_prepare_planning_file_id($accessToken, $fileId, $folderId);
-        if ($readyId !== null) {
-            scouts_google_drive_update_file_media($accessToken, $readyId, $json, $mimeType);
-            return [
-                'fileId' => $readyId,
-                'updated' => true,
-                'filename' => $filename,
-                'folderId' => $folderId,
-            ];
-        }
+    $find = $hooks['find'] ?? 'scouts_google_drive_find_files_by_name';
+    $prepare = $hooks['prepare'] ?? 'scouts_google_drive_prepare_planning_file_id';
+    $update = $hooks['update'] ?? 'scouts_google_drive_update_file_media';
+    $create = $hooks['create'] ?? 'scouts_google_drive_create_file';
+
+    $matches = $find($accessToken, $folderId, $filename);
+    $usableId = '';
+    if ($matches !== [] && is_string($matches[0]['id'] ?? null) && trim($matches[0]['id']) !== '') {
+        $prepared = $prepare($accessToken, trim($matches[0]['id']), $folderId);
+        $usableId = is_string($prepared) ? $prepared : '';
+    }
+    $decision = scouts_google_drive_resolve_backup_upsert($matches, $usableId);
+
+    if ($decision['action'] === 'update') {
+        $update($accessToken, $decision['fileId'], $json, $mimeType);
+        return [
+            'fileId' => $decision['fileId'],
+            'updated' => true,
+            'filename' => $filename,
+            'folderId' => $folderId,
+        ];
     }
 
-    $fileId = scouts_google_drive_create_file(
-        $accessToken,
-        $folderId,
-        $filename,
-        $json,
-        $mimeType
-    );
+    $fileId = $create($accessToken, $folderId, $filename, $json, $mimeType);
     return [
         'fileId' => $fileId,
         'updated' => false,

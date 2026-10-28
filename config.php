@@ -1570,7 +1570,7 @@ function scouts_require_google_settings_access(): void
 }
 
 /**
- * Shared-secret gate for hosting cron endpoints (header or ?token=).
+ * Shared-secret for hosting cron endpoints.
  * Set via .env SCOUTS_CRON_SECRET or constant in auth-config.php.
  */
 function scouts_cron_secret(): string
@@ -1581,17 +1581,44 @@ function scouts_cron_secret(): string
     return trim((string) scouts_env('SCOUTS_CRON_SECRET', ''));
 }
 
+/**
+ * Prefer X-Scouts-Cron-Secret header; query ?token= is a last-resort fallback.
+ */
+function scouts_cron_provided_secret(?string $headerSecret, ?string $queryToken): string
+{
+    $header = trim((string) $headerSecret);
+    if ($header !== '') {
+        return $header;
+    }
+    return trim((string) $queryToken);
+}
+
+/**
+ * @return 'ok'|'not_configured'|'forbidden'
+ */
+function scouts_cron_secret_status(string $expected, string $provided): string
+{
+    if ($expected === '' || strlen($expected) < 16) {
+        return 'not_configured';
+    }
+    if ($provided === '' || !hash_equals($expected, $provided)) {
+        return 'forbidden';
+    }
+    return 'ok';
+}
+
 function scouts_require_cron_secret(): void
 {
     $expected = scouts_cron_secret();
-    if ($expected === '' || strlen($expected) < 16) {
+    $provided = scouts_cron_provided_secret(
+        $_SERVER['HTTP_X_SCOUTS_CRON_SECRET'] ?? null,
+        isset($_GET['token']) ? (string) $_GET['token'] : null
+    );
+    $status = scouts_cron_secret_status($expected, $provided);
+    if ($status === 'not_configured') {
         scouts_json_response(['message' => 'Cron is niet geconfigureerd.'], 503);
     }
-    $provided = trim((string) ($_SERVER['HTTP_X_SCOUTS_CRON_SECRET'] ?? ''));
-    if ($provided === '') {
-        $provided = trim((string) ($_GET['token'] ?? ''));
-    }
-    if ($provided === '' || !hash_equals($expected, $provided)) {
+    if ($status !== 'ok') {
         scouts_json_response(['message' => 'Forbidden'], 403);
     }
 }
