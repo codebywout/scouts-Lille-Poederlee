@@ -223,21 +223,186 @@ function scouts_google_drive_access_token(?array $credentials): string
     return $token['access_token'];
 }
 
-function scouts_google_drive_upload(string $filePath, string $filename): void
+/**
+ * Sanitize planning title (selected months) for Drive filenames.
+ * Example: "oktober november" → "oktober_november"
+ */
+function scouts_google_drive_planning_title_part(string $title): string
 {
-    $credentials = scouts_google_drive_credentials();
-    $folderId = scouts_google_drive_folder_id();
-    if ($folderId === '' || (scouts_google_oauth_client() === null && $credentials === null)) {
-        throw new RuntimeException('Google Drive is niet geconfigureerd.');
-    }
-    if (!function_exists('curl_init') || !function_exists('openssl_sign')) {
-        throw new RuntimeException('PHP cURL en OpenSSL zijn vereist voor Google Drive.');
-    }
+    $titlePart = preg_replace('/\.pdf$/i', '', $title);
+    $titlePart = preg_replace('/[^a-zA-Z0-9]+/', '_', (string) $titlePart);
+    $titlePart = trim(strtolower((string) $titlePart), '_');
+    return $titlePart !== '' ? $titlePart : 'planning';
+}
 
-    $contents = file_get_contents($filePath);
-    if ($contents === false) {
-        throw new RuntimeException('PDF kon niet voor Google Drive worden gelezen.');
+/**
+ * Stable Drive name for one planning period: {tak}_{maanden}_{jaar}.pdf
+ * Same period → same name (overwrite). Other months/year → new name (new file).
+ */
+function scouts_google_drive_planning_filename(
+    string $branch,
+    string $title,
+    ?int $year = null,
+): string {
+    $branch = strtolower(trim($branch));
+    $titlePart = scouts_google_drive_planning_title_part($title);
+    $year = $year ?? (int) date('Y');
+    return $branch . '_' . $titlePart . '_' . $year . '.pdf';
+}
+
+/**
+ * Map key for remembered Drive file ids (filename without .pdf).
+ */
+function scouts_google_drive_planning_id_key(
+    string $branch,
+    string $title,
+    ?int $year = null,
+): string {
+    $filename = scouts_google_drive_planning_filename($branch, $title, $year);
+    return (string) preg_replace('/\.pdf$/i', '', $filename);
+}
+
+/**
+ * @return array<string, string> planningKey => Drive file id
+ */
+function scouts_google_drive_planning_file_ids(): array
+{
+    $settings = scouts_read_google_drive_settings();
+    $map = is_array($settings['planningFileIds'] ?? null) ? $settings['planningFileIds'] : [];
+    $out = [];
+    foreach ($map as $key => $fileId) {
+        if (!is_string($key) || !is_string($fileId)) {
+            continue;
+        }
+        $key = strtolower(trim($key));
+        $fileId = trim($fileId);
+        if ($key !== '' && $fileId !== '') {
+            $out[$key] = $fileId;
+        }
     }
+    return $out;
+}
+
+function scouts_google_drive_remember_planning_file_id(string $planningKey, string $fileId): void
+{
+    $planningKey = strtolower(trim($planningKey));
+    $fileId = trim($fileId);
+    if ($planningKey === '' || $fileId === '') {
+        return;
+    }
+    $settings = scouts_read_google_drive_settings();
+    $map = is_array($settings['planningFileIds'] ?? null) ? $settings['planningFileIds'] : [];
+    $map[$planningKey] = $fileId;
+    $settings['planningFileIds'] = $map;
+    scouts_write_google_drive_settings($settings);
+}
+
+function scouts_google_drive_escape_query_value(string $value): string
+{
+    return str_replace(["\\", "'"], ["\\\\", "\\'"], $value);
+}
+
+/**
+ * @return list<array{id: string, name: string, modifiedTime?: string}>
+ */
+function scouts_google_drive_find_files_by_name(
+    string $accessToken,
+    string $folderId,
+    string $filename,
+): array {
+    $escapedName = scouts_google_drive_escape_query_value($filename);
+    $escapedFolder = scouts_google_drive_escape_query_value($folderId);
+    $q = "name = '{$escapedName}' and '{$escapedFolder}' in parents and trashed = false";
+    $url = 'https://www.googleapis.com/drive/v3/files?' . http_build_query([
+        'q' => $q,
+        'spaces' => 'drive',
+        'fields' => 'files(id,name,modifiedTime)',
+        'pageSize' => 10,
+        'orderBy' => 'modifiedTime desc',
+        'supportsAllDrives' => 'true',
+        'includeItemsFromAllDrives' => 'true',
+        'corpora' => 'allDrives',
+    ]);
+
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 30,
+        CURLOPT_HTTPHEADER => ['Authorization: Bearer ' . $accessToken],
+    ]);
+    if (defined('CURLSSLOPT_NATIVE_CA')) {
+        curl_setopt($ch, CURLOPT_SSL_OPTIONS, CURLSSLOPT_NATIVE_CA);
+    }
+    $response = curl_exec($ch);
+    $status = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+    $error = curl_error($ch);
+    if ($response === false || $status < 200 || $status >= 300) {
+        throw new RuntimeException(
+            'Google Drive-bestand zoeken mislukt: '
+            . ($error !== '' ? $error : scouts_google_error_message((string) $response, $status))
+        );
+    }
+    $payload = json_decode($response, true);
+    $files = is_array($payload) && is_array($payload['files'] ?? null) ? $payload['files'] : [];
+    $out = [];
+    foreach ($files as $file) {
+        if (!is_array($file) || !is_string($file['id'] ?? null) || trim($file['id']) === '') {
+            continue;
+        }
+        $out[] = [
+            'id' => trim($file['id']),
+            'name' => is_string($file['name'] ?? null) ? $file['name'] : $filename,
+            'modifiedTime' => is_string($file['modifiedTime'] ?? null) ? $file['modifiedTime'] : '',
+        ];
+    }
+    return $out;
+}
+
+function scouts_google_drive_update_file_media(
+    string $accessToken,
+    string $fileId,
+    string $contents,
+): void {
+    $url = 'https://www.googleapis.com/upload/drive/v3/files/'
+        . rawurlencode($fileId)
+        . '?uploadType=media&supportsAllDrives=true';
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_CUSTOMREQUEST => 'PATCH',
+        CURLOPT_POSTFIELDS => $contents,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 60,
+        CURLOPT_HTTPHEADER => [
+            'Authorization: Bearer ' . $accessToken,
+            'Content-Type: application/pdf',
+            'Content-Length: ' . (string) strlen($contents),
+        ],
+    ]);
+    if (defined('CURLSSLOPT_NATIVE_CA')) {
+        curl_setopt($ch, CURLOPT_SSL_OPTIONS, CURLSSLOPT_NATIVE_CA);
+    }
+    $response = curl_exec($ch);
+    $status = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+    $error = curl_error($ch);
+    if ($response === false || $status < 200 || $status >= 300) {
+        throw new RuntimeException(
+            'Google Drive-bestand bijwerken mislukt: '
+            . ($error !== '' ? $error : scouts_google_error_message((string) $response, $status))
+        );
+    }
+}
+
+/**
+ * Create a new Drive file (multipart metadata + media).
+ *
+ * @return string Drive file id
+ */
+function scouts_google_drive_create_file(
+    string $accessToken,
+    string $folderId,
+    string $filename,
+    string $contents,
+): string {
     $boundary = 'scouts-' . bin2hex(random_bytes(12));
     $metadata = json_encode([
         'name' => $filename,
@@ -259,7 +424,7 @@ function scouts_google_drive_upload(string $filePath, string $filename): void
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_TIMEOUT => 60,
         CURLOPT_HTTPHEADER => [
-            'Authorization: Bearer ' . scouts_google_drive_access_token($credentials),
+            'Authorization: Bearer ' . $accessToken,
             'Content-Type: multipart/related; boundary=' . $boundary,
         ],
     ]);
@@ -270,6 +435,121 @@ function scouts_google_drive_upload(string $filePath, string $filename): void
     $status = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
     $error = curl_error($ch);
     if ($response === false || $status < 200 || $status >= 300) {
-        throw new RuntimeException('PDF kon niet naar Google Drive worden geupload: ' . ($error !== '' ? $error : scouts_google_error_message((string) $response, $status)));
+        throw new RuntimeException(
+            'PDF kon niet naar Google Drive worden geupload: '
+            . ($error !== '' ? $error : scouts_google_error_message((string) $response, $status))
+        );
     }
+    $payload = json_decode((string) $response, true);
+    $fileId = is_array($payload) && is_string($payload['id'] ?? null) ? trim($payload['id']) : '';
+    if ($fileId === '') {
+        throw new RuntimeException('Google Drive gaf geen bestands-ID terug na upload.');
+    }
+    return $fileId;
+}
+
+/**
+ * Decide whether to update an existing Drive file or create a new one.
+ *
+ * @param array<string, string> $knownIds planningKey => file id
+ * @param list<array{id: string}> $foundFiles search hits (newest first)
+ * @return array{action: 'update'|'create', fileId: string}
+ */
+function scouts_google_drive_resolve_planning_upsert(
+    string $planningKey,
+    array $knownIds,
+    array $foundFiles,
+): array {
+    $planningKey = strtolower(trim($planningKey));
+    $known = trim((string) ($knownIds[$planningKey] ?? ''));
+    if ($known !== '') {
+        return ['action' => 'update', 'fileId' => $known];
+    }
+    foreach ($foundFiles as $file) {
+        $id = is_array($file) && is_string($file['id'] ?? null) ? trim($file['id']) : '';
+        if ($id !== '') {
+            return ['action' => 'update', 'fileId' => $id];
+        }
+    }
+    return ['action' => 'create', 'fileId' => ''];
+}
+
+/**
+ * Upload or replace a planning PDF in the configured Drive folder.
+ * Identity is {tak}_{maanden}_{jaar}: same period overwrites; a new month creates a file.
+ *
+ * @return array{fileId: string, updated: bool, filename: string}
+ */
+function scouts_google_drive_upload_planning(
+    string $filePath,
+    string $branch,
+    string $title,
+    ?int $year = null,
+): array {
+    $credentials = scouts_google_drive_credentials();
+    $folderId = scouts_google_drive_folder_id();
+    if ($folderId === '' || (scouts_google_oauth_client() === null && $credentials === null)) {
+        throw new RuntimeException('Google Drive is niet geconfigureerd.');
+    }
+    if (!function_exists('curl_init') || !function_exists('openssl_sign')) {
+        throw new RuntimeException('PHP cURL en OpenSSL zijn vereist voor Google Drive.');
+    }
+
+    $branch = strtolower(trim($branch));
+    $year = $year ?? (int) date('Y');
+    $filename = scouts_google_drive_planning_filename($branch, $title, $year);
+    $planningKey = scouts_google_drive_planning_id_key($branch, $title, $year);
+    $contents = file_get_contents($filePath);
+    if ($contents === false) {
+        throw new RuntimeException('PDF kon niet voor Google Drive worden gelezen.');
+    }
+
+    $accessToken = scouts_google_drive_access_token($credentials);
+    $knownIds = scouts_google_drive_planning_file_ids();
+    $decision = scouts_google_drive_resolve_planning_upsert($planningKey, $knownIds, []);
+
+    if ($decision['action'] === 'update' && $decision['fileId'] !== '') {
+        try {
+            scouts_google_drive_update_file_media($accessToken, $decision['fileId'], $contents);
+            scouts_google_drive_remember_planning_file_id($planningKey, $decision['fileId']);
+            return ['fileId' => $decision['fileId'], 'updated' => true, 'filename' => $filename];
+        } catch (Throwable $error) {
+            // Stale id (deleted/moved) — fall through to folder lookup/create.
+            error_log('Google Drive planning update via opgeslagen ID mislukt: ' . $error->getMessage());
+        }
+    }
+
+    $matches = scouts_google_drive_find_files_by_name($accessToken, $folderId, $filename);
+    $decision = scouts_google_drive_resolve_planning_upsert($planningKey, [], $matches);
+    if ($decision['action'] === 'update' && $decision['fileId'] !== '') {
+        scouts_google_drive_update_file_media($accessToken, $decision['fileId'], $contents);
+        scouts_google_drive_remember_planning_file_id($planningKey, $decision['fileId']);
+        return ['fileId' => $decision['fileId'], 'updated' => true, 'filename' => $filename];
+    }
+
+    $fileId = scouts_google_drive_create_file($accessToken, $folderId, $filename, $contents);
+    scouts_google_drive_remember_planning_file_id($planningKey, $fileId);
+    return ['fileId' => $fileId, 'updated' => false, 'filename' => $filename];
+}
+
+/**
+ * @deprecated Use scouts_google_drive_upload_planning() for maandplanningen.
+ * Kept for any unexpected callers; always creates a new Drive file.
+ */
+function scouts_google_drive_upload(string $filePath, string $filename): void
+{
+    $credentials = scouts_google_drive_credentials();
+    $folderId = scouts_google_drive_folder_id();
+    if ($folderId === '' || (scouts_google_oauth_client() === null && $credentials === null)) {
+        throw new RuntimeException('Google Drive is niet geconfigureerd.');
+    }
+    if (!function_exists('curl_init') || !function_exists('openssl_sign')) {
+        throw new RuntimeException('PHP cURL en OpenSSL zijn vereist voor Google Drive.');
+    }
+    $contents = file_get_contents($filePath);
+    if ($contents === false) {
+        throw new RuntimeException('PDF kon niet voor Google Drive worden gelezen.');
+    }
+    $accessToken = scouts_google_drive_access_token($credentials);
+    scouts_google_drive_create_file($accessToken, $folderId, $filename, $contents);
 }

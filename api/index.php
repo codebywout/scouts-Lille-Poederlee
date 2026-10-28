@@ -131,7 +131,14 @@ try {
         if ($folderId !== '' && !preg_match('/^[a-zA-Z0-9_-]{10,}$/', $folderId)) {
             scouts_json_response(['message' => 'Ongeldige Google Drive-map-ID.'], 400);
         }
-        scouts_write_google_drive_settings(['folderId' => $folderId]);
+        $settings = scouts_read_google_drive_settings();
+        $previousFolder = trim((string) ($settings['folderId'] ?? ''));
+        $settings['folderId'] = $folderId;
+        // Folder change invalidates cached planning file IDs (they belong to the old folder).
+        if ($previousFolder !== $folderId) {
+            unset($settings['planningFileIds']);
+        }
+        scouts_write_google_drive_settings($settings);
         scouts_json_response(['success' => true]);
     }
 
@@ -614,17 +621,19 @@ try {
 
         $planningTitle = trim((string) ($_POST['title'] ?? ''));
         $driveUploaded = false;
+        $driveUpdated = false;
         $driveError = false;
         $driveErrorMessage = '';
+        $driveFileId = '';
+        $driveFilename = '';
         if (scouts_google_drive_is_configured()) {
-            $titlePart = preg_replace('/\.pdf$/i', '', $planningTitle);
-            $titlePart = preg_replace('/[^a-zA-Z0-9]+/', '_', (string) $titlePart);
-            $titlePart = trim(strtolower((string) $titlePart), '_');
-            $titlePart = $titlePart !== '' ? $titlePart : 'planning';
-            $driveFilename = $branch . '_' . $titlePart . '_' . date('Y') . '.pdf';
             try {
-                scouts_google_drive_upload($finalPath, $driveFilename);
+                // Identity: {tak}_{maanden}_{jaar}.pdf — same period overwrites; new month = new file.
+                $driveResult = scouts_google_drive_upload_planning($finalPath, $branch, $planningTitle);
                 $driveUploaded = true;
+                $driveUpdated = !empty($driveResult['updated']);
+                $driveFileId = (string) ($driveResult['fileId'] ?? '');
+                $driveFilename = (string) ($driveResult['filename'] ?? '');
             } catch (Throwable $error) {
                 $driveError = true;
                 $driveErrorMessage = $error->getMessage();
@@ -635,8 +644,12 @@ try {
         scouts_json_response([
             'success' => true,
             'driveUploaded' => $driveUploaded,
+            'driveUpdated' => $driveUpdated,
             'driveError' => $driveError,
             'driveErrorMessage' => $driveErrorMessage,
+            'driveFileId' => $driveFileId,
+            'driveFilename' => $driveFilename,
+            // Cache-buster so browsers fetch the newest local PDF immediately.
             'path' => '/uploads/' . $filename . '?v=' . time(),
         ]);
     }
@@ -716,6 +729,12 @@ try {
         }
         if (in_array(strtolower($filename), array_map('strtolower', scouts_protected_upload_filenames()), true)) {
             scouts_json_response(['message' => 'Dit document mag niet worden verwijderd.'], 403);
+        }
+        // Refuse deleting PDFs still referenced in site-data (prevents wiping a
+        // just-replaced maandplanning-{tak}.pdf that reuses the same basename).
+        $referenced = scouts_collect_referenced_uploads(scouts_read_site_data());
+        if (isset($referenced[$filename])) {
+            scouts_json_response(['message' => 'Document is nog in gebruik op de website.'], 409);
         }
         $path = SCOUTS_UPLOADS_DIR . DIRECTORY_SEPARATOR . $filename;
         if (is_file($path) && !unlink($path)) {

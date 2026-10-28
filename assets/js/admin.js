@@ -336,13 +336,53 @@
     );
   }
 
+  function uploadBasenameFromPath(path) {
+    return path?.split("/").pop()?.split("?")[0] || "";
+  }
+
   function queueDocumentDelete(path) {
-    const filename = path?.split("/").pop()?.split("?")[0];
+    const filename = uploadBasenameFromPath(path);
     if (filename) pendingDocumentDeletes.push(filename);
   }
 
-  async function flushDocumentDeletes() {
-    const filenames = pendingDocumentDeletes.splice(0);
+  function unqueueDocumentDelete(path) {
+    const filename = uploadBasenameFromPath(path);
+    if (!filename) return;
+    for (let index = pendingDocumentDeletes.length - 1; index >= 0; index -= 1) {
+      if (pendingDocumentDeletes[index] === filename) {
+        pendingDocumentDeletes.splice(index, 1);
+      }
+    }
+  }
+
+  function collectReferencedUploadBasenames(value, found = new Set()) {
+    if (typeof value === "string") {
+      const match = value.match(/(?:^|\/)uploads\/([^?"'\s]+)/i);
+      if (match?.[1]) {
+        const name = match[1].split("/").pop();
+        if (name) found.add(name);
+      }
+      return found;
+    }
+    if (Array.isArray(value)) {
+      value.forEach((child) => collectReferencedUploadBasenames(child, found));
+      return found;
+    }
+    if (value && typeof value === "object") {
+      Object.values(value).forEach((child) =>
+        collectReferencedUploadBasenames(child, found),
+      );
+    }
+    return found;
+  }
+
+  async function flushDocumentDeletes(data = null) {
+    const referenced = data
+      ? collectReferencedUploadBasenames(data)
+      : new Set();
+    const filenames = pendingDocumentDeletes
+      .splice(0)
+      .filter((filename) => !referenced.has(filename));
     await Promise.all(
       filenames.map(async (filename) => {
         try {
@@ -375,7 +415,9 @@
       await DataStore.save(data);
       if (flushDeletes) {
         await flushUploadDeletes();
-        await flushDocumentDeletes();
+        // Skip deletes for files still referenced after save (e.g. replaced
+        // maandplanning-{tak}.pdf keeps the same basename).
+        await flushDocumentDeletes(data);
       }
       if (editVersion !== versionAtStart || pendingPlanningUploads.size > 0) {
         unpublished = true;
@@ -539,6 +581,9 @@
     const result = await readResponseJson(response);
     if (!response.ok || !result.path)
       throw new Error(result.message || "Maandplanning uploaden mislukt.");
+    // Fixed basename per branch: a prior "Verwijderen" queued the same file for
+    // delete — drop that queue entry so save does not remove the new PDF.
+    unqueueDocumentDelete(result.path);
     setMonthlyPlanning(data, branch, result.path);
     setMonthlyPlanningTitle(data, branch, title);
     return result;
