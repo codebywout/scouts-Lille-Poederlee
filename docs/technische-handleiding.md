@@ -24,7 +24,7 @@ Claims hieronder zijn nagekeken in de projectbestanden. Exacte hostingpaden en p
 11. [B. Naar de webhosting](#11-b-naar-de-webhosting)
 12. [C. Nooit via gewone Git/code-upload](#12-c-nooit-via-gewone-gitcode-upload)
 13. [Veilige deployment](#13-veilige-deployment)
-14. [Rollback en back-ups](#14-rollback-en-back-ups)
+14. [Herstel na een mislukte deployment](#14-herstel-na-een-mislukte-deployment)
 15. [Geheimen en beveiliging](#15-geheimen-en-beveiliging)
 16. [Probleemoplossing](#16-probleemoplossing)
 17. [Onderhoud: waar wijzig je wat?](#17-onderhoud-waar-wijzig-je-wat)
@@ -592,30 +592,31 @@ git push -u origin HEAD
 
 ---
 
-## 14. Rollback en back-ups
+## 14. Herstel na een mislukte deployment
 
-### Vóór elke hostingdeploy
+Herstel is afhankelijk van wat fout ging. Zet niet zomaar alle bestanden terug: daarmee kun je recente inhoud overschrijven of uploads verliezen.
 
-Kopieer apart (buiten de document root of naar veilige storage):
+### Als alleen de code fout is
 
-- `data/site-data.json`
-- Volledige `uploads/` (inclusief `originals/`)
-- `.env` / `auth-config.php` / Drive-JSON’s
+Zet de vorige werkende versie van de code terug vanuit de bekende goede Git-commit of vanuit de back-up die vóór de deployment is gemaakt. Houd de assetversie in `config.php` in overeenstemming met de teruggezette CSS- en JavaScriptbestanden, of verhoog de versie opnieuw nadat de fout is opgelost. Controleer daarna de homepage, een takpagina, de login, de admin en het laden van CSS/JavaScript.
 
-### Code-rollback
+### Als websitegegevens ontbreken of beschadigd zijn
 
-- Zet de vorige bekende-goede set PHP/HTML/CSS/JS terug (uit Git-tag/commit of je uploadback-up).
-- Herstel `SCOUTS_ASSET_VERSION` consistent met die assets of bump opnieuw na fix.
+Maak eerst een kopie van de huidige `data/site-data.json`, ook als die beschadigd lijkt. Herstel daarna de juiste gegevensback-up. De beheerfunctie **Backup downloaden** maakt een JSON-bestand van de websitegegevens; herstel via Instellingen overschrijft de huidige gegevens. Controleer dus de datum en de inhoud van de back-up voordat je herstelt.
 
-### Data-rollback
+### Als foto’s of PDF’s ontbreken
 
-- Zet geback-upte `site-data.json` terug.
-- Herstel per ongeluk verwijderde uploads uit de uploads-back-up.
-- Admin heeft ook `site-data/restore` en `site-data/reset` (reset = default-bestand; destructief voor huidige inhoud).
+Herstel de ontbrekende bestanden uit de back-up van de volledige map `uploads/`, inclusief `uploads/originals/` wanneer ook de originelen nodig zijn. Een JSON-back-up bevat de daadwerkelijke media niet. Controleer na herstel of de bestanden bestaan en opnieuw op de website openen.
 
-### Git-rollback (lokaal)
+### Als configuratie of geheimen ontbreken
 
-Gebruik niet-destructieve middelen (`git revert` op gedeelde branches). Vermijd `reset --hard` / force-push op `main` tenzij het team dat expliciet afspreekt.
+Herstel de noodzakelijke serverconfiguratie vanuit de veilige kopie, bijvoorbeeld `.env`, `auth-config.php` of de configuratie voor Google Drive. Deze bestanden kunnen wachtwoordhashes, tokens of sleutels bevatten. Zet ze nooit in GitHub of in gewone documentatie.
+
+De praktische uitleg over welke onderdelen in een volledige back-up moeten zitten en hoe je de uploads apart bewaart, staat in [Back-ups en hosting](hosting-en-back-ups.md).
+
+### Git-rollback
+
+Op gedeelde branches gebruik je bij voorkeur `git revert` om een foutieve commit ongedaan te maken. Vermijd `git reset --hard` en force-push op `main`, tenzij het team daar uitdrukkelijk voor kiest.
 
 ---
 

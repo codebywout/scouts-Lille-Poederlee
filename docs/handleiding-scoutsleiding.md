@@ -1,32 +1,33 @@
-# Handleiding: inhoud beheren
+# Handleiding voor scoutsleiding
 
-Voor scoutsleiding. Inloggen: `/login` achter jullie adres (bijv. `https://scoutslille.be/login`). Niet eindeloos verkeerde wachtwoorden proberen.
+Je beheert de inhoud van de website via de beheeromgeving achter `/login`, bijvoorbeeld [scoutslille.be/login](https://scoutslille.be/login). Je hoeft hiervoor geen code of bestanden op de server aan te passen.
 
-## Wat niet vanzelfsprekend is
+## Wat gebeurt er wanneer je iets wijzigt?
 
-- **Opslaan** is nodig voor teksten, agenda, nieuws, leiding, FAQ, tweedehands, …  
-- **Foto’s** en **achtergronden** gaan meteen live na upload.  
-- Oude versie in de browser? **Ctrl+F5**.  
-- **Maandplanning (PDF):** kies eerst minstens één maand, daarna het bestand. Zelfde maand opnieuw uploaden vervangt die planning (ook in Google Drive als dat gekoppeld is).  
-- **Achtergronden:** **Instellingen** → Achtergronden. Mislukt de upload, blijft de vorige staan.  
-- **Rekeningnummer** (Inschrijven) is gevoelig — zet geen extra privé-info in vrije tekstvelden zonder noodzaak.  
-- Logo, groepsnaam in de kop, kleuren en menustructuur wijzig je **niet** in de beheeromgeving.
+Teksten en gegevens, zoals agenda, nieuws, FAQ, leiding en tweedehandsaanbod, worden pas op de website gepubliceerd nadat je op **Opslaan** klikt. Controleer na het opslaan de gewone website om na te gaan of de wijziging goed zichtbaar is.
 
-De knoppen bovenaan (Home, Nieuws, takken, …) en **+ …** / **Verwijderen** werken zoals in het scherm staat.
+Foto’s en pagina-achtergronden werken anders: zodra een upload succesvol is, wordt het bestand verwerkt en meteen gepubliceerd. Een extra klik op Opslaan is daarvoor niet nodig. Als een upload van een pagina-achtergrond mislukt, blijft de bestaande achtergrond behouden.
 
-## Backup van inhoud
+Voor een maandplanning selecteer je eerst de tak en de maand en upload je daarna het PDF-bestand. Een nieuwe upload voor dezelfde maand vervangt de vorige planning. Als Google Drive gekoppeld is voor planningen, kan ook de overeenkomstige PDF in Drive vervangen worden. Controleer na de upload dus of je de juiste maand en het juiste bestand hebt gekozen.
 
-**Backup downloaden** in de beheeromgeving bewaart teksten/gegevens (JSON), **niet** de foto’s/PDF’s op de server. Meer over hosting en automatische Drive-backups: [hosting-en-back-ups.md](hosting-en-back-ups.md).
+Wanneer de website na een wijziging nog de oude versie toont, kan je browser een eerdere versie hebben bewaard. Gebruik **Ctrl+F5** om de pagina volledig te vernieuwen. Controleer daarna opnieuw de live website.
 
-Backup **terugzetten** via Instellingen overschrijft de huidige sitegegevens — alleen doen met een bestand waarvan je zeker bent.
+De beheeromgeving is bedoeld om de inhoud te wijzigen, niet om het volledige ontwerp aan te passen. De groepsnaam en het logo in de kop, de algemene kleuren, de menustructuur en nieuwe pagina’s zijn onderdeel van de programmacode. Daarvoor is technische hulp nodig.
 
-## Problemen
+## Persoonsgegevens
 
-| Probleem | Wat doen |
-| --- | --- |
-| Opslaan lukt niet | Opnieuw inloggen en opnieuw proberen. |
-| Foto/PDF geweigerd | Juist type? Kleiner bestand proberen. |
-| Verkeerde tak | Juiste tak kiezen en opnieuw opslaan. |
-| Per ongeluk gewist | Zelf herstellen of een recente JSON-backup terugzetten (zie hierboven). |
+Publiceer alleen persoonsgegevens die nodig zijn voor de werking van de groep. Behandel rekeningnummers op de inschrijfpagina, telefoonnummers en andere persoonlijke gegevens zorgvuldig. Voeg geen bijkomende privé-informatie toe in vrije tekstvelden als die niet nodig is.
 
-Wis geen willekeurige bestanden op de server zonder te weten wat je doet.
+## Back-ups en herstellen
+
+Met **Backup downloaden** download je een JSON-bestand met de opgeslagen websitegegevens, zoals teksten, agenda en contactinformatie. De eigenlijke foto’s en PDF’s op de server zitten niet in dit bestand. Het bestand alleen is daarom geen volledige back-up van de website.
+
+Een herstel via Instellingen overschrijft de huidige websitegegevens met de gegevens uit het gekozen bestand. Gebruik dit alleen wanneer je zeker weet dat je het juiste bestand hebt; een verkeerde back-up kan recentere wijzigingen vervangen. Voor een volledige back-up, inclusief foto’s, PDF’s, code en serverinstellingen, lees je [Back-ups en hosting](hosting-en-back-ups.md).
+
+## Problemen oplossen
+
+Als opslaan mislukt, controleer dan of je nog ingelogd bent en probeer opnieuw. Kijk na de poging ook op de gewone website of de wijziging gepubliceerd is.
+
+Als een foto of PDF niet wordt aanvaard, controleer dan of je het juiste soort bestand gebruikt en probeer indien nodig een kleiner bestand. Als een foto, PDF of tekst per ongeluk is verwijderd, stop dan met verdere wijzigingen die het herstel moeilijker kunnen maken. Voor teksten kan een recente JSON-back-up helpen; voor ontbrekende foto’s en PDF’s is een kopie van de uploads op de hosting nodig.
+
+Verwijder of vervang geen bestanden rechtstreeks op de server tenzij je weet waarvoor ze dienen. De technische documentatie voor code, hosting en herstel staat in de [technische handleiding](technische-handleiding.md).
