@@ -66,6 +66,13 @@
   let orphanUploadNames = [];
   let orphanScanResetTimer = 0;
   let settingsReturnPage = "home";
+  /** Admin-only screens that must not be remembered as the next login page. */
+  const EPHEMERAL_ADMIN_PAGES = new Set(["settings", "achtergronden"]);
+
+  function persistedActivePage(page) {
+    const value = String(page || "home").trim() || "home";
+    return EPHEMERAL_ADMIN_PAGES.has(value) ? "home" : value;
+  }
 
   function confirmDialog(options) {
     return S.openDialog(options);
@@ -411,6 +418,11 @@
     normalizeBranchLeadership(data);
     normalizeNewsItems(data);
     const versionAtStart = editVersion;
+    // Never remember Instellingen as the page to open next admin visit.
+    const uiPage = data.activePage || "home";
+    data.activePage = persistedActivePage(
+      EPHEMERAL_ADMIN_PAGES.has(uiPage) ? settingsReturnPage || "home" : uiPage,
+    );
     if (!quiet) setSaveStatus("Bezig met opslaan", "saving");
     try {
       await DataStore.save(data);
@@ -419,6 +431,9 @@
         // Skip deletes for files still referenced after save (e.g. replaced
         // maandplanning-{tak}.pdf keeps the same basename).
         await flushDocumentDeletes(data);
+      }
+      if (EPHEMERAL_ADMIN_PAGES.has(uiPage)) {
+        data.activePage = uiPage;
       }
       if (editVersion !== versionAtStart || pendingPlanningUploads.size > 0) {
         unpublished = true;
@@ -438,6 +453,9 @@
       if (!quiet) flashSaveButton();
       return true;
     } catch (error) {
+      if (EPHEMERAL_ADMIN_PAGES.has(uiPage)) {
+        data.activePage = uiPage;
+      }
       console.error(error);
       unpublished = true;
       publishFailed = true;
@@ -2339,10 +2357,6 @@
 
   function renderAdminPanel() {
     const data = DataStore.get();
-    // Legacy page key: backgrounds now live under Instellingen.
-    if (data.activePage === "achtergronden") {
-      data.activePage = "home";
-    }
     const activePage = data.activePage || "home";
     const isSettings = activePage === "settings";
 
@@ -2471,7 +2485,7 @@
     const activePageButton = qs("[data-page-option].is-active");
     data.activePage = activePageButton
       ? activePageButton.dataset.pageOption
-      : "home";
+      : data.activePage || "home";
 
     if (data.activePage === "news") {
       if (!Array.isArray(data.news)) data.news = [];
@@ -2607,9 +2621,10 @@
   async function openSettingsAfterGoogleOAuth(status, message) {
     const data = DataStore.get();
     if (data.activePage !== "settings") {
-      settingsReturnPage = data.activePage || "home";
+      settingsReturnPage = persistedActivePage(data.activePage);
+      data.activePage = settingsReturnPage;
+      await persist(data, { quiet: true, flushDeletes: false });
       data.activePage = "settings";
-      await persist(data, { quiet: true });
     }
 
     const loaded = await ensureGoogleDriveSettingsLoaded();
@@ -2646,15 +2661,23 @@
     sortAgendaInPlace(DataStore.get().agenda);
     markDirtyState(false, { announce: false });
 
+    // Never resume on Instellingen after a previous visit (it was persisted by mistake).
+    const bootData = DataStore.get();
+    if (EPHEMERAL_ADMIN_PAGES.has(bootData.activePage || "")) {
+      bootData.activePage = "home";
+      try {
+        await persist(bootData, { quiet: true, flushDeletes: false });
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
     const googleParams = new URLSearchParams(window.location.search);
     const googleStatus = googleParams.get("google");
     if (googleStatus === "connected" || googleStatus === "error") {
       const googleMessage = googleParams.get("google_message") || "";
       window.history.replaceState({}, "", "/admin");
       await openSettingsAfterGoogleOAuth(googleStatus, googleMessage);
-    } else if ((DataStore.get().activePage || "home") === "settings") {
-      await ensureGoogleDriveSettingsLoaded({ promptIfLocked: true });
-      renderAdminPanel();
     } else {
       renderAdminPanel();
     }
@@ -3461,8 +3484,14 @@
         }
 
         const fresh = DataStore.get();
-        fresh.activePage = targetPage;
+        // Persist the last content page; Instellingen is session-only.
+        fresh.activePage = persistedActivePage(
+          targetPage === "settings" ? settingsReturnPage || currentPage : targetPage,
+        );
         await persist(fresh, { quiet: true, flushDeletes: false });
+        if (targetPage === "settings") {
+          fresh.activePage = "settings";
+        }
         renderAdminPanel();
         window.scrollTo(0, 0);
         return;
@@ -3855,6 +3884,8 @@
         clearPendingWork();
         markDirtyState(false, { announce: false });
         const fresh = DataStore.get();
+        fresh.activePage = persistedActivePage(fresh.activePage);
+        settingsReturnPage = fresh.activePage || "home";
         fresh.activePage = "settings";
         renderAdminPanel();
         PageRenderer.updatePageFromData();
