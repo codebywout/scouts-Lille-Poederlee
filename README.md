@@ -1,33 +1,30 @@
-# Scoutswebsite — handleiding
+# Website beheren
 
-Website van Scouts Lille-Poederlee ([scoutslille.be](https://scoutslille.be)). Andere scoutsgroepen kunnen dezelfde basis gebruiken met hun eigen inhoud. Je hoeft **niet** te kunnen programmeren.
+Deze handleiding is bedoeld voor scoutsleiding die de website wil aanpassen. Je hoeft niet te kunnen programmeren. De website zelf beheer je na het inloggen via `/login`, bijvoorbeeld op [scoutslille.be/login](https://scoutslille.be/login).
 
-Inhoud beheer je na inloggen op `/login` (bijv. `https://scoutslille.be/login`). Het wachtwoord staat niet in deze handleiding.
+## Werken in de beheeromgeving
 
-## Belangrijk in de beheeromgeving
+De beheeromgeving bevat de onderdelen die je op de website kunt aanpassen. Voor gewone wijzigingen hoef je GitHub of de bestanden op de server niet te openen.
 
-- **Opslaan** is nodig voor teksten, agenda, nieuws, leiding, …  
-- **Foto’s en achtergronden** staan meteen live na een geslaagde upload (geen Opslaan).  
-- Zie je oude inhoud? Hard vernieuwen (**Ctrl+F5**).  
-- **Maandplanning:** eerst minstens één maand kiezen, daarna de PDF.  
-- **Achtergronden:** via **Instellingen** (tandwiel).  
-- Niet via beheer: logo/groepsnaam in de kop, kleuren, menustructuur, extra pagina’s.
+Teksten, agenda, nieuws, FAQ, leiding en andere gegevens worden pas gepubliceerd wanneer je op **Opslaan** klikt. Controleer na het opslaan de gewone website. Foto's en pagina-achtergronden worden daarentegen meteen verwerkt en gepubliceerd zodra de upload geslaagd is. Daarvoor is geen extra klik op Opslaan nodig.
 
-Uitgebreidere klikhulp en aandachtspunten: [docs/handleiding-scoutsleiding.md](docs/handleiding-scoutsleiding.md).
+Bij een maandplanning kies je eerst de tak en de maand en laad je daarna de PDF op. Een nieuwe PDF voor dezelfde maand vervangt de vorige planning. Als Google Drive voor planningen gekoppeld is, kan ook het bestand daar worden vervangen. Bij een mislukte upload van een pagina-achtergrond blijft de vorige achtergrond behouden.
 
-## Als iets niet werkt
+Zie je na een wijziging nog de oude versie? Vernieuw de pagina met **Ctrl+F5** om de browsercache te omzeilen.
 
-| Probleem | Eerst proberen |
-| --- | --- |
-| Wijziging niet zichtbaar | **Opslaan** gedaan? Ctrl+F5 / andere browser. |
-| Foto of PDF verschijnt niet | Juist type (afbeelding vs PDF)? Opnieuw uploaden, pagina vernieuwen. |
-| Site opent niet | Adres/internet checken; anders wie de hosting beheert. |
-| Kan niet inloggen | Typfouten (hoofdletters). Niet eindeloos proberen; wachtwoord laten resetten. |
+Niet alles kan via de beheeromgeving worden aangepast. De groepsnaam en het logo in de kop, de algemene kleuren, de menustructuur en nieuwe pagina's vereisen een wijziging aan de programmacode.
 
-## Hosting, backups en techniek
+## Privacy en back-ups
 
-| Bestand | Voor wie |
-| --- | --- |
-| [docs/hosting-en-back-ups.md](docs/hosting-en-back-ups.md) | Online zetten, backups (incl. wekelijkse Drive-backup) |
-| [docs/technische-handleiding.md](docs/technische-handleiding.md) | Code, server, CI, geheimen |
-| [docs/github-voor-beginners.md](docs/github-voor-beginners.md) | Verschil live site ↔ GitHub |
+Voeg alleen persoonsgegevens toe die echt nodig zijn. Behandel gegevens zoals rekeningnummers, telefoonnummers en persoonlijke informatie zorgvuldig; zet geen extra privégegevens in vrije tekstvelden zonder duidelijke reden.
+
+Via **Backup downloaden** kun je een kopie van de opgeslagen websitegegevens downloaden. Dat bestand bevat niet de eigenlijke foto’s en PDF’s. Voor een volledige back-up moeten ook de uploads op de hosting en de nodige code- en serverinstellingen veilig bewaard worden. Lees [Back-ups en hosting](docs/hosting-en-back-ups.md) voordat je gegevens probeert te herstellen.
+
+## Hulp en technische documentatie
+
+- [Handleiding voor scoutsleiding](docs/handleiding-scoutsleiding.md): gedrag dat niet vanzelfsprekend is, privacy, back-ups en veelvoorkomende problemen.
+- [Back-ups en hosting](docs/hosting-en-back-ups.md): wat je moet bewaren om de website te herstellen en hoe de automatische gegevensback-up werkt.
+- [GitHub uitgelegd](docs/github-voor-beginners.md): het verschil tussen de live website en de programmacode.
+- [Technische handleiding](docs/technische-handleiding.md): voor wie code wijzigt, lokaal test of de hosting beheert.
+
+Bij problemen met inloggen, opslaan of uploaden: noteer wat je probeerde en welke melding je kreeg. Deel geen wachtwoorden, tokens of persoonsgegevens in een openbare chat of GitHub-issue.
