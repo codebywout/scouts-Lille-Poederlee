@@ -24,7 +24,7 @@ Claims hieronder zijn nagekeken in de projectbestanden. Exacte hostingpaden en p
 11. [B. Naar de webhosting](#11-b-naar-de-webhosting)
 12. [C. Nooit via gewone Git/code-upload](#12-c-nooit-via-gewone-gitcode-upload)
 13. [Veilige deployment](#13-veilige-deployment)
-14. [Rollback en back-ups](#14-rollback-en-back-ups)
+14. [Herstel na een mislukte deployment](#14-herstel-na-een-mislukte-deployment)
 15. [Geheimen en beveiliging](#15-geheimen-en-beveiliging)
 16. [Probleemoplossing](#16-probleemoplossing)
 17. [Onderhoud: waar wijzig je wat?](#17-onderhoud-waar-wijzig-je-wat)
