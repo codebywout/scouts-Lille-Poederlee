@@ -224,6 +224,75 @@ function scouts_google_drive_access_token(?array $credentials): string
 }
 
 /**
+ * Dutch month name => 1–12 (scouts planning titles).
+ *
+ * @return array<string, int>
+ */
+function scouts_google_drive_planning_month_numbers(): array
+{
+    return [
+        'januari' => 1,
+        'februari' => 2,
+        'maart' => 3,
+        'april' => 4,
+        'mei' => 5,
+        'juni' => 6,
+        'juli' => 7,
+        'augustus' => 8,
+        'september' => 9,
+        'oktober' => 10,
+        'november' => 11,
+        'december' => 12,
+    ];
+}
+
+/**
+ * Month numbers found in a planning title (order preserved, unique).
+ *
+ * @return list<int>
+ */
+function scouts_google_drive_planning_months_from_title(string $title): array
+{
+    $map = scouts_google_drive_planning_month_numbers();
+    $parts = preg_split('/[_\s,-]+/', strtolower(trim($title))) ?: [];
+    $months = [];
+    foreach ($parts as $part) {
+        $part = trim((string) $part);
+        if ($part !== '' && isset($map[$part]) && !in_array($map[$part], $months, true)) {
+            $months[] = $map[$part];
+        }
+    }
+    return $months;
+}
+
+/**
+ * Calendar year for a planning period (scout season Sep–Aug).
+ * Example: januari uploaded in december 2026 → 2027.
+ */
+function scouts_google_drive_planning_year(
+    string $title,
+    ?DateTimeInterface $now = null,
+): int {
+    $now = $now ?? new DateTimeImmutable('now');
+    $calendarYear = (int) $now->format('Y');
+    $currentMonth = (int) $now->format('n');
+    // Season starts in September: Sep 2026–Aug 2027 → seasonStartYear 2026.
+    $seasonStartYear = $currentMonth >= 9 ? $calendarYear : $calendarYear - 1;
+
+    $months = scouts_google_drive_planning_months_from_title($title);
+    if ($months === []) {
+        return $calendarYear;
+    }
+
+    $years = [];
+    foreach ($months as $month) {
+        // Sep–Dec belong to seasonStartYear; Jan–Aug to the following calendar year.
+        $years[] = $month >= 9 ? $seasonStartYear : $seasonStartYear + 1;
+    }
+    return max($years);
+}
+
+/**
  * Sanitize planning title (selected months) for Drive filenames.
  * Example: "oktober november" → "oktober_november"
  */
@@ -243,10 +312,11 @@ function scouts_google_drive_planning_filename(
     string $branch,
     string $title,
     ?int $year = null,
+    ?DateTimeInterface $now = null,
 ): string {
     $branch = strtolower(trim($branch));
     $titlePart = scouts_google_drive_planning_title_part($title);
-    $year = $year ?? (int) date('Y');
+    $year = $year ?? scouts_google_drive_planning_year($title, $now);
     return $branch . '_' . $titlePart . '_' . $year . '.pdf';
 }
 
@@ -257,8 +327,9 @@ function scouts_google_drive_planning_id_key(
     string $branch,
     string $title,
     ?int $year = null,
+    ?DateTimeInterface $now = null,
 ): string {
-    $filename = scouts_google_drive_planning_filename($branch, $title, $year);
+    $filename = scouts_google_drive_planning_filename($branch, $title, $year, $now);
     return (string) preg_replace('/\.pdf$/i', '', $filename);
 }
 
@@ -297,9 +368,183 @@ function scouts_google_drive_remember_planning_file_id(string $planningKey, stri
     scouts_write_google_drive_settings($settings);
 }
 
+function scouts_google_drive_forget_planning_file_id(string $planningKey): void
+{
+    $planningKey = strtolower(trim($planningKey));
+    if ($planningKey === '') {
+        return;
+    }
+    $settings = scouts_read_google_drive_settings();
+    $map = is_array($settings['planningFileIds'] ?? null) ? $settings['planningFileIds'] : [];
+    if (!isset($map[$planningKey])) {
+        return;
+    }
+    unset($map[$planningKey]);
+    $settings['planningFileIds'] = $map;
+    scouts_write_google_drive_settings($settings);
+}
+
 function scouts_google_drive_escape_query_value(string $value): string
 {
     return str_replace(["\\", "'"], ["\\\\", "\\'"], $value);
+}
+
+/**
+ * Whether Drive file metadata is visible in the target folder (not trashed).
+ *
+ * @param array{id?: string, trashed?: bool, parents?: list<string>}|null $meta
+ */
+function scouts_google_drive_file_usable_in_folder(?array $meta, string $folderId): bool
+{
+    if ($meta === null) {
+        return false;
+    }
+    if (!empty($meta['trashed'])) {
+        return false;
+    }
+    $parents = is_array($meta['parents'] ?? null) ? $meta['parents'] : [];
+    foreach ($parents as $parent) {
+        if (is_string($parent) && $parent === $folderId) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
+ * Fetch Drive file metadata, or null when missing / inaccessible.
+ *
+ * @return array{id: string, trashed: bool, parents: list<string>}|null
+ */
+function scouts_google_drive_get_file(string $accessToken, string $fileId): ?array
+{
+    $fileId = trim($fileId);
+    if ($fileId === '') {
+        return null;
+    }
+    $url = 'https://www.googleapis.com/drive/v3/files/'
+        . rawurlencode($fileId)
+        . '?' . http_build_query([
+            'fields' => 'id,trashed,parents',
+            'supportsAllDrives' => 'true',
+        ]);
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 30,
+        CURLOPT_HTTPHEADER => ['Authorization: Bearer ' . $accessToken],
+    ]);
+    if (defined('CURLSSLOPT_NATIVE_CA')) {
+        curl_setopt($ch, CURLOPT_SSL_OPTIONS, CURLSSLOPT_NATIVE_CA);
+    }
+    $response = curl_exec($ch);
+    $status = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+    if ($response === false || $status === 404) {
+        return null;
+    }
+    if ($status < 200 || $status >= 300) {
+        throw new RuntimeException(
+            'Google Drive-bestand lezen mislukt: ' . scouts_google_error_message((string) $response, $status)
+        );
+    }
+    $payload = json_decode((string) $response, true);
+    if (!is_array($payload) || !is_string($payload['id'] ?? null) || trim($payload['id']) === '') {
+        return null;
+    }
+    $parents = [];
+    if (is_array($payload['parents'] ?? null)) {
+        foreach ($payload['parents'] as $parent) {
+            if (is_string($parent) && $parent !== '') {
+                $parents[] = $parent;
+            }
+        }
+    }
+    return [
+        'id' => trim($payload['id']),
+        'trashed' => !empty($payload['trashed']),
+        'parents' => $parents,
+    ];
+}
+
+/**
+ * Restore a trashed/moved planning file into the configured folder.
+ */
+function scouts_google_drive_restore_file_in_folder(
+    string $accessToken,
+    string $fileId,
+    string $folderId,
+    array $currentParents,
+): void {
+    $params = [
+        'supportsAllDrives' => 'true',
+    ];
+    if (!in_array($folderId, $currentParents, true)) {
+        $params['addParents'] = $folderId;
+        $remove = array_values(array_filter(
+            $currentParents,
+            static fn($parent): bool => is_string($parent) && $parent !== '' && $parent !== $folderId
+        ));
+        if ($remove !== []) {
+            $params['removeParents'] = implode(',', $remove);
+        }
+    }
+    $url = 'https://www.googleapis.com/drive/v3/files/'
+        . rawurlencode($fileId)
+        . '?' . http_build_query($params);
+    $body = json_encode(['trashed' => false], JSON_THROW_ON_ERROR);
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_CUSTOMREQUEST => 'PATCH',
+        CURLOPT_POSTFIELDS => $body,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 30,
+        CURLOPT_HTTPHEADER => [
+            'Authorization: Bearer ' . $accessToken,
+            'Content-Type: application/json',
+        ],
+    ]);
+    if (defined('CURLSSLOPT_NATIVE_CA')) {
+        curl_setopt($ch, CURLOPT_SSL_OPTIONS, CURLSSLOPT_NATIVE_CA);
+    }
+    $response = curl_exec($ch);
+    $status = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+    $error = curl_error($ch);
+    if ($response === false || $status < 200 || $status >= 300) {
+        throw new RuntimeException(
+            'Google Drive-bestand herstellen mislukt: '
+            . ($error !== '' ? $error : scouts_google_error_message((string) $response, $status))
+        );
+    }
+}
+
+/**
+ * Resolve a stored Drive file id to a writable target in the planning folder.
+ * Returns null when the id is gone (permanent delete) so callers can create again.
+ */
+function scouts_google_drive_prepare_planning_file_id(
+    string $accessToken,
+    string $fileId,
+    string $folderId,
+): ?string {
+    $meta = scouts_google_drive_get_file($accessToken, $fileId);
+    if ($meta === null) {
+        return null;
+    }
+    if (scouts_google_drive_file_usable_in_folder($meta, $folderId)) {
+        return $meta['id'];
+    }
+    try {
+        scouts_google_drive_restore_file_in_folder(
+            $accessToken,
+            $meta['id'],
+            $folderId,
+            $meta['parents']
+        );
+    } catch (Throwable $error) {
+        error_log('Google Drive planning restore mislukt: ' . $error->getMessage());
+        return null;
+    }
+    return $meta['id'];
 }
 
 /**
@@ -496,7 +741,8 @@ function scouts_google_drive_upload_planning(
     }
 
     $branch = strtolower(trim($branch));
-    $year = $year ?? (int) date('Y');
+    // Scout season Sep–Aug: januari in december → next calendar year.
+    $year = $year ?? scouts_google_drive_planning_year($title);
     $filename = scouts_google_drive_planning_filename($branch, $title, $year);
     $planningKey = scouts_google_drive_planning_id_key($branch, $title, $year);
     $contents = file_get_contents($filePath);
@@ -510,11 +756,23 @@ function scouts_google_drive_upload_planning(
 
     if ($decision['action'] === 'update' && $decision['fileId'] !== '') {
         try {
-            scouts_google_drive_update_file_media($accessToken, $decision['fileId'], $contents);
-            scouts_google_drive_remember_planning_file_id($planningKey, $decision['fileId']);
-            return ['fileId' => $decision['fileId'], 'updated' => true, 'filename' => $filename];
+            // Trashed IDs still accept media PATCH — restore/verify first so the
+            // file reappears in the folder after a manual Drive delete.
+            $readyId = scouts_google_drive_prepare_planning_file_id(
+                $accessToken,
+                $decision['fileId'],
+                $folderId
+            );
+            if ($readyId === null) {
+                scouts_google_drive_forget_planning_file_id($planningKey);
+            } else {
+                scouts_google_drive_update_file_media($accessToken, $readyId, $contents);
+                scouts_google_drive_remember_planning_file_id($planningKey, $readyId);
+                return ['fileId' => $readyId, 'updated' => true, 'filename' => $filename];
+            }
         } catch (Throwable $error) {
             // Stale id (deleted/moved) — fall through to folder lookup/create.
+            scouts_google_drive_forget_planning_file_id($planningKey);
             error_log('Google Drive planning update via opgeslagen ID mislukt: ' . $error->getMessage());
         }
     }
@@ -522,9 +780,16 @@ function scouts_google_drive_upload_planning(
     $matches = scouts_google_drive_find_files_by_name($accessToken, $folderId, $filename);
     $decision = scouts_google_drive_resolve_planning_upsert($planningKey, [], $matches);
     if ($decision['action'] === 'update' && $decision['fileId'] !== '') {
-        scouts_google_drive_update_file_media($accessToken, $decision['fileId'], $contents);
-        scouts_google_drive_remember_planning_file_id($planningKey, $decision['fileId']);
-        return ['fileId' => $decision['fileId'], 'updated' => true, 'filename' => $filename];
+        $readyId = scouts_google_drive_prepare_planning_file_id(
+            $accessToken,
+            $decision['fileId'],
+            $folderId
+        );
+        if ($readyId !== null) {
+            scouts_google_drive_update_file_media($accessToken, $readyId, $contents);
+            scouts_google_drive_remember_planning_file_id($planningKey, $readyId);
+            return ['fileId' => $readyId, 'updated' => true, 'filename' => $filename];
+        }
     }
 
     $fileId = scouts_google_drive_create_file($accessToken, $folderId, $filename, $contents);
