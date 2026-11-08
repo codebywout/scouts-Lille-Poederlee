@@ -39,18 +39,18 @@ $lanIp = Get-ScoutsLanIPv4
 
 Write-Host ''
 Write-Host 'Scouts lokale preview' -ForegroundColor Green
-Write-Host "  PC:     http://127.0.0.1:$Port/"
+Write-Host ("  PC:     http://127.0.0.1:{0}/" -f $Port)
 if ($lanIp) {
-    Write-Host "  Telefoon (zelfde wifi): http://${lanIp}:$Port/" -ForegroundColor Cyan
+    Write-Host ("  Telefoon (zelfde wifi): http://{0}:{1}/" -f $lanIp, $Port) -ForegroundColor Cyan
 } else {
-    Write-Host '  Telefoon: kon geen LAN-IP vinden. Op de PC: ipconfig → IPv4-adres, dan http://DAT-IP:8000/' -ForegroundColor Yellow
+    Write-Host '  Telefoon: kon geen LAN-IP vinden. Op de PC: ipconfig -> IPv4-adres, dan http://DAT-IP:8000/' -ForegroundColor Yellow
 }
 Write-Host '  Live reload: aan (wijzigingen aan php/html/css/js/json herladen de browser).'
 Write-Host ''
 Write-Host 'Windows Firewall (eenmalig, als de telefoon niet verbindt):' -ForegroundColor DarkGray
 Write-Host '  PowerShell als administrator:' -ForegroundColor DarkGray
-Write-Host "  New-NetFirewallRule -DisplayName 'Scouts PHP dev :$Port' -Direction Inbound -Protocol TCP -LocalPort $Port -Action Allow -Profile Private" -ForegroundColor DarkGray
+Write-Host ("  New-NetFirewallRule -DisplayName 'Scouts PHP dev :{0}' -Direction Inbound -Protocol TCP -LocalPort {0} -Action Allow -Profile Private" -f $Port) -ForegroundColor DarkGray
 Write-Host '  Stoppen: Ctrl+C' -ForegroundColor DarkGray
 Write-Host ''
 
-php -d upload_max_filesize=20M -d post_max_size=25M -d memory_limit=256M -S "0.0.0.0:$Port" router.php
+php -d upload_max_filesize=20M -d post_max_size=25M -d memory_limit=256M -S ("0.0.0.0:{0}" -f $Port) router.php
