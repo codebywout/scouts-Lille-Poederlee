@@ -91,7 +91,7 @@ Browser
 
 | | Lokaal | Online (bedoeld) |
 | --- | --- | --- |
-| Start | `.\start-server.ps1` → `localhost:8000` + `router.php` | Apache document root met `.htaccess` |
+| Start | `.\start-server.ps1` → `0.0.0.0:8000` + `router.php` (LAN-preview) | Apache document root met `.htaccess` |
 | Secrets | `.env` of `auth-config.php` (gitignored) | Zelfde, op de server |
 | Exacte host/pad | — | Niet vastgelegd in tracked code; publieke origin in code: `https://scoutslille.be` |
 
@@ -378,7 +378,9 @@ Zorg dat `data/` en `uploads/` schrijfbaar zijn. Upload-inhoud ontbreekt na een 
 .\start-server.ps1
 ```
 
-Gelijkwaardig:
+Luistert op `0.0.0.0:8000` (PC + telefoon op hetzelfde wifi-netwerk). Het script toont het LAN-IPv4-adres, bv. `http://192.168.x.x:8000/`. Live reload (alleen lokaal via `SCOUTS_DEV_LIVE_RELOAD`) herlaadt de browser bij wijzigingen aan `.php`/`.html`/`.css`/`.js`/`.json`. Geen routerpoorten openen; alleen privénetwerk. Als de telefoon niet verbindt: Windows Firewall inbound TCP 8000 op het **Private**-profiel toestaan (commando staat in de scriptoutput).
+
+Handmatig zonder live reload / LAN-bind (alleen PC):
 
 ```powershell
 php -d upload_max_filesize=20M -d post_max_size=25M -d memory_limit=256M -S localhost:8000 router.php
@@ -388,12 +390,13 @@ php -d upload_max_filesize=20M -d post_max_size=25M -d memory_limit=256M -S loca
 
 | URL | Verwacht |
 | --- | --- |
-| http://localhost:8000/ | Homepage |
-| http://localhost:8000/login | Login |
-| http://localhost:8000/admin | Zonder sessie → redirect `/login` |
-| http://localhost:8000/api/site-data | JSON |
-| http://localhost:8000/assets/css/style.css | CSS-bundle |
-| http://localhost:8000/assets/js/script.min.js | Minified JS |
+| http://127.0.0.1:8000/ | Homepage (PC) |
+| http://192.168.x.x:8000/ | Zelfde site op telefoon (zelfde wifi; IP uit scriptoutput) |
+| http://127.0.0.1:8000/login | Login |
+| http://127.0.0.1:8000/admin | Zonder sessie → redirect `/login` |
+| http://127.0.0.1:8000/api/site-data | JSON |
+| http://127.0.0.1:8000/assets/css/style.css | CSS-bundle |
+| http://127.0.0.1:8000/assets/js/script.min.js | Minified JS |
 
 Zonder verhoogde uploadlimieten weigert PHP vaak foto’s groter dan de default `upload_max_filesize`.
 
