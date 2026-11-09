@@ -372,6 +372,10 @@ body.home-page .hero {
         box-shadow 0.2s ease;
 }
 
+.agenda-item.is-static {
+    cursor: default;
+}
+
 .agenda-summary {
     position: relative;
     z-index: 1;
@@ -382,6 +386,11 @@ body.home-page .hero {
     cursor: pointer;
     list-style: none;
     padding-right: 28px;
+}
+
+.agenda-item.is-static .agenda-summary {
+    cursor: default;
+    padding-right: 0;
 }
 
 .agenda-summary:has(.agenda-thumb) {
@@ -414,7 +423,7 @@ body.home-page .hero {
     pointer-events: none;
 }
 
-.agenda-item:hover .agenda-summary::after,
+.agenda-item:not(.is-static):hover .agenda-summary::after,
 .agenda-item.is-open .agenda-summary::after {
     color: rgba(211, 138, 45, 0.72);
 }
@@ -423,7 +432,11 @@ body.home-page .hero {
     transform: translateY(-50%) rotate(45deg);
 }
 
-.agenda-item:hover {
+.agenda-item.is-static .agenda-summary::after {
+    content: none;
+}
+
+.agenda-item:not(.is-static):hover {
     background: rgba(255, 255, 255, 0.72);
     border-color: rgba(211, 138, 45, 0.28);
     box-shadow: 0 8px 22px rgba(28, 18, 12, 0.05);

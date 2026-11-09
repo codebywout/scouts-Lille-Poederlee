@@ -1828,6 +1828,14 @@
       const summary = item.querySelector(".agenda-summary");
       if (!summary) return;
 
+      if (
+        item.classList.contains("is-static") ||
+        !item.querySelector(".agenda-details")
+      ) {
+        summary.addEventListener("click", (event) => event.preventDefault());
+        return;
+      }
+
       bindAccordionCardToggle(item, {
         isOpen: (el) => el.classList.contains("is-open"),
         openItem: (el) => {
@@ -3129,16 +3137,12 @@
                 const thumb = image
                   ? `<span class="agenda-thumb" aria-hidden="true">${thumbImageHtml(image)}</span>`
                   : "";
-                const bodyHtml = formatNewsBodyHtml(item.text);
-                return `
-                <details class="agenda-item ${image ? "has-agenda-image" : ""}">
-                  <summary class="agenda-summary">
-                    ${buildAgendaDateHtml(item)}
-                    <div class="agenda-body">
-                      <h3>${escapeHtml(item.title)}</h3>
-                    </div>
-                    ${thumb}
-                  </summary>
+                const text =
+                  typeof item.text === "string" ? item.text.trim() : "";
+                const hasDetails = Boolean(text || (link && linkText));
+                const bodyHtml = formatNewsBodyHtml(text);
+                const detailsHtml = hasDetails
+                  ? `
                   <div class="agenda-details">
                     <div class="agenda-details-inner">
                       <div class="agenda-details-copy">
@@ -3156,7 +3160,18 @@
                           : ""
                       }
                     </div>
-                  </div>
+                  </div>`
+                  : "";
+                return `
+                <details class="agenda-item${image ? " has-agenda-image" : ""}${hasDetails ? "" : " is-static"}">
+                  <summary class="agenda-summary">
+                    ${buildAgendaDateHtml(item)}
+                    <div class="agenda-body">
+                      <h3>${escapeHtml(item.title)}</h3>
+                    </div>
+                    ${thumb}
+                  </summary>
+                  ${detailsHtml}
                 </details>
               `;
               })
