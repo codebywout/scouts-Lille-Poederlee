@@ -3276,9 +3276,10 @@ html:has(body.admin-page) {
 }
 
 @media (max-width: 640px) {
-    .admin-shell {
+    /* Beat responsive.css .admin-shell padding-block so content clears the fixed save dock. */
+    .admin-page .admin-shell {
         width: min(100% - 20px, 1240px);
-        padding: 20px 0 96px;
+        padding: 20px 0 calc(148px + env(safe-area-inset-bottom, 0px));
     }
 
     .admin-page .admin-nav-inner {

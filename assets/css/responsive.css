@@ -461,7 +461,9 @@
 
     .admin-shell {
         width: min(100% - 32px, 1240px);
-        padding-block: 24px 28px;
+        padding-top: 24px;
+        /* Keep bottom room for sticky/fixed save bar; GSM override in admin.css @640. */
+        padding-bottom: max(88px, env(safe-area-inset-bottom, 0px) + 72px);
     }
 
     .page-picker-grid,
