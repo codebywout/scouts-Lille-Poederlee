@@ -124,6 +124,14 @@ body.home-page .hero {
         animation-timeline: view();
         animation-range: entry 0% cover 40%;
     }
+
+    /* List cards are short: finish fade-in as soon as they enter,
+       so Samsung/Chrome doesn't leave lower items half-transparent. */
+    .agenda-item.reveal-in,
+    .news-item.reveal-in,
+    .faq-item.reveal-in {
+        animation-range: entry 0% entry 55%;
+    }
 }
 
 @supports not (animation-timeline: view()) {
@@ -329,7 +337,7 @@ body.home-page .hero {
 
 .home-page .planning .section-top {
     align-items: end;
-    margin-bottom: 8px;
+    margin-bottom: 28px;
 }
 
 .home-page .planning .section-top > div {
@@ -345,6 +353,12 @@ body.home-page .hero {
     line-height: 1.5;
 }
 
+.home-page .planning .section-top > div > p:empty,
+.home-page .news .section-top > div > p:empty,
+.home-page .news .section-top > p:not(.news-more):empty {
+    display: none;
+}
+
 .agenda {
     display: grid;
     gap: 10px;
@@ -353,17 +367,22 @@ body.home-page .hero {
 
 .agenda-item {
     display: block;
-    padding: 14px 16px;
+    padding: 12px 14px;
     border: 1px solid rgba(78, 43, 26, 0.08);
     border-radius: 18px;
     background: rgba(255, 255, 255, 0.42);
     position: relative;
     overflow-anchor: none;
     scroll-margin-top: 24px;
+    cursor: pointer;
     transition:
         background 0.2s ease,
         border-color 0.2s ease,
         box-shadow 0.2s ease;
+}
+
+.agenda-item.is-static {
+    cursor: default;
 }
 
 .agenda-summary {
@@ -371,15 +390,20 @@ body.home-page .hero {
     z-index: 1;
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
-    gap: 14px 16px;
+    gap: 12px 14px;
     align-items: center;
     cursor: pointer;
     list-style: none;
-    padding-right: 34px;
+    padding-right: 28px;
+}
+
+.agenda-item.is-static .agenda-summary {
+    cursor: default;
+    padding-right: 0;
 }
 
 .agenda-summary:has(.agenda-thumb) {
-    grid-template-columns: auto minmax(0, 1fr) 84px;
+    grid-template-columns: auto minmax(0, 1fr) 96px;
 }
 
 .agenda-summary::-webkit-details-marker {
@@ -394,24 +418,40 @@ body.home-page .hero {
     z-index: 2;
     display: grid;
     place-items: center;
-    width: 1.15em;
-    height: 1.15em;
-    color: var(--scout-orange);
+    width: 1em;
+    height: 1em;
+    color: rgba(78, 43, 26, 0.38);
     font-family: "Montserrat", sans-serif;
-    font-size: 22px;
-    font-weight: 700;
+    font-size: 18px;
+    font-weight: 600;
     line-height: 1;
     transform: translateY(-50%);
-    transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition:
+        transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1),
+        color 0.2s ease;
     pointer-events: none;
+}
+
+.agenda-item:not(.is-static):hover .agenda-summary::after,
+.agenda-item.is-open .agenda-summary::after {
+    color: rgba(211, 138, 45, 0.72);
 }
 
 .agenda-item.is-open .agenda-summary::after {
     transform: translateY(-50%) rotate(45deg);
 }
 
-.agenda-item:hover,
-.agenda-item:focus-within {
+.agenda-item.is-static .agenda-summary::after {
+    content: none;
+}
+
+.agenda-item:not(.is-static):hover {
+    background: rgba(255, 255, 255, 0.72);
+    border-color: rgba(211, 138, 45, 0.28);
+    box-shadow: 0 8px 22px rgba(28, 18, 12, 0.05);
+}
+
+.agenda-item.is-open {
     background: rgba(255, 255, 255, 0.72);
     border-color: rgba(211, 138, 45, 0.28);
     box-shadow: 0 8px 22px rgba(28, 18, 12, 0.05);
@@ -423,9 +463,12 @@ body.home-page .hero {
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    width: 88px;
+    width: 118px;
+    min-width: 118px;
+    max-width: 118px;
     height: 88px;
-    aspect-ratio: 1;
+    min-height: 88px;
+    max-height: 88px;
     padding: 10px 8px;
     background: #fff;
     border: 1px solid rgba(78, 43, 26, 0.1);
@@ -434,14 +477,7 @@ body.home-page .hero {
 }
 
 .agenda-date.is-range {
-    width: 108px;
-    min-width: 108px;
-    max-width: 108px;
-    height: 88px;
-    min-height: 88px;
-    max-height: 88px;
-    aspect-ratio: auto;
-    padding: 8px 8px;
+    padding: 9px 8px;
     gap: 5px;
 }
 
@@ -487,36 +523,71 @@ body.home-page .hero {
 .agenda-date strong {
     display: block;
     font-family: "Montserrat", sans-serif;
-    font-size: 26px;
-    line-height: 0.9;
+    font-size: 22px;
+    font-weight: 800;
+    line-height: 1;
     color: var(--scout-brown);
 }
 
-.agenda-date.is-range strong {
-    font-size: 22px;
-    line-height: 1;
-}
-
-.agenda-date > span,
-.agenda-date-side > span {
-    margin-top: 6px;
-    font-size: 11px;
+.agenda-month {
+    display: block;
+    margin-top: 7px;
+    font-family: "Montserrat", sans-serif;
+    font-size: 12.5px;
     font-weight: 800;
-    letter-spacing: 1.5px;
+    letter-spacing: 0.7px;
+    line-height: 1.15;
     color: var(--scout-orange);
     text-transform: uppercase;
+    text-align: center;
+    white-space: nowrap;
 }
 
-.agenda-date.is-range > span {
+.agenda-month-short {
+    display: none;
+}
+
+.agenda-month-full {
+    display: inline;
+}
+
+.agenda-date.is-range > .agenda-month {
+    margin-top: 0;
+    font-size: 12.5px;
+    letter-spacing: 0.65px;
+}
+
+.agenda-date-months {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    width: 100%;
+    min-width: 0;
+}
+
+.agenda-date-months-sep {
+    flex-shrink: 0;
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: var(--scout-orange);
+    opacity: 0.55;
+}
+
+.agenda-date.is-cross-month .agenda-date-months > .agenda-month {
     margin-top: 0;
     font-size: 11px;
-    letter-spacing: 1.2px;
+    letter-spacing: 0.55px;
 }
 
-.agenda-date.is-range .agenda-date-side > span {
-    margin-top: 3px;
-    font-size: 9px;
-    letter-spacing: 0.8px;
+/* Two months never fit as full names in the shared badge width. */
+.agenda-date.is-cross-month .agenda-month-short {
+    display: inline;
+}
+
+.agenda-date.is-cross-month .agenda-month-full {
+    display: none;
 }
 
 .agenda-body {
@@ -532,8 +603,10 @@ body.home-page .hero {
 .agenda-body h3 {
     margin: 0;
     font-family: "Montserrat", sans-serif;
-    font-size: clamp(18px, 1.8vw, 24px);
-    line-height: 1.2;
+    font-size: clamp(19px, 2vw, 26px);
+    font-weight: 800;
+    line-height: 1.18;
+    letter-spacing: -0.01em;
     color: var(--scout-brown);
     overflow-wrap: anywhere;
     word-break: break-word;
@@ -542,8 +615,8 @@ body.home-page .hero {
 .agenda-thumb {
     display: block;
     overflow: hidden;
-    width: 84px;
-    aspect-ratio: 1;
+    width: 96px;
+    aspect-ratio: 4 / 3;
     border-radius: 14px;
     background: rgba(78, 43, 26, 0.06);
     border: 1px solid rgba(78, 43, 26, 0.08);
@@ -561,7 +634,7 @@ body.home-page .hero {
     display: block;
     width: 100%;
     height: 100%;
-    object-fit: contain;
+    object-fit: cover;
     object-position: center;
     background: rgba(78, 43, 26, 0.04);
 }
@@ -604,15 +677,26 @@ body.home-page .hero {
 }
 
 .agenda-item.is-open .agenda-details-inner {
-    padding-top: 14px;
+    padding-top: 12px;
 }
 
-.agenda-details-inner p {
+.agenda-details-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-width: 0;
+}
+
+.agenda-details-inner p,
+.agenda-details-copy > p {
     margin: 0;
     max-width: 62ch;
     font-size: 15px;
-    line-height: 1.65;
-    white-space: pre-line;
+    line-height: 1.7;
+}
+
+.agenda-details-copy > p + p {
+    margin-top: 2px;
 }
 
 .agenda-details-inner .agenda-link {
@@ -621,8 +705,13 @@ body.home-page .hero {
     gap: 8px;
     width: fit-content;
     color: var(--scout-orange);
-    font-size: 13px;
-    font-weight: 800;
+    font-size: 14px;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.agenda-details-inner .agenda-link:hover,
+.agenda-details-inner .agenda-link:focus-visible {
     text-decoration: underline;
     text-underline-offset: 3px;
 }
@@ -635,51 +724,62 @@ body.home-page .hero {
     line-height: 1.6;
 }
 
-.agenda-details-inner .responsive-full-link,
-.agenda-details-inner picture {
-    display: block;
-    width: min(100%, 360px);
-    max-width: 100%;
-    height: auto;
+.agenda-media {
+    margin: 0;
+    overflow: hidden;
+    width: 100%;
+    max-width: 420px;
+    aspect-ratio: 4 / 3;
+    border-radius: 16px;
+    border: 1px solid rgba(78, 43, 26, 0.1);
+    background: #1a1410;
+    box-shadow: 0 8px 22px rgba(28, 18, 12, 0.07);
     justify-self: start;
 }
 
+.agenda-media > picture,
+.agenda-media > img,
+.agenda-details-inner .responsive-full-link,
+.agenda-details-inner > picture {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.agenda-media img,
 .agenda-details-inner img,
 .agenda-details-inner picture img {
     display: block;
     width: 100%;
-    max-width: 360px;
-    height: auto;
-    max-height: none;
-    object-fit: contain;
+    height: 100%;
+    object-fit: cover;
     object-position: center;
     background: rgba(78, 43, 26, 0.04);
-    border-radius: 14px;
-    border: 1px solid rgba(78, 43, 26, 0.08);
 }
 
 .agenda-item.has-agenda-image.is-open .agenda-details-inner {
-    grid-template-columns: minmax(0, 1fr) minmax(160px, 360px);
+    grid-template-columns: minmax(0, 1.05fr) minmax(180px, 0.95fr);
     align-items: start;
+    gap: 16px;
 }
 
+.agenda-item.has-agenda-image.is-open .agenda-details-inner.is-media-only {
+    grid-template-columns: minmax(0, 420px);
+}
+
+.agenda-item.has-agenda-image.is-open .agenda-details-inner .agenda-media,
 .agenda-item.has-agenda-image.is-open .agenda-details-inner .responsive-full-link,
-.agenda-item.has-agenda-image.is-open .agenda-details-inner picture {
+.agenda-item.has-agenda-image.is-open .agenda-details-inner > picture {
     grid-column: 2;
     grid-row: 1 / span 3;
     width: 100%;
+    max-width: none;
     justify-self: stretch;
 }
 
-.agenda-item.has-agenda-image.is-open .agenda-details-inner img,
-.agenda-item.has-agenda-image.is-open .agenda-details-inner picture img {
-    grid-column: unset;
-    grid-row: unset;
-    width: 100%;
-    max-width: none;
-    height: auto;
-    max-height: none;
-    object-fit: contain;
+.agenda-item.has-agenda-image.is-open .agenda-details-inner.is-media-only .agenda-media {
+    grid-column: auto;
+    grid-row: auto;
 }
 
 .practical {
@@ -687,7 +787,7 @@ body.home-page .hero {
 }
 
 .practical-heading {
-    margin-bottom: 52px;
+    margin-bottom: 28px;
 }
 
 .faq-list {
@@ -770,14 +870,22 @@ body.home-page .hero {
     flex-shrink: 0;
     display: grid;
     place-items: center;
-    width: 1.15em;
-    height: 1.15em;
-    color: var(--scout-brown);
+    width: 1em;
+    height: 1em;
+    color: rgba(78, 43, 26, 0.38);
     font-family: "Montserrat", sans-serif;
-    font-size: 22px;
-    font-weight: 700;
+    font-size: 18px;
+    font-weight: 600;
     line-height: 1;
-    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition:
+        transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+        color 0.2s ease;
+}
+
+.faq-item summary:hover::after,
+.faq-item.open-anim summary::after,
+.faq-item[open] summary::after {
+    color: rgba(211, 138, 45, 0.72);
 }
 
 .faq-item.open-anim summary::after {
@@ -1069,7 +1177,7 @@ body.home-page .hero {
         align-items: start;
         flex-direction: column;
         gap: 10px;
-        margin-bottom: 14px;
+        margin-bottom: 22px;
     }
 
     .home-page .planning .section-top > div > p,
@@ -1098,59 +1206,76 @@ body.home-page .hero {
 
     .agenda-summary {
         grid-template-columns: auto minmax(0, 1fr);
-        gap: 12px;
-        padding-right: 28px;
+        gap: 10px 12px;
+        padding-right: 24px;
+    }
+
+    .agenda-summary::after {
+        font-size: 16px;
     }
 
     .agenda-summary:has(.agenda-thumb) {
-        grid-template-columns: auto minmax(0, 1fr) 56px;
+        grid-template-columns: auto minmax(0, 1fr) 72px;
     }
 
     .agenda-date {
         width: 64px;
+        min-width: 64px;
+        max-width: 64px;
         height: 64px;
+        min-height: 64px;
+        max-height: 64px;
         border-radius: 12px;
         padding: 8px 6px;
     }
 
     .agenda-date.is-range {
-        width: 84px;
-        min-width: 84px;
-        max-width: 84px;
+        width: 64px;
+        min-width: 64px;
+        max-width: 64px;
         height: 64px;
         min-height: 64px;
         max-height: 64px;
-        padding: 6px 6px;
+        padding: 6px 5px;
         gap: 3px;
     }
 
     .agenda-date strong {
-        font-size: 22px;
+        font-size: 16px;
     }
 
-    .agenda-date.is-range strong {
-        font-size: 18px;
-    }
-
-    .agenda-date > span,
-    .agenda-date-side > span {
+    .agenda-month {
         margin-top: 5px;
         font-size: 10px;
-        letter-spacing: 1.2px;
+        letter-spacing: 1.1px;
     }
 
-    .agenda-date.is-range > span {
+    .agenda-month-short {
+        display: inline;
+    }
+
+    .agenda-month-full {
+        display: none;
+    }
+
+    .agenda-date.is-range > .agenda-month {
         margin-top: 0;
-        font-size: 10px;
+        font-size: 9px;
+        letter-spacing: 1px;
     }
 
-    .agenda-date.is-range .agenda-date-side > span {
-        margin-top: 2px;
+    .agenda-date-months {
+        gap: 3px;
+    }
+
+    .agenda-date.is-cross-month .agenda-date-months > .agenda-month {
         font-size: 8px;
+        letter-spacing: 0.7px;
     }
 
     .agenda-date-arrow {
         width: 10px;
+        margin: 0 1px;
     }
 
     .agenda-body {
@@ -1160,21 +1285,25 @@ body.home-page .hero {
 
     .agenda-body h3,
     .news-copy h3 {
-        font-size: clamp(16px, 4.4vw, 19px);
-        line-height: 1.28;
+        font-size: clamp(17px, 4.6vw, 21px);
+        line-height: 1.25;
         overflow-wrap: break-word;
         word-break: normal;
         hyphens: manual;
     }
 
-    .agenda-thumb,
+    .agenda-thumb {
+        width: 72px;
+        border-radius: 12px;
+    }
+
     .news-thumb {
-        width: 56px;
+        width: 72px;
         border-radius: 12px;
     }
 
     .news-summary:has(.news-thumb) {
-        grid-template-columns: 56px minmax(0, 1fr);
+        grid-template-columns: 72px minmax(0, 1fr);
     }
 
     .news-teaser {
@@ -1194,25 +1323,19 @@ body.home-page .hero {
         gap: 12px;
     }
 
+    .agenda-item.has-agenda-image.is-open .agenda-details-inner .agenda-media,
     .agenda-item.has-agenda-image.is-open .agenda-details-inner .responsive-full-link,
-    .agenda-item.has-agenda-image.is-open .agenda-details-inner picture {
-        grid-column: auto;
-        grid-row: auto;
-        order: -1;
-        width: min(100%, 360px);
-        justify-self: start;
-    }
-
-    .agenda-item.has-agenda-image.is-open .agenda-details-inner img,
-    .agenda-item.has-agenda-image.is-open .agenda-details-inner picture img {
+    .agenda-item.has-agenda-image.is-open .agenda-details-inner > picture {
         grid-column: auto;
         grid-row: auto;
         order: -1;
         width: 100%;
-        max-width: 360px;
-        max-height: none;
-        height: auto;
-        object-fit: contain;
+        max-width: none;
+        justify-self: stretch;
+    }
+
+    .agenda-item.has-agenda-image.is-open .agenda-details-inner .agenda-details-copy {
+        order: 1;
     }
 
     .news-item.has-news-image.is-open .news-details-inner .news-media {
@@ -1221,17 +1344,12 @@ body.home-page .hero {
         order: -1;
         width: 100%;
         max-width: none;
-        max-height: none;
         height: auto;
     }
 
     .news-item.has-news-image.is-open .news-details-inner .news-details-copy {
         order: 1;
         min-height: 0;
-    }
-
-    .news-item.has-news-image.is-open .news-details-copy .news-share-row {
-        margin-top: 2px;
     }
 
     .agenda-details-inner p,
@@ -1258,7 +1376,7 @@ body.home-page .hero {
     }
 
     .practical-heading {
-        margin-bottom: 26px;
+        margin-bottom: 22px;
     }
 
     .faq-list {
@@ -1571,29 +1689,6 @@ body.home-page .hero {
         font-size: clamp(29px, 8.8vw, 39px);
     }
 
-    .branch {
-        grid-template-columns: minmax(0, 1fr) 48px;
-        min-height: 94px;
-        padding: 14px;
-        border-radius: 16px;
-        gap: 3px 8px;
-    }
-
-    .branch-logo {
-        width: 48px;
-        height: 48px;
-        min-width: 48px;
-    }
-
-    .branch-main h3 {
-        font-size: clamp(23px, 6vw, 26px);
-    }
-
-    .branch-main span,
-    .branch-age {
-        font-size: 15px;
-    }
-
     .agenda-item,
     .news-item {
         padding: 11px;
@@ -1606,69 +1701,89 @@ body.home-page .hero {
         padding-right: 26px;
     }
 
-    .agenda-summary:has(.agenda-thumb),
+    .agenda-summary:has(.agenda-thumb) {
+        grid-template-columns: auto minmax(0, 1fr) 56px;
+    }
+
     .news-summary:has(.news-thumb) {
-        grid-template-columns: auto minmax(0, 1fr);
+        grid-template-columns: 56px minmax(0, 1fr);
     }
 
     .agenda-thumb,
     .news-thumb {
-        display: none;
+        width: 56px;
+        border-radius: 10px;
     }
 
     .agenda-date {
         width: 58px;
+        min-width: 58px;
+        max-width: 58px;
         height: 58px;
-        padding: 7px 5px;
+        min-height: 58px;
+        max-height: 58px;
+        padding: 7px 4px;
         border-radius: 11px;
     }
 
     .agenda-date.is-range {
-        width: 76px;
-        min-width: 76px;
-        max-width: 76px;
+        width: 58px;
+        min-width: 58px;
+        max-width: 58px;
         height: 58px;
         min-height: 58px;
         max-height: 58px;
-        padding: 5px 5px;
+        padding: 5px 4px;
         gap: 2px;
     }
 
     .agenda-date strong {
-        font-size: 20px;
+        font-size: 14px;
     }
 
-    .agenda-date.is-range strong {
-        font-size: 16px;
-    }
-
-    .agenda-date > span,
-    .agenda-date-side > span {
+    .agenda-month {
         margin-top: 4px;
         font-size: 9px;
-        letter-spacing: 1px;
+        letter-spacing: 0.9px;
     }
 
-    .agenda-date.is-range > span {
+    .agenda-month-short {
+        display: inline;
+    }
+
+    .agenda-month-full {
+        display: none;
+    }
+
+    .agenda-date.is-range > .agenda-month {
         margin-top: 0;
-        font-size: 9px;
-        letter-spacing: 1px;
+        font-size: 8px;
+        letter-spacing: 0.8px;
     }
 
-    .agenda-date.is-range .agenda-date-side > span {
-        margin-top: 2px;
+    .agenda-date-months {
+        gap: 2px;
+    }
+
+    .agenda-date-months-sep {
+        width: 2px;
+        height: 2px;
+    }
+
+    .agenda-date.is-cross-month .agenda-date-months > .agenda-month {
         font-size: 7px;
         letter-spacing: 0.5px;
     }
 
     .agenda-date-arrow {
-        width: 8px;
+        width: 7px;
+        height: 1.5px;
         margin: 0 1px;
+        border-radius: 1px;
     }
 
     .agenda-date-arrow::after {
-        width: 4px;
-        height: 4px;
+        content: none;
     }
 
     .agenda-body h3,
@@ -1694,7 +1809,6 @@ body.home-page .hero {
     }
 
     .news-item.has-news-image.is-open .news-details-inner .news-media {
-        max-height: none;
         border-radius: 14px;
     }
 
@@ -1776,26 +1890,6 @@ body.home-page .hero {
     .section {
         padding-left: 5%;
         padding-right: 5%;
-    }
-
-    .branch {
-        grid-template-columns: minmax(0, 1fr) 44px;
-        padding: 13px;
-    }
-
-    .branch-logo {
-        width: 44px;
-        height: 44px;
-        min-width: 44px;
-    }
-
-    .branch-main h3 {
-        font-size: clamp(22px, 6.4vw, 25px);
-    }
-
-    .branch-main span,
-    .branch-age {
-        font-size: 15px;
     }
 
     .agenda-item {
@@ -1958,13 +2052,11 @@ html {
     text-decoration: none;
 }
 
-.news-media .responsive-full-link,
 .secondhand-item-image .responsive-full-link,
 .branch-photo .responsive-full-link {
     height: 100%;
 }
 
-.news-media picture,
 .secondhand-item-image picture,
 .branch-photo picture {
     display: block;
@@ -1972,7 +2064,6 @@ html {
     height: 100%;
 }
 
-.news-media img,
 .secondhand-item-image img,
 .branch-photo img {
     width: 100%;
@@ -2177,7 +2268,7 @@ html {
 
 .home-page .news .section-top {
     align-items: end;
-    margin-bottom: 8px;
+    margin-bottom: 28px;
 }
 
 .home-page .news .section-top > div {
@@ -2201,7 +2292,7 @@ html {
 
 .news-item {
     display: block;
-    padding: 14px 16px;
+    padding: 12px 14px;
     border: 1px solid rgba(78, 43, 26, 0.08);
     border-radius: 18px;
     background: rgba(255, 255, 255, 0.42);
@@ -2214,8 +2305,18 @@ html {
         box-shadow 0.2s ease;
 }
 
-.news-item:not(.is-static):hover,
-.news-item:not(.is-static):focus-within {
+.news-item:not(.is-static) {
+    cursor: pointer;
+}
+
+.news-item:not(.is-static):hover {
+    background: rgba(255, 255, 255, 0.72);
+    border-color: rgba(211, 138, 45, 0.28);
+    box-shadow: 0 8px 22px rgba(28, 18, 12, 0.05);
+}
+
+/* Elevated look only while open — not via :focus-within, which stuck after close. */
+.news-item.is-open {
     background: rgba(255, 255, 255, 0.72);
     border-color: rgba(211, 138, 45, 0.28);
     box-shadow: 0 8px 22px rgba(28, 18, 12, 0.05);
@@ -2225,8 +2326,8 @@ html {
     position: relative;
     z-index: 1;
     display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: 12px 16px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px 12px;
     align-items: center;
     cursor: pointer;
     list-style: none;
@@ -2234,12 +2335,12 @@ html {
 }
 
 .news-summary:has(.news-thumb) {
-    grid-template-columns: 84px minmax(0, 1fr);
+    grid-template-columns: 96px minmax(0, 1fr) auto;
 }
 
 .news-item.is-static .news-summary {
     cursor: default;
-    padding-right: 0;
+    padding-right: 8px;
 }
 
 .news-summary::-webkit-details-marker {
@@ -2254,16 +2355,23 @@ html {
     z-index: 2;
     display: grid;
     place-items: center;
-    width: 1.15em;
-    height: 1.15em;
-    color: var(--scout-orange);
+    width: 1em;
+    height: 1em;
+    color: rgba(78, 43, 26, 0.38);
     font-family: "Montserrat", sans-serif;
-    font-size: 22px;
-    font-weight: 700;
+    font-size: 18px;
+    font-weight: 600;
     line-height: 1;
     transform: translateY(-50%);
-    transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition:
+        transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1),
+        color 0.2s ease;
     pointer-events: none;
+}
+
+.news-item:not(.is-static):hover .news-summary::after,
+.news-item.is-open .news-summary::after {
+    color: rgba(211, 138, 45, 0.72);
 }
 
 .news-item.is-static .news-summary::after {
@@ -2272,13 +2380,14 @@ html {
 
 .news-item.is-open .news-summary::after {
     transform: translateY(-50%) rotate(45deg);
+    color: rgba(78, 43, 26, 0.42);
 }
 
 .news-thumb {
     display: block;
     overflow: hidden;
-    width: 84px;
-    aspect-ratio: 1;
+    width: 96px;
+    aspect-ratio: 4 / 3;
     border-radius: 14px;
     background: rgba(78, 43, 26, 0.06);
     border: 1px solid rgba(78, 43, 26, 0.08);
@@ -2299,23 +2408,47 @@ html {
 
 .news-copy {
     display: grid;
-    gap: 6px;
+    gap: 5px;
     min-width: 0;
 }
 
-.news-date {
-    color: var(--scout-orange);
+.news-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    color: rgba(78, 43, 26, 0.55);
     font-size: 11px;
-    font-weight: 800;
-    letter-spacing: 1.4px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
+    line-height: 1.3;
+}
+
+.news-meta-date {
+    color: var(--scout-orange);
+    font-weight: 800;
+    letter-spacing: 1.2px;
+}
+
+.news-meta-category {
+    color: rgba(78, 43, 26, 0.52);
+    font-weight: 700;
+}
+
+.news-meta-sep {
+    color: rgba(78, 43, 26, 0.28);
+    font-weight: 700;
 }
 
 .news-copy h3 {
     margin: 0;
     font-family: "Montserrat", sans-serif;
-    font-size: clamp(18px, 1.8vw, 24px);
-    line-height: 1.2;
+    font-size: clamp(19px, 2vw, 26px);
+    font-weight: 800;
+    line-height: 1.18;
+    letter-spacing: -0.01em;
     color: var(--scout-brown);
 }
 
@@ -2338,51 +2471,69 @@ html {
  */
 @media (max-width: 768px) {
     .news-summary {
-        align-items: start;
+        align-items: center;
         gap: 10px 12px;
-        padding-right: 28px;
+        padding-right: 24px;
     }
 
     .news-summary::after {
-        top: 0.35em;
-        transform: none;
-        font-size: 20px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 16px;
     }
 
     .news-item.is-open .news-summary::after {
-        transform: rotate(45deg);
+        transform: translateY(-50%) rotate(45deg);
     }
 
     .news-summary:has(.news-thumb) {
-        grid-template-columns: 56px minmax(0, 1fr);
+        grid-template-columns: 72px minmax(0, 1fr) auto;
+    }
+
+    .news-thumb {
+        width: 72px;
+        border-radius: 12px;
+    }
+
+    .news-summary .news-share {
+        align-self: center;
+        min-width: 48px;
+        min-height: 48px;
+        padding: 11px 16px;
+        font-size: 14px;
+        gap: 7px;
+    }
+
+    .news-summary .news-share .icon-share {
+        font-size: 18px !important;
     }
 
     .news-copy {
+        gap: 4px;
+    }
+
+    .news-meta {
+        font-size: 10px;
         gap: 5px;
     }
 
-    .news-date {
-        font-size: 10px;
-        letter-spacing: 1.1px;
+    .news-meta-date {
+        letter-spacing: 1px;
     }
 
     .news-copy h3 {
-        font-size: clamp(17px, 4.6vw, 20px);
-        line-height: 1.3;
+        font-size: clamp(18px, 4.8vw, 21px);
+        line-height: 1.25;
         overflow-wrap: break-word;
         word-break: normal;
     }
 
     .news-teaser {
-        max-width: none;
-        font-size: 14px;
-        line-height: 1.45;
-        -webkit-line-clamp: 3;
-        color: rgba(78, 43, 26, 0.72);
+        display: none;
     }
 
     .news-item.is-open .news-details-inner {
-        padding-top: 12px;
+        padding-top: 10px;
         gap: 12px;
     }
 
@@ -2390,44 +2541,62 @@ html {
     .news-details-copy > p {
         max-width: none;
         font-size: 15px;
-        line-height: 1.6;
+        line-height: 1.65;
     }
 
-    .news-share-row {
-        flex-wrap: wrap;
-        gap: 8px;
+    .news-details-copy {
+        gap: 12px;
     }
 }
 
 @media (max-width: 480px) {
-    .agenda-thumb,
-    .news-thumb {
-        display: none;
+    .agenda-summary:has(.agenda-thumb) {
+        grid-template-columns: auto minmax(0, 1fr) 56px;
     }
 
-    /* Thumb stays in DOM for :has(), but must not reserve a grid column. */
-    .news-summary:has(.news-thumb),
-    .agenda-summary:has(.agenda-thumb) {
-        grid-template-columns: minmax(0, 1fr);
+    .news-summary:has(.news-thumb) {
+        grid-template-columns: 56px minmax(0, 1fr) auto;
+    }
+
+    .agenda-thumb,
+    .news-thumb {
+        width: 56px;
+        border-radius: 10px;
     }
 
     .news-summary {
-        padding-right: 26px;
+        padding-right: 28px;
+    }
+
+    .news-summary .news-share {
+        min-width: 40px;
+        min-height: 40px;
+        padding: 8px;
+    }
+
+    .news-summary .news-share-label {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
     }
 
     .news-item {
-        padding: 14px 14px 13px;
+        padding: 12px 12px 11px;
     }
 
     .news-copy h3 {
-        font-size: 17px;
-        line-height: 1.32;
+        font-size: 18px;
+        line-height: 1.28;
     }
 
     .news-teaser {
-        font-size: 14px;
-        line-height: 1.48;
-        -webkit-line-clamp: 3;
+        display: none;
     }
 }
 
@@ -2436,8 +2605,9 @@ html {
     display: none;
 }
 
+.news-item.is-open .news-summary,
 .news-item.is-open .news-summary:has(.news-thumb) {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) auto;
 }
 
 .news-details {
@@ -2454,7 +2624,7 @@ html {
     min-height: 0;
     overflow: hidden;
     display: grid;
-    gap: 14px;
+    gap: 12px;
     padding-top: 0;
 }
 
@@ -2466,13 +2636,13 @@ html {
 }
 
 .news-item.has-news-image.is-open .news-details-inner {
-    grid-template-columns: minmax(0, 1.2fr) minmax(180px, 0.8fr);
-    align-items: stretch;
+    grid-template-columns: minmax(0, 1.05fr) minmax(200px, 0.95fr);
+    align-items: start;
+    gap: 16px;
 }
 
 .news-item.has-news-image.is-open .news-details-inner .news-details-copy {
     grid-column: 1;
-    min-height: 100%;
 }
 
 .news-item.has-news-image.is-open .news-details-inner .news-media {
@@ -2480,10 +2650,6 @@ html {
     grid-row: 1;
     align-self: start;
     width: 100%;
-}
-
-.news-item.has-news-image.is-open .news-details-copy .news-share-row {
-    margin-top: auto;
 }
 
 /* Stack open news copy + media on phones; must follow desktop 2-col rules above. */
@@ -2510,15 +2676,11 @@ html {
         min-height: 0;
     }
 
-    .news-item.has-news-image.is-open .news-details-copy .news-share-row {
-        margin-top: 4px;
-    }
-
     .news-details-inner p,
     .news-details-copy > p {
         max-width: none;
         font-size: 15px;
-        line-height: 1.6;
+        line-height: 1.65;
     }
 }
 
@@ -2528,7 +2690,7 @@ html {
 }
 
 .news-item.is-open .news-details-inner {
-    padding-top: 14px;
+    padding-top: 12px;
 }
 
 .news-details-inner p,
@@ -2537,8 +2699,11 @@ html {
     max-width: 62ch;
     color: var(--gray);
     font-size: 15px;
-    line-height: 1.65;
-    white-space: pre-line;
+    line-height: 1.7;
+}
+
+.news-details-copy > p + p {
+    margin-top: 2px;
 }
 
 .news-link {
@@ -2563,65 +2728,21 @@ html {
     text-underline-offset: 3px;
 }
 
-.news-share-row {
-    display: grid;
-    gap: 8px;
-    margin-top: 2px;
-    max-width: min(100%, 640px);
-}
-
-.news-share-caption {
-    margin: 0;
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: 0.02em;
-    text-transform: uppercase;
-    color: rgba(78, 43, 26, 0.55);
-}
-
-.news-share-box {
-    display: flex;
-    align-items: stretch;
-    min-width: 0;
-    border: 1px solid rgba(78, 43, 26, 0.14);
-    border-radius: 12px;
-    background: rgba(255, 252, 247, 0.95);
-    overflow: hidden;
-    transition:
-        border-color 0.2s ease,
-        background 0.2s ease;
-}
-
-.news-share-box.is-copied {
-    border-color: rgba(46, 125, 50, 0.4);
-    background: rgba(46, 125, 50, 0.08);
-}
-
-.news-share-url {
-    flex: 1 1 auto;
-    min-width: 0;
-    margin: 0;
-    padding: 10px 12px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    font-size: 12.5px;
-    font-weight: 600;
-    color: var(--scout-brown, #4e2b1a);
-    line-height: 1.35;
-}
-
-.news-share {
-    flex: 0 0 auto;
+.news-summary .news-share {
+    position: relative;
+    z-index: 3;
+    align-self: center;
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    gap: 7px;
     margin: 0;
-    padding: 0 14px;
-    border: 0;
-    border-left: 1px solid rgba(78, 43, 26, 0.12);
-    background: rgba(211, 138, 45, 0.12);
+    min-width: 40px;
+    min-height: 40px;
+    padding: 9px 14px;
+    border: 1px solid rgba(78, 43, 26, 0.12);
+    border-radius: 999px;
+    background: rgba(255, 252, 247, 0.92);
     color: var(--scout-brown, #4e2b1a);
     font: inherit;
     font-size: 13px;
@@ -2630,17 +2751,55 @@ html {
     cursor: pointer;
     transition:
         background 0.2s ease,
+        border-color 0.2s ease,
         color 0.2s ease;
 }
 
-.news-share:hover,
-.news-share:focus-visible {
-    background: rgba(211, 138, 45, 0.22);
-    color: var(--scout-orange);
+.news-summary .news-share .icon-share {
+    font-size: 16px !important;
 }
 
-.news-share.is-copied {
-    background: rgba(46, 125, 50, 0.16);
+/* iPad / tablet (incl. landscape tot ~1366): grotere deelknop. */
+@media (min-width: 481px) and (max-width: 1366px) {
+    .news-summary .news-share {
+        min-width: 48px;
+        min-height: 48px;
+        padding: 11px 16px;
+        font-size: 14px;
+        gap: 7px;
+    }
+
+    .news-summary .news-share .icon-share {
+        font-size: 18px !important;
+    }
+}
+
+/* Touch tablets (ook brede landscape): altijd groot tikvlak. */
+@media (hover: none) and (pointer: coarse) and (min-width: 481px) {
+    .news-summary .news-share {
+        min-width: 48px;
+        min-height: 48px;
+        padding: 11px 16px;
+        font-size: 14px;
+        gap: 7px;
+    }
+
+    .news-summary .news-share .icon-share {
+        font-size: 18px !important;
+    }
+}
+
+.news-summary .news-share:hover,
+.news-summary .news-share:focus-visible {
+    background: rgba(211, 138, 45, 0.14);
+    border-color: rgba(211, 138, 45, 0.35);
+    color: var(--scout-orange);
+    outline: none;
+}
+
+.news-summary .news-share.is-copied {
+    background: rgba(46, 125, 50, 0.12);
+    border-color: rgba(46, 125, 50, 0.35);
     color: #2e7d32;
 }
 
@@ -2651,18 +2810,69 @@ html {
 .news-media {
     margin: 0;
     overflow: hidden;
-    width: min(100%, 640px);
+    width: 100%;
+    max-width: 520px;
+    max-height: 70vh;
+    max-height: 420px;
     border: 1px solid rgba(78, 43, 26, 0.1);
-    border-radius: 18px;
+    border-radius: 16px;
     background: #1a1410;
-    box-shadow: 0 10px 28px rgba(28, 18, 12, 0.08);
+    box-shadow: 0 8px 22px rgba(28, 18, 12, 0.07);
 }
 
-.news-media img {
+.news-media:not(.news-carousel) {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    aspect-ratio: auto;
+    height: auto;
+}
+
+.news-media:not(.news-carousel) .responsive-full-link,
+.news-media:not(.news-carousel) picture {
+    position: static;
+    inset: auto;
     display: block;
     width: 100%;
     height: auto;
-    max-height: none;
+}
+
+.news-media:not(.news-carousel) img {
+    position: static;
+    inset: auto;
+    display: block;
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    max-height: 70vh;
+    max-height: 420px;
+    margin: 0 auto;
+    object-fit: contain;
+    object-position: center;
+    user-select: none;
+    -webkit-user-drag: none;
+}
+
+/* Carousel slides keep an absolute fit box. */
+.news-carousel .responsive-full-link,
+.news-carousel picture {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.news-carousel img {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    max-height: 100%;
+    margin: auto;
     object-fit: contain;
     object-position: center;
     user-select: none;
@@ -2671,6 +2881,7 @@ html {
 
 .news-carousel {
     position: relative;
+    display: block;
     touch-action: pan-y;
 }
 
@@ -2678,8 +2889,11 @@ html {
     position: relative;
     overflow: hidden;
     width: 100%;
-    min-height: 200px;
-    aspect-ratio: 4 / 3;
+    min-height: 160px;
+    height: 280px; /* JS replaces with exact photo-fit height */
+    max-height: 70vh;
+    max-height: 420px;
+    aspect-ratio: auto;
     background: #1a1410;
     cursor: grab;
     touch-action: pan-y pinch-zoom;
@@ -2705,20 +2919,33 @@ html {
 }
 
 .news-carousel-slide {
-    display: grid;
+    position: relative;
     flex: 0 0 100%;
-    place-items: center;
     width: 100%;
     height: 100%;
     min-width: 0;
+    min-height: 0;
+    overflow: hidden;
 }
 
-.news-carousel-slide img {
+.news-carousel-slide .responsive-full-link,
+.news-carousel-slide picture {
+    position: absolute;
+    inset: 0;
     display: block;
     width: 100%;
     height: 100%;
+}
+
+.news-carousel-slide img {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: auto;
+    height: auto;
     max-width: 100%;
     max-height: 100%;
+    margin: auto;
     object-fit: contain;
     object-position: center;
     pointer-events: none;

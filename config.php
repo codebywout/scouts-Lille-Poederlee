@@ -54,12 +54,17 @@ const SCOUTS_MAX_PDF_UPLOAD_BYTES = 20971520;
  * Bump this on every deploy so HTML/CSS/JS URLs change and old caches are skipped.
  * Format: YYYYMMDD-N
  */
-const SCOUTS_ASSET_VERSION = '20261028-2';
+const SCOUTS_ASSET_VERSION = '20261109-save-scroll-pad';
 /** Microsoft Clarity project ID (public site only; loaded after analytics consent). */
 const SCOUTS_CLARITY_PROJECT_ID = 'z4c8od8ljm';
 const SCOUTS_LOGIN_ATTEMPTS_FILE = SCOUTS_ROOT . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . '.login-attempts.json';
 const SCOUTS_LOGIN_MAX_ATTEMPTS = 5;
 const SCOUTS_LOGIN_LOCKOUT_SECONDS = 900;
+/** Admin activity log (Instellingen). Dotfile — blocked by data/.htaccess. */
+const SCOUTS_ADMIN_LOG_FILE = SCOUTS_ROOT . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . '.admin-log.json';
+const SCOUTS_ADMIN_LOG_MAX_ENTRIES = 200;
+/** Drop activity-log items older than this many months. */
+const SCOUTS_ADMIN_LOG_RETENTION_MONTHS = 2;
 
 // Best-effort: some hosts allow raising these at runtime.
 @ini_set('upload_max_filesize', '20M');
@@ -414,6 +419,301 @@ function scouts_login_clear_failures(string $ip = ''): void
 {
     $ip = $ip !== '' ? $ip : scouts_client_ip();
     scouts_login_attempts_write($ip, null);
+}
+
+/**
+ * Human-readable labels for admin activity log actions.
+ *
+ * @return array<string, string>
+ */
+function scouts_admin_log_action_labels(): array
+{
+    return [
+        'login_failed' => 'Mislukte loginpoging',
+        'news_publish' => 'Nieuwsartikel online gezet',
+        'site_restore' => 'Backup teruggezet',
+        'site_reset' => 'Website teruggezet naar standaard',
+        'planning_upload' => 'Maandplanning geüpload',
+        'letter_upload' => 'Brief geüpload',
+        'document_delete' => 'Document verwijderd',
+        'orphans_purge' => 'Ongebruikte uploads verwijderd',
+        'drive_settings' => 'Google Drive-instellingen gewijzigd',
+        'drive_connect' => 'Google Drive verbonden',
+        'drive_disconnect' => 'Google Drive verbroken',
+        'log_clear' => 'Activiteitenlog gewist',
+    ];
+}
+
+/**
+ * Human branch label for activity-log details.
+ */
+function scouts_admin_log_branch_label(string $branch): string
+{
+    $labels = [
+        'kapoenen' => 'Kapoenen',
+        'welpen' => 'Welpen',
+        'jongverkenners' => 'Jongverkenners',
+        'verkenners' => 'Verkenners',
+        'jins' => 'Jins',
+    ];
+    $key = strtolower(trim($branch));
+    return $labels[$key] ?? $branch;
+}
+
+function scouts_admin_log_cutoff(): DateTimeImmutable
+{
+    $months = max(1, (int) SCOUTS_ADMIN_LOG_RETENTION_MONTHS);
+    return (new DateTimeImmutable('now'))->modify("-{$months} months");
+}
+
+/**
+ * Keep only recent, meaningful activity-log rows.
+ *
+ * @param list<mixed> $entries
+ * @return list<array<string, mixed>>
+ */
+function scouts_admin_log_filter_entries(array $entries, ?DateTimeImmutable $cutoff = null): array
+{
+    $cutoff ??= scouts_admin_log_cutoff();
+    $labels = scouts_admin_log_action_labels();
+    $clean = [];
+    foreach ($entries as $entry) {
+        if (!is_array($entry)) {
+            continue;
+        }
+        $action = trim((string) ($entry['action'] ?? ''));
+        if ($action === '' || in_array($action, ['site_save', 'login', 'logout'], true)) {
+            continue;
+        }
+        $at = trim((string) ($entry['at'] ?? ''));
+        if ($at === '') {
+            continue;
+        }
+        try {
+            $when = new DateTimeImmutable($at);
+        } catch (Throwable) {
+            continue;
+        }
+        if ($when < $cutoff) {
+            continue;
+        }
+        $clean[] = [
+            'id' => (string) ($entry['id'] ?? ''),
+            'at' => $at,
+            'action' => $action,
+            'message' => (string) ($entry['message'] ?? ($labels[$action] ?? $action)),
+            'detail' => (string) ($entry['detail'] ?? ''),
+            // Never expose IPs for failed logins (also strip legacy values).
+            'ip' => $action === 'login_failed' ? '' : (string) ($entry['ip'] ?? ''),
+        ];
+    }
+    return $clean;
+}
+
+function scouts_news_item_is_published(array $item): bool
+{
+    if (!array_key_exists('published', $item)) {
+        return true;
+    }
+    return $item['published'] === true;
+}
+
+function scouts_admin_log_title_key(string $title): string
+{
+    return function_exists('mb_strtolower')
+        ? mb_strtolower($title)
+        : strtolower($title);
+}
+
+/**
+ * Log news items that newly became visible on the site.
+ */
+function scouts_admin_log_news_publish_changes(array $beforeData, array $afterData): void
+{
+    $beforeNews = is_array($beforeData['news'] ?? null) ? $beforeData['news'] : [];
+    $afterNews = is_array($afterData['news'] ?? null) ? $afterData['news'] : [];
+
+    $beforeById = [];
+    $beforePublishedTitles = [];
+    foreach ($beforeNews as $item) {
+        if (!is_array($item)) {
+            continue;
+        }
+        $id = trim((string) ($item['id'] ?? ''));
+        $published = scouts_news_item_is_published($item);
+        if ($id !== '') {
+            $beforeById[$id] = $published;
+        }
+        if ($published) {
+            $title = trim((string) ($item['title'] ?? ''));
+            if ($title !== '') {
+                $beforePublishedTitles[scouts_admin_log_title_key($title)] = true;
+            }
+        }
+    }
+
+    foreach ($afterNews as $item) {
+        if (!is_array($item) || !scouts_news_item_is_published($item)) {
+            continue;
+        }
+        $id = trim((string) ($item['id'] ?? ''));
+        $title = trim((string) ($item['title'] ?? ''));
+        $titleKey = $title !== '' ? scouts_admin_log_title_key($title) : '';
+
+        if ($id !== '' && array_key_exists($id, $beforeById)) {
+            if ($beforeById[$id]) {
+                continue;
+            }
+        } elseif ($titleKey !== '' && isset($beforePublishedTitles[$titleKey])) {
+            // Likely a rename of an already-public article (id follows title).
+            continue;
+        }
+
+        scouts_admin_log_append(
+            'news_publish',
+            $title !== '' ? $title : 'Nieuwsartikel'
+        );
+    }
+}
+
+/**
+ * Drop entries older than the retention window and rewrite the file if needed.
+ *
+ * @return list<array{id: string, at: string, action: string, message: string, detail: string, ip: string}>
+ */
+function scouts_admin_log_prune(): array
+{
+    if (!is_file(SCOUTS_ADMIN_LOG_FILE) || !is_readable(SCOUTS_ADMIN_LOG_FILE)) {
+        return [];
+    }
+
+    $fh = @fopen(SCOUTS_ADMIN_LOG_FILE, 'c+');
+    if ($fh === false) {
+        return [];
+    }
+
+    try {
+        if (!flock($fh, LOCK_EX)) {
+            return [];
+        }
+        rewind($fh);
+        $raw = stream_get_contents($fh);
+        $entries = [];
+        if (is_string($raw) && trim($raw) !== '') {
+            try {
+                $decoded = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
+                if (is_array($decoded['entries'] ?? null)) {
+                    $entries = $decoded['entries'];
+                }
+            } catch (Throwable) {
+                $entries = [];
+            }
+        }
+        $before = count($entries);
+        $clean = scouts_admin_log_filter_entries($entries);
+        $clean = array_slice($clean, 0, SCOUTS_ADMIN_LOG_MAX_ENTRIES);
+        if (count($clean) !== $before) {
+            $json = json_encode(
+                ['entries' => $clean],
+                JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT
+            ) . PHP_EOL;
+            ftruncate($fh, 0);
+            rewind($fh);
+            fwrite($fh, $json);
+            fflush($fh);
+        }
+        return $clean;
+    } catch (Throwable) {
+        return [];
+    } finally {
+        flock($fh, LOCK_UN);
+        fclose($fh);
+    }
+}
+
+/**
+ * @return list<array{id: string, at: string, action: string, message: string, detail: string, ip: string}>
+ */
+function scouts_admin_log_read(int $limit = 100): array
+{
+    $limit = max(1, min(SCOUTS_ADMIN_LOG_MAX_ENTRIES, $limit));
+    $entries = scouts_admin_log_prune();
+    return array_slice($entries, 0, $limit);
+}
+
+function scouts_admin_log_append(string $action, string $detail = '', string $ip = ''): void
+{
+    $action = trim($action);
+    if ($action === '') {
+        return;
+    }
+
+    $labels = scouts_admin_log_action_labels();
+    $message = $labels[$action] ?? $action;
+    $storeIp = $action !== 'login_failed';
+    $entry = [
+        'id' => bin2hex(random_bytes(8)),
+        'at' => (new DateTimeImmutable('now'))->format(DateTimeInterface::ATOM),
+        'action' => $action,
+        'message' => $message,
+        'detail' => trim($detail),
+        'ip' => $storeIp ? ($ip !== '' ? $ip : scouts_client_ip()) : '',
+    ];
+
+    $dir = dirname(SCOUTS_ADMIN_LOG_FILE);
+    if (!is_dir($dir) && !@mkdir($dir, 0755, true) && !is_dir($dir)) {
+        return;
+    }
+
+    $fh = @fopen(SCOUTS_ADMIN_LOG_FILE, 'c+');
+    if ($fh === false) {
+        return;
+    }
+
+    try {
+        if (!flock($fh, LOCK_EX)) {
+            return;
+        }
+        rewind($fh);
+        $raw = stream_get_contents($fh);
+        $entries = [];
+        if (is_string($raw) && trim($raw) !== '') {
+            try {
+                $decoded = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
+                if (is_array($decoded['entries'] ?? null)) {
+                    $entries = $decoded['entries'];
+                }
+            } catch (Throwable) {
+                $entries = [];
+            }
+        }
+        $entries = scouts_admin_log_filter_entries($entries);
+        array_unshift($entries, $entry);
+        $entries = array_slice($entries, 0, SCOUTS_ADMIN_LOG_MAX_ENTRIES);
+        $json = json_encode(
+            ['entries' => $entries],
+            JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT
+        ) . PHP_EOL;
+        ftruncate($fh, 0);
+        rewind($fh);
+        fwrite($fh, $json);
+        fflush($fh);
+    } catch (Throwable) {
+        // Best-effort logging — never break admin actions.
+    } finally {
+        flock($fh, LOCK_UN);
+        fclose($fh);
+    }
+}
+
+function scouts_admin_log_clear(): void
+{
+    $dir = dirname(SCOUTS_ADMIN_LOG_FILE);
+    if (!is_dir($dir) && !@mkdir($dir, 0755, true) && !is_dir($dir)) {
+        return;
+    }
+    $json = json_encode(['entries' => []], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) . PHP_EOL;
+    file_put_contents(SCOUTS_ADMIN_LOG_FILE, $json, LOCK_EX);
 }
 
 function scouts_asset_version(): string
@@ -1345,6 +1645,37 @@ function scouts_validate_site_data(array $data): void
             if (!is_array($item)) {
                 throw new InvalidArgumentException("Ongeldig item in {$listKey} op positie {$index}.");
             }
+        }
+    }
+
+    foreach ($data['agenda'] as $index => $item) {
+        $n = $index + 1;
+        $day = trim((string) ($item['day'] ?? ''));
+        $month = trim((string) ($item['month'] ?? ''));
+        $endDay = trim((string) ($item['endDay'] ?? ''));
+        $endMonth = trim((string) ($item['endMonth'] ?? ''));
+        $title = trim((string) ($item['title'] ?? ''));
+        $label = $title !== '' ? $title : "Activiteit {$n}";
+
+        if ($title === '') {
+            throw new InvalidArgumentException("«{$label}»: titel is verplicht.");
+        }
+        if ($day === '' || $month === '') {
+            throw new InvalidArgumentException("«{$label}»: startdag en startmaand zijn verplicht.");
+        }
+        if (($endDay === '') !== ($endMonth === '')) {
+            throw new InvalidArgumentException("«{$label}»: vul einddag én eindmaand in, of laat beide leeg.");
+        }
+    }
+
+    foreach ($data['faq'] as $index => $item) {
+        $n = $index + 1;
+        $question = trim((string) ($item['question'] ?? ''));
+        $answer = trim((string) ($item['answer'] ?? ''));
+        $label = $question !== '' ? $question : "Vraag {$n}";
+
+        if ($question === '' || $answer === '') {
+            throw new InvalidArgumentException("«{$label}»: vraag en antwoord zijn verplicht.");
         }
     }
 

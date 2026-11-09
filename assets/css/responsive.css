@@ -10,15 +10,17 @@
         display: none;
     }
 
-    /* Admin actions stay visible on every screen size. */
-    .admin-page .admin-toolbar {
-        display: flex;
-    }
-
+    /* Keep admin tool buttons visible (public .nav-cta is hidden above). */
     .admin-page .admin-tool-btn {
         display: inline-flex;
     }
+}
 
+/* Tablet/desktop admin toolbar; GSM one-row grid lives in admin.css @640. */
+@media (max-width: 950px) and (min-width: 641px) {
+    .admin-page .admin-toolbar {
+        display: flex;
+    }
 }
 
 /* Brieven + maandplanning: één kolom tot tabletbreedte (voorkomt krappe 2-koloms layout). */
@@ -453,7 +455,9 @@
 
     .admin-shell {
         width: min(100% - 32px, 1240px);
-        padding-block: 24px 28px;
+        padding-top: 24px;
+        /* Keep bottom room for sticky/fixed save bar; GSM override in admin.css @640. */
+        padding-bottom: max(88px, env(safe-area-inset-bottom, 0px) + 72px);
     }
 
     .page-picker-grid,
@@ -506,9 +510,8 @@
     }
 
     .admin-page .admin-tool-btn {
-        flex: 1 1 0;
+        flex: unset;
         min-width: 0;
-        padding-inline: 10px;
         text-align: center;
     }
 
@@ -518,7 +521,7 @@
     }
 
     .save-row {
-        bottom: max(12px, env(safe-area-inset-bottom));
+        bottom: 0;
     }
 }
 
@@ -571,33 +574,38 @@
 
     .agenda-date {
         flex-shrink: 0;
-        width: 66px;
-        height: 66px;
+        width: 58px;
+        min-width: 58px;
+        max-width: 58px;
+        height: 58px;
+        min-height: 58px;
+        max-height: 58px;
         flex-direction: column;
         align-items: center;
         justify-content: center;
         gap: 0;
-        padding-inline: 6px;
+        padding-inline: 4px;
     }
 
     .agenda-date.is-range {
-        width: 86px;
-        min-width: 86px;
-        max-width: 86px;
-        height: 66px;
-        min-height: 66px;
-        max-height: 66px;
-        padding-inline: 6px;
+        width: 58px;
+        min-width: 58px;
+        max-width: 58px;
+        height: 58px;
+        min-height: 58px;
+        max-height: 58px;
+        padding-inline: 4px;
     }
 
     .agenda-date strong {
         white-space: nowrap;
     }
 
+    .agenda-month,
     .agenda-date > span,
     .agenda-date-side > span {
-        margin-top: 6px;
-        font-size: 10px;
+        margin-top: 4px;
+        font-size: 9px;
         white-space: nowrap;
     }
 
@@ -678,17 +686,21 @@
     }
 
     .agenda-date {
-        width: 58px;
-        height: 58px;
+        width: 56px;
+        min-width: 56px;
+        max-width: 56px;
+        height: 56px;
+        min-height: 56px;
+        max-height: 56px;
     }
 
     .agenda-date.is-range {
-        width: 76px;
-        min-width: 76px;
-        max-width: 76px;
-        height: 58px;
-        min-height: 58px;
-        max-height: 58px;
+        width: 56px;
+        min-width: 56px;
+        max-width: 56px;
+        height: 56px;
+        min-height: 56px;
+        max-height: 56px;
     }
 }
 
@@ -1079,7 +1091,7 @@
     }
 
     .agenda-date strong {
-        font-size: 22px;
+        font-size: 14px;
     }
 
     .news-copy h3,

@@ -47,7 +47,7 @@ function scouts_render_site_header(array $options = []): string
             <a href="/over-ons"{$is('over-ons')}>Over ons</a>
             <a href="{$hash}takken">Takken</a>
             <a href="/nieuws"{$is('nieuws')}>Nieuws</a>
-            <a href="{$hash}planning">Planning</a>
+            <a href="{$hash}planning">Belangrijke data</a>
             <a href="/uniform"{$is('uniform')}>Uniform</a>
             <a href="{$hash}praktisch">Praktisch</a>
             <a href="/tweedehands"{$is('tweedehands')}>Tweedehands</a>
@@ -74,7 +74,7 @@ function scouts_render_site_header(array $options = []): string
         <a href="/over-ons"{$is('over-ons')}>Over ons</a>
         <a href="{$hash}takken">Takken</a>
         <a href="/nieuws"{$is('nieuws')}>Nieuws</a>
-        <a href="{$hash}planning">Planning</a>
+        <a href="{$hash}planning">Belangrijke data</a>
         <a href="/uniform"{$is('uniform')}>Uniform</a>
         <a href="{$hash}praktisch">Praktisch</a>
         <a href="/tweedehands"{$is('tweedehands')}>Tweedehands</a>
@@ -96,6 +96,9 @@ function scouts_render_site_footer(array $options = []): string
 {
     ['page' => $page, 'assets' => $assets, 'hash' => $hash] = scouts_chrome_options($options);
 
+    $is = static function (string $id) use ($page): string {
+        return $page === $id ? ' aria-current="page"' : '';
+    };
     $privacyCurrent = $page === 'privacybeleid' ? ' aria-current="page"' : '';
 
     return <<<HTML
@@ -105,16 +108,19 @@ function scouts_render_site_footer(array $options = []): string
             <div class="brand">
                 <img class="brand-logo" src="{$assets}images/scouts.png" alt="Scouts Lille-Poederlee logo">
             </div>
-            <p>Scouts Lille-Poederlee is een jeugdbeweging voor kinderen en jongeren in de regio.</p>
+            <p>Scouts Lille-Poederlee is een jeugdbeweging voor jongens in de regio.</p>
         </div>
 
         <div class="footer-column">
             <span>NAVIGATIE</span>
-            <a href="/over-ons">Over ons</a>
+            <a href="/over-ons"{$is('over-ons')}>Over ons</a>
             <a href="{$hash}takken">Takken</a>
-            <a href="/nieuws">Nieuws</a>
-            <a href="{$hash}planning">Planning</a>
+            <a href="/nieuws"{$is('nieuws')}>Nieuws</a>
+            <a href="{$hash}planning">Belangrijke data</a>
+            <a href="/uniform"{$is('uniform')}>Uniform</a>
             <a href="{$hash}praktisch">Praktisch</a>
+            <a href="/tweedehands"{$is('tweedehands')}>Tweedehands</a>
+            <a href="/inschrijven"{$is('inschrijven')}>Inschrijven</a>
         </div>
 
         <div class="footer-column">

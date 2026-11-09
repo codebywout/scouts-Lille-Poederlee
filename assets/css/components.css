@@ -24,6 +24,7 @@
 .icon-arrow-left,
 .icon-arrow-down,
 .icon-arrow-up,
+.icon-share,
 .icon-settings,
 .icon-logout {
     display: inline-block;
@@ -78,6 +79,11 @@
 .icon-logout {
     -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 3.2 H4.2 A1.2 1.2 0 0 0 3 4.4 V11.6 A1.2 1.2 0 0 0 4.2 12.8 H7'/%3E%3Cpath d='M7 8 H13'/%3E%3Cpath d='M10.5 5.2 L13.3 8 L10.5 10.8'/%3E%3C/svg%3E");
     mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 3.2 H4.2 A1.2 1.2 0 0 0 3 4.4 V11.6 A1.2 1.2 0 0 0 4.2 12.8 H7'/%3E%3Cpath d='M7 8 H13'/%3E%3Cpath d='M10.5 5.2 L13.3 8 L10.5 10.8'/%3E%3C/svg%3E");
+}
+
+.icon-share {
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='3.5' r='1.7'/%3E%3Ccircle cx='12' cy='12.5' r='1.7'/%3E%3Ccircle cx='4' cy='8' r='1.7'/%3E%3Cpath d='M5.5 7.2 L10.3 4.5 M5.5 8.8 L10.3 11.5'/%3E%3C/svg%3E");
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='3.5' r='1.7'/%3E%3Ccircle cx='12' cy='12.5' r='1.7'/%3E%3Ccircle cx='4' cy='8' r='1.7'/%3E%3Cpath d='M5.5 7.2 L10.3 4.5 M5.5 8.8 L10.3 11.5'/%3E%3C/svg%3E");
 }
 
 .button .icon-arrow-external,
@@ -784,6 +790,15 @@ button:disabled {
     min-height: 360px;
     border: 1px solid var(--line);
     box-shadow: 0 22px 40px rgba(46, 26, 18, 0.08);
+}
+
+/* Hide the empty photo frame until a real image is injected. */
+.branch-photo:not(:has(img:not([hidden]))) {
+    display: none;
+}
+
+.branch-detail-layout:not(:has(.branch-photo img:not([hidden]))) {
+    grid-template-columns: 1fr;
 }
 
 .branch-photo img {

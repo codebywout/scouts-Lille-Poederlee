@@ -24,6 +24,7 @@
     ["Kapoenen", "/kapoenen"],
     ["Over ons", "/over-ons"],
     ["Praktisch", "/#praktisch"],
+    ["Belangrijke data", "/#planning"],
     ["Planning", "/#planning"],
     ["Uniform", "/uniform"],
     ["Welpen", "/welpen"],
@@ -130,7 +131,7 @@
       });
   }
 
-  const IMAGE_ASSET_VERSION = "20261028-2";
+  const IMAGE_ASSET_VERSION = "20261109-save-scroll-pad";
 
   function formatLidgeldLabel(amount) {
     const amountNumber = Number(String(amount || "").replace(",", ".").replace(/[^\d.]/g, ""));
@@ -506,6 +507,7 @@
   }
 
   function newsItemAnchorId(item, index = 0) {
+    // normalizeNewsItems() keeps item.id in sync with the title slug.
     if (item && typeof item.id === "string" && item.id.trim()) {
       return item.id.trim().replace(/^#/, "");
     }
@@ -513,16 +515,40 @@
   }
 
   function newsSharePath(anchorId) {
-    return `/nieuws#${anchorId}`;
+    const id = String(anchorId || "").replace(/^#/, "").trim();
+    return id ? `/nieuws#${id}` : "/nieuws";
   }
 
   function newsShareUrl(anchorId) {
-    return `${window.location.origin}${newsSharePath(anchorId)}`;
+    try {
+      return new URL(newsSharePath(anchorId), window.location.origin).href;
+    } catch {
+      return `${window.location.origin}${newsSharePath(anchorId)}`;
+    }
   }
 
   function openNewsFromHash() {
     const raw = window.location.hash.replace(/^#/, "").trim();
     if (!raw) return;
+
+    // Shared article links (/nieuws#slug) must land on the page that holds the item.
+    if (
+      document.body.classList.contains("news-page") &&
+      newsArchiveItemsCache.length &&
+      typeof renderNewsArchivePage === "function"
+    ) {
+      const pageForItem = findNewsArchivePageForId(
+        newsArchiveItemsCache,
+        raw,
+      );
+      if (pageForItem && pageForItem !== newsArchiveCurrentPage) {
+        renderNewsArchivePage(pageForItem, {
+          replaceUrl: true,
+          scrollToList: false,
+        });
+      }
+    }
+
     const target =
       document.getElementById(raw) ||
       document.getElementById(decodeURIComponent(raw));
@@ -537,35 +563,62 @@
     });
   }
 
+  function formatNewsBodyHtml(text) {
+    const raw = String(text || "").trim();
+    if (!raw) return "";
+    return raw
+      .split(/\n{2,}/)
+      .map((part) => part.trim())
+      .filter(Boolean)
+      .map(
+        (part) =>
+          `<p>${escapeHtml(part).replace(/\n/g, "<br>")}</p>`,
+      )
+      .join("");
+  }
+
   function setupNewsShareLinks(container) {
     if (!container || container._newsShareBound) return;
     container._newsShareBound = true;
     container.addEventListener("click", async (event) => {
-      const button = event.target.closest("[data-news-share]");
-      if (!button || !container.contains(button)) return;
+      const trigger = event.target.closest("[data-news-share]");
+      if (!trigger || !container.contains(trigger)) return;
       event.preventDefault();
       event.stopPropagation();
-      const id = button.getAttribute("data-news-share") || "";
+      const id = trigger.getAttribute("data-news-share") || "";
       if (!id) return;
 
       const url = newsShareUrl(id);
-      const row = button.closest(".news-share-box");
-      const label = button.querySelector(".news-share-label");
-      const idleText = "Kopieer";
-      const doneText = "Gekopieerd";
+      const label = trigger.querySelector(".news-share-label") || null;
+      const idleText = label?.textContent?.trim() || "Deel";
+      const itemTitle =
+        trigger
+          .closest(".news-item")
+          ?.querySelector(".news-copy h3")
+          ?.textContent?.trim() || "Nieuws";
 
-      const showCopied = () => {
-        button.classList.add("is-copied");
-        row?.classList.add("is-copied");
+      const showDone = (doneText) => {
+        trigger.classList.add("is-copied");
         if (label) label.textContent = doneText;
-        else button.textContent = doneText;
         window.setTimeout(() => {
-          button.classList.remove("is-copied");
-          row?.classList.remove("is-copied");
+          trigger.classList.remove("is-copied");
           if (label) label.textContent = idleText;
-          else button.textContent = idleText;
         }, 2200);
       };
+
+      if (typeof navigator.share === "function") {
+        try {
+          await navigator.share({
+            title: itemTitle,
+            text: itemTitle,
+            url,
+          });
+          return;
+        } catch (error) {
+          if (error && error.name === "AbortError") return;
+          /* Fall through to clipboard copy. */
+        }
+      }
 
       try {
         if (navigator.clipboard?.writeText) {
@@ -581,7 +634,7 @@
           document.execCommand("copy");
           field.remove();
         }
-        showCopied();
+        showDone("Gekopieerd");
       } catch {
         await openDialog({
           title: "Link naar dit bericht",
@@ -746,6 +799,32 @@
     AUG: 7,
   };
 
+  const AGENDA_MONTH_FULL = {
+    JAN: "JANUARI",
+    FEB: "FEBRUARI",
+    MAA: "MAART",
+    APR: "APRIL",
+    MEI: "MEI",
+    JUN: "JUNI",
+    JUL: "JULI",
+    AUG: "AUGUSTUS",
+    SEP: "SEPTEMBER",
+    OKT: "OKTOBER",
+    NOV: "NOVEMBER",
+    DEC: "DECEMBER",
+  };
+
+  function agendaMonthFull(monthKey) {
+    const short = String(monthKey || "").trim().toUpperCase();
+    return AGENDA_MONTH_FULL[short] || short;
+  }
+
+  function agendaMonthLabelHtml(monthKey) {
+    const short = String(monthKey || "").trim().toUpperCase();
+    const full = agendaMonthFull(short);
+    return `<span class="agenda-month"><span class="agenda-month-short">${escapeHtml(short)}</span><span class="agenda-month-full" aria-hidden="true">${escapeHtml(full)}</span></span>`;
+  }
+
   function sortAgendaItems(items) {
     return (Array.isArray(items) ? items : [])
       .map((item, index) => ({ item, index }))
@@ -838,12 +917,12 @@
       return `
                     <div class="agenda-date">
                       <strong>${escapeHtml(parts.day)}</strong>
-                      <span>${escapeHtml(parts.month)}</span>
+                      ${agendaMonthLabelHtml(parts.month)}
                     </div>`;
     }
 
     const sameMonth = parts.month === parts.endMonth;
-    const label = `${parts.day} ${parts.month} tot ${parts.endDay} ${parts.endMonth}`;
+    const label = `${parts.day} ${agendaMonthFull(parts.month)} tot ${parts.endDay} ${agendaMonthFull(parts.endMonth)}`;
 
     // Compact period badge: "12 → 14" + month (same height as a single date).
     if (sameMonth) {
@@ -854,22 +933,22 @@
                         <span class="agenda-date-arrow" aria-hidden="true"></span>
                         <strong>${escapeHtml(parts.endDay)}</strong>
                       </div>
-                      <span>${escapeHtml(parts.month)}</span>
+                      ${agendaMonthLabelHtml(parts.month)}
                     </div>`;
     }
 
+    // Two months: keep the same day→day rhythm, months paired underneath.
     return `
-                    <div class="agenda-date is-range" aria-label="${escapeHtml(label)}">
+                    <div class="agenda-date is-range is-cross-month" aria-label="${escapeHtml(label)}">
                       <div class="agenda-date-range">
-                        <span class="agenda-date-side">
-                          <strong>${escapeHtml(parts.day)}</strong>
-                          <span>${escapeHtml(parts.month)}</span>
-                        </span>
+                        <strong>${escapeHtml(parts.day)}</strong>
                         <span class="agenda-date-arrow" aria-hidden="true"></span>
-                        <span class="agenda-date-side">
-                          <strong>${escapeHtml(parts.endDay)}</strong>
-                          <span>${escapeHtml(parts.endMonth)}</span>
-                        </span>
+                        <strong>${escapeHtml(parts.endDay)}</strong>
+                      </div>
+                      <div class="agenda-date-months">
+                        ${agendaMonthLabelHtml(parts.month)}
+                        <span class="agenda-date-months-sep" aria-hidden="true"></span>
+                        ${agendaMonthLabelHtml(parts.endMonth)}
                       </div>
                     </div>`;
   }
@@ -1577,29 +1656,26 @@
       const content = getSmoothDetailsContent(item);
       if (!summary || !content) return;
 
-      summary.addEventListener("click", (event) => {
-        event.preventDefault();
+      bindAccordionCardToggle(item, {
+        isOpen: (el) => el.classList.contains("open-anim"),
+        openItem: (el) => {
+          const closing = scrollOnOpen
+            ? collectOtherOpenAccordions(el)
+            : exclusive
+              ? items.filter(
+                  (other) =>
+                    other !== el && other.classList.contains("open-anim"),
+                )
+              : [];
 
-        if (item.classList.contains("open-anim")) {
-          closeSmoothDetailsItem(item);
-          return;
-        }
+          closeOtherOpenAccordions(el, closing);
+          openSmoothDetailsItem(el);
 
-        const closing = scrollOnOpen
-          ? collectOtherOpenAccordions(item)
-          : exclusive
-            ? items.filter(
-                (other) =>
-                  other !== item && other.classList.contains("open-anim"),
-              )
-            : [];
-
-        closeOtherOpenAccordions(item, closing);
-        openSmoothDetailsItem(item);
-
-        if (scrollOnOpen) {
-          revealOpenedAccordion(item);
-        }
+          if (scrollOnOpen) {
+            revealOpenedAccordion(el);
+          }
+        },
+        closeItem: closeSmoothDetailsItem,
       });
     });
   }
@@ -1688,6 +1764,27 @@
       ...qsa(".agenda-item.is-open"),
       ...qsa(".faq-item.open-anim"),
     ].filter((item) => item !== currentItem);
+  }
+
+  function isAccordionInteractiveTarget(target) {
+    return Boolean(
+      target?.closest?.(
+        "a[href], button, input, textarea, select, label, [data-news-share], .news-media, .agenda-media, [data-news-carousel]",
+      ),
+    );
+  }
+
+  // Whole card toggles open/close (incl. padding), except real controls/links.
+  function bindAccordionCardToggle(item, { isOpen, openItem, closeItem }) {
+    item.addEventListener("click", (event) => {
+      if (isAccordionInteractiveTarget(event.target)) return;
+      event.preventDefault();
+      if (isOpen(item)) {
+        closeItem(item);
+        return;
+      }
+      openItem(item);
+    });
   }
 
   // html { scroll-behavior: smooth } would also animate compensation jumps;
@@ -1795,20 +1892,25 @@
       const summary = item.querySelector(".agenda-summary");
       if (!summary) return;
 
-      summary.addEventListener("click", (event) => {
-        event.preventDefault();
+      if (
+        item.classList.contains("is-static") ||
+        !item.querySelector(".agenda-details")
+      ) {
+        summary.addEventListener("click", (event) => event.preventDefault());
+        return;
+      }
 
-        if (item.classList.contains("is-open")) {
-          closeAgendaItem(item);
-          return;
-        }
+      bindAccordionCardToggle(item, {
+        isOpen: (el) => el.classList.contains("is-open"),
+        openItem: (el) => {
+          const closing = collectOtherOpenAccordions(el);
+          closeOtherOpenAccordions(el, closing);
 
-        const closing = collectOtherOpenAccordions(item);
-        closeOtherOpenAccordions(item, closing);
-
-        item.setAttribute("open", "");
-        requestAnimationFrame(() => item.classList.add("is-open"));
-        revealOpenedAccordion(item);
+          el.setAttribute("open", "");
+          requestAnimationFrame(() => el.classList.add("is-open"));
+          revealOpenedAccordion(el);
+        },
+        closeItem: closeAgendaItem,
       });
     });
   }
@@ -1840,35 +1942,100 @@
       const summary = item.querySelector(".news-summary");
       if (!summary || !item.querySelector(".news-details")) return;
 
-      summary.addEventListener("click", (event) => {
-        event.preventDefault();
+      bindAccordionCardToggle(item, {
+        isOpen: (el) => el.classList.contains("is-open"),
+        openItem: (el) => {
+          const closing = collectOtherOpenAccordions(el);
+          closeOtherOpenAccordions(el, closing);
 
-        if (item.classList.contains("is-open")) {
-          qsa("[data-news-carousel]", item).forEach((carousel) => {
+          el.setAttribute("open", "");
+          requestAnimationFrame(() => {
+            el.classList.add("is-open");
+            qsa("[data-news-carousel]", el).forEach((carousel) => {
+              // Recalc after open layout (esp. iPad / 2-col), then autoplay.
+              carousel._newsCarousel?.syncFrame?.();
+              carousel._newsCarousel?.startAutoplay?.();
+            });
+          });
+          revealOpenedAccordion(el);
+        },
+        closeItem: (el) => {
+          qsa("[data-news-carousel]", el).forEach((carousel) => {
             carousel._newsCarousel?.stopAutoplay?.();
           });
-          closeNewsItem(item);
-          return;
-        }
-
-        const closing = collectOtherOpenAccordions(item);
-        closeOtherOpenAccordions(item, closing);
-
-        item.setAttribute("open", "");
-        requestAnimationFrame(() => {
-          item.classList.add("is-open");
-          qsa("[data-news-carousel]", item).forEach((carousel) => {
-            carousel._newsCarousel?.startAutoplay?.();
-          });
-        });
-        revealOpenedAccordion(item);
+          closeNewsItem(el);
+        },
       });
     });
   }
 
   const NEWS_HOME_LIMIT = 3;
+  const NEWS_ARCHIVE_PAGE_SIZE = 6;
   const NEWS_IMAGES_MAX = 8;
   const NEWS_CAROUSEL_INTERVAL_MS = 5000;
+
+  let newsArchiveItemsCache = [];
+  let newsArchiveCurrentPage = 1;
+  let renderNewsArchivePage = null;
+
+  function getNewsArchivePageFromUrl() {
+    try {
+      const raw = Number.parseInt(
+        new URLSearchParams(window.location.search).get("page") || "1",
+        10,
+      );
+      return Number.isFinite(raw) && raw > 0 ? raw : 1;
+    } catch {
+      return 1;
+    }
+  }
+
+  function setNewsArchivePageInUrl(page, { replace = false } = {}) {
+    try {
+      const url = new URL(window.location.href);
+      if (page <= 1) url.searchParams.delete("page");
+      else url.searchParams.set("page", String(page));
+      const next = `${url.pathname}${url.search}${url.hash}`;
+      window.history[replace ? "replaceState" : "pushState"]({}, "", next);
+    } catch {
+      /* ignore URL sync failures */
+    }
+  }
+
+  function findNewsArchivePageForId(items, rawId) {
+    const id = String(rawId || "")
+      .replace(/^#/, "")
+      .trim();
+    if (!id || !Array.isArray(items) || !items.length) return null;
+    let decoded = id;
+    try {
+      decoded = decodeURIComponent(id);
+    } catch {
+      decoded = id;
+    }
+    const index = items.findIndex((item, i) => {
+      const anchor = newsItemAnchorId(item, i);
+      return anchor === id || anchor === decoded;
+    });
+    if (index < 0) return null;
+    return Math.floor(index / NEWS_ARCHIVE_PAGE_SIZE) + 1;
+  }
+
+  function buildNewsPaginationHtml(page, totalPages) {
+    if (totalPages <= 1) return "";
+    const pageButtons = Array.from({ length: totalPages }, (_, i) => {
+      const n = i + 1;
+      const current = n === page;
+      return `<button type="button" class="news-pagination-page${current ? " is-active" : ""}" data-news-page="${n}" aria-label="Pagina ${n}"${current ? ' aria-current="page"' : ""}>${n}</button>`;
+    }).join("");
+    return `
+      <nav class="news-pagination" aria-label="Nieuwsberichten pagina's">
+        <button type="button" class="news-pagination-btn" data-news-page="${page - 1}" aria-label="Vorige pagina"${page <= 1 ? " disabled" : ""}>Vorige</button>
+        <div class="news-pagination-pages">${pageButtons}</div>
+        <button type="button" class="news-pagination-btn" data-news-page="${page + 1}" aria-label="Volgende pagina"${page >= totalPages ? " disabled" : ""}>Volgende</button>
+      </nav>
+    `;
+  }
 
   function getNewsImages(item) {
     if (!item || typeof item !== "object") return [];
@@ -1907,12 +2074,12 @@
       }
       setNewsImages(item, getNewsImages(item));
 
-      let id =
-        typeof item.id === "string" ? item.id.trim().replace(/^#/, "") : "";
-      if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/i.test(id)) {
-        id = slugifyNewsTitle(item.title, index);
+      // Always derive the public anchor from the current title so share links
+      // stay meaningful after the default "Nieuw bericht" placeholder.
+      let id = slugifyNewsTitle(item.title, index).toLowerCase();
+      if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(id)) {
+        id = `bericht-${index + 1}`;
       }
-      id = id.toLowerCase();
       let unique = id;
       let suffix = 2;
       while (usedIds.has(unique)) {
@@ -2027,7 +2194,20 @@
           bestArea = area;
         }
       });
-      viewport.style.aspectRatio = `${best.naturalWidth} / ${best.naturalHeight}`;
+
+      // Explicit pixel height is more reliable on iPad Safari than
+      // aspect-ratio + max-height (which can crop or ignore the cap).
+      const maxH = Math.min(Math.round(window.innerHeight * 0.7), 420);
+      const width = Math.max(viewport.clientWidth || 0, 1);
+      const height = Math.max(
+        160,
+        Math.min(
+          maxH,
+          Math.round(width * (best.naturalHeight / best.naturalWidth)),
+        ),
+      );
+      viewport.style.aspectRatio = "auto";
+      viewport.style.height = `${height}px`;
     };
 
     const stopProgress = () => {
@@ -2223,7 +2403,7 @@
     });
     window.addEventListener("resize", debounce(syncFrame, 120));
 
-    carousel._newsCarousel = { startAutoplay, stopAutoplay, goTo };
+    carousel._newsCarousel = { startAutoplay, stopAutoplay, goTo, syncFrame };
     goTo(0, { animate: false });
     syncFrame();
     startAutoplay();
@@ -2236,6 +2416,8 @@
   function buildNewsItemHtml(item, index = 0) {
     const images = getNewsImages(item);
     const date = typeof item.date === "string" ? item.date.trim() : "";
+    const category =
+      typeof item.category === "string" ? item.category.trim() : "";
     const title = typeof item.title === "string" ? item.title.trim() : "";
     const summary =
       typeof item.summary === "string" ? item.summary.trim() : "";
@@ -2250,29 +2432,38 @@
     const anchorId = newsItemAnchorId(item, index);
     const hasDetails = Boolean(text || images.length || (link && linkText));
     const teaser = summary || (!hasDetails && text ? text : "");
-    const sharePath = newsSharePath(anchorId);
+    const shareUrl = newsShareUrl(anchorId);
+    const metaParts = [];
+    if (date) {
+      metaParts.push(
+        `<span class="news-meta-date">${escapeHtml(date)}</span>`,
+      );
+    }
+    if (category) {
+      metaParts.push(
+        `<span class="news-meta-category">${escapeHtml(category)}</span>`,
+      );
+    }
+    const metaHtml = metaParts.length
+      ? `<p class="news-meta">${metaParts.join('<span class="news-meta-sep" aria-hidden="true">·</span>')}</p>`
+      : "";
+    const bodyHtml = formatNewsBodyHtml(text);
     const shareHtml = `
-                      <div class="news-share-row">
-                        <p class="news-share-caption">Deel dit bericht</p>
-                        <div class="news-share-box">
-                          <code class="news-share-url" title="${escapeHtml(sharePath)}">${escapeHtml(sharePath)}</code>
-                          <button type="button" class="news-share" data-news-share="${escapeHtml(anchorId)}" aria-label="Kopieer deelbare link ${escapeHtml(sharePath)}">
-                            <span class="news-share-label">Kopieer</span>
-                          </button>
-                        </div>
-                      </div>`;
+                        <button type="button" class="news-share" data-news-share="${escapeHtml(anchorId)}" title="${escapeHtml(shareUrl)}" aria-label="Deel bericht: ${escapeHtml(title || "Nieuws")}">
+                          <span class="icon-share" aria-hidden="true"></span>
+                          <span class="news-share-label">Deel</span>
+                        </button>`;
     const detailsHtml = hasDetails
       ? `
                   <div class="news-details">
                     <div class="news-details-inner">
                       <div class="news-details-copy">
-                        ${text ? `<p>${escapeHtml(text)}</p>` : ""}
+                        ${bodyHtml}
                         ${
                           link && linkText
                             ? `<a class="news-link" href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer">${escapeHtml(linkText)} <span class="icon-arrow-external" aria-hidden="true"></span></a>`
                             : ""
                         }
-                        ${shareHtml}
                       </div>
                       ${buildNewsCarouselHtml(images, title)}
                     </div>
@@ -2289,10 +2480,11 @@
                   <summary class="news-summary">
                     ${thumb}
                     <div class="news-copy">
-                      ${date ? `<span class="news-date">${escapeHtml(date)}</span>` : ""}
+                      ${metaHtml}
                       <h3>${escapeHtml(title || "Nieuws")}</h3>
                       ${teaser ? `<p class="news-teaser">${escapeHtml(teaser)}</p>` : ""}
                     </div>
+                    ${shareHtml}
                   </summary>
                   ${detailsHtml}
                 </details>
@@ -3039,11 +3231,33 @@
       if (newsEl) {
         const newsItems = getPublishedNewsItems(data.news);
         const isNewsArchive = document.body.classList.contains("news-page");
-        const visibleItems = isNewsArchive
-          ? newsItems
-          : newsItems.slice(0, NEWS_HOME_LIMIT);
+
+        const paintNewsItems = (items, indexOffset = 0) => {
+          newsEl.innerHTML = items
+            .map((item, index) =>
+              buildNewsItemHtml(item, indexOffset + index),
+            )
+            .join("");
+          setupNewsAccordion(newsEl);
+          initNewsCarousels(newsEl);
+          setupNewsShareLinks(newsEl);
+        };
+
+        const ensureNewsPaginationHost = () => {
+          if (!newsSection) return null;
+          let host = qs(".news-pagination-host", newsSection);
+          if (!host) {
+            host = document.createElement("div");
+            host.className = "news-pagination-host";
+            newsSection.appendChild(host);
+          }
+          return host;
+        };
 
         if (!newsItems.length) {
+          newsArchiveItemsCache = [];
+          newsArchiveCurrentPage = 1;
+          renderNewsArchivePage = null;
           if (isNewsArchive) newsSection?.removeAttribute("hidden");
           else newsSection?.setAttribute("hidden", "");
           newsEl.innerHTML = isNewsArchive
@@ -3052,18 +3266,92 @@
                     <p>Neem later zeker nog eens een kijkje!</p>
                 </div>`
             : "";
+          const emptyPager = ensureNewsPaginationHost();
+          if (emptyPager) emptyPager.innerHTML = "";
           if (newsMore) newsMore.hidden = true;
-        } else {
+        } else if (!isNewsArchive) {
+          newsArchiveItemsCache = [];
+          renderNewsArchivePage = null;
           newsSection?.removeAttribute("hidden");
-          newsEl.innerHTML = visibleItems
-            .map((item, index) => buildNewsItemHtml(item, index))
-            .join("");
-          setupNewsAccordion(newsEl);
-          initNewsCarousels(newsEl);
-          setupNewsShareLinks(newsEl);
+          paintNewsItems(newsItems.slice(0, NEWS_HOME_LIMIT), 0);
           if (newsMore) {
-            newsMore.hidden = isNewsArchive || newsItems.length <= NEWS_HOME_LIMIT;
+            newsMore.hidden = newsItems.length <= NEWS_HOME_LIMIT;
           }
+          openNewsFromHash();
+        } else {
+          newsArchiveItemsCache = newsItems;
+          const totalPages = Math.max(
+            1,
+            Math.ceil(newsItems.length / NEWS_ARCHIVE_PAGE_SIZE),
+          );
+
+          renderNewsArchivePage = (
+            requestedPage,
+            { replaceUrl = false, scrollToList = false } = {},
+          ) => {
+            const page = Math.min(
+              totalPages,
+              Math.max(1, Number(requestedPage) || 1),
+            );
+            newsArchiveCurrentPage = page;
+            setNewsArchivePageInUrl(page, { replace: replaceUrl });
+
+            const start = (page - 1) * NEWS_ARCHIVE_PAGE_SIZE;
+            paintNewsItems(
+              newsItems.slice(start, start + NEWS_ARCHIVE_PAGE_SIZE),
+              start,
+            );
+
+            const pagerHost = ensureNewsPaginationHost();
+            if (pagerHost) {
+              pagerHost.innerHTML = buildNewsPaginationHtml(page, totalPages);
+            }
+
+            if (scrollToList) {
+              newsSection?.scrollIntoView({
+                behavior: "smooth",
+                block: "start",
+              });
+            }
+          };
+
+          if (!newsSection?._newsPaginationBound) {
+            newsSection._newsPaginationBound = true;
+            newsSection.addEventListener("click", (event) => {
+              const trigger = event.target.closest("[data-news-page]");
+              if (!trigger || !newsSection.contains(trigger)) return;
+              if (trigger.hasAttribute("disabled")) return;
+              const nextPage = Number.parseInt(
+                trigger.getAttribute("data-news-page") || "",
+                10,
+              );
+              if (!Number.isFinite(nextPage) || nextPage < 1) return;
+              if (nextPage === newsArchiveCurrentPage) return;
+              event.preventDefault();
+              renderNewsArchivePage?.(nextPage, {
+                replaceUrl: false,
+                scrollToList: true,
+              });
+            });
+            window.addEventListener("popstate", () => {
+              if (!document.body.classList.contains("news-page")) return;
+              renderNewsArchivePage?.(getNewsArchivePageFromUrl(), {
+                replaceUrl: true,
+                scrollToList: false,
+              });
+              openNewsFromHash();
+            });
+          }
+
+          newsSection?.removeAttribute("hidden");
+          if (newsMore) newsMore.hidden = true;
+
+          const hashId = window.location.hash.replace(/^#/, "").trim();
+          const hashPage = hashId
+            ? findNewsArchivePageForId(newsItems, hashId)
+            : null;
+          const initialPage = hashPage || getNewsArchivePageFromUrl();
+          renderNewsArchivePage(initialPage, { replaceUrl: true });
           openNewsFromHash();
         }
       }
@@ -3086,8 +3374,38 @@
                 const thumb = image
                   ? `<span class="agenda-thumb" aria-hidden="true">${thumbImageHtml(image)}</span>`
                   : "";
+                const text =
+                  typeof item.text === "string" ? item.text.trim() : "";
+                const hasCopy = Boolean(text || (link && linkText));
+                const hasDetails = Boolean(hasCopy || image);
+                const bodyHtml = formatNewsBodyHtml(text);
+                const detailsHtml = hasDetails
+                  ? `
+                  <div class="agenda-details">
+                    <div class="agenda-details-inner${hasCopy ? "" : " is-media-only"}">
+                      ${
+                        hasCopy
+                          ? `<div class="agenda-details-copy">
+                        ${bodyHtml}
+                        ${link && linkText ? `<a class="agenda-link" href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer">${escapeHtml(linkText)} <span class="icon-arrow-external" aria-hidden="true"></span></a>` : ""}
+                      </div>`
+                          : ""
+                      }
+                      ${
+                        image
+                          ? `<figure class="agenda-media">${responsivePictureHtml(image, {
+                              alt: item.title || "",
+                              sizes: "(max-width: 700px) 90vw, 360px",
+                              widths: RESPONSIVE_WIDTHS.card,
+                              loading: "lazy",
+                            })}</figure>`
+                          : ""
+                      }
+                    </div>
+                  </div>`
+                  : "";
                 return `
-                <details class="agenda-item ${image ? "has-agenda-image" : ""}">
+                <details class="agenda-item${image ? " has-agenda-image" : ""}${hasDetails ? "" : " is-static"}">
                   <summary class="agenda-summary">
                     ${buildAgendaDateHtml(item)}
                     <div class="agenda-body">
@@ -3095,22 +3413,7 @@
                     </div>
                     ${thumb}
                   </summary>
-                  <div class="agenda-details">
-                    <div class="agenda-details-inner">
-                      <p>${escapeHtml(item.text)}</p>
-                      ${link && linkText ? `<a class="agenda-link" href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer">${escapeHtml(linkText)} <span class="icon-arrow-external" aria-hidden="true"></span></a>` : ""}
-                      ${
-                        image
-                          ? responsivePictureHtml(image, {
-                              alt: item.title || "",
-                              sizes: "(max-width: 700px) 90vw, 360px",
-                              widths: RESPONSIVE_WIDTHS.card,
-                              loading: "lazy",
-                            })
-                          : ""
-                      }
-                    </div>
-                  </div>
+                  ${detailsHtml}
                 </details>
               `;
               })
@@ -3169,26 +3472,33 @@
 
       applyConfigurablePageBackgrounds(data);
 
-      if (data.photos.branches[pageName]) {
-        const branchPhoto = qs(".branch-photo");
-        const branchImage = branchPhoto?.querySelector("img, picture");
-        if (branchPhoto && branchImage) {
-          const full = data.photos.branches[pageName];
-          const parts = splitResponsiveAsset(full);
-          const current = splitResponsiveAsset(
-            branchImage.matches("img")
-              ? branchImage.getAttribute("src") || ""
-              : branchImage.querySelector("img")?.getAttribute("src") || "",
-          );
-          if (!(parts && current && parts.stem === current.stem)) {
-            branchImage.outerHTML = responsivePictureHtml(full, {
-              alt: "",
-              sizes: "(max-width: 800px) 100vw, 560px",
-              widths: RESPONSIVE_WIDTHS.branch,
-              loading: "lazy",
-              width: 1600,
-              height: 1200,
-            });
+      const branchPhoto = qs(".branch-photo");
+      if (branchPhoto) {
+        const full =
+          typeof data.photos?.branches?.[pageName] === "string"
+            ? data.photos.branches[pageName].trim()
+            : "";
+        if (!full) {
+          branchPhoto.innerHTML = '<img hidden alt="">';
+        } else {
+          const branchImage = branchPhoto.querySelector("img, picture");
+          if (branchImage) {
+            const parts = splitResponsiveAsset(full);
+            const current = splitResponsiveAsset(
+              branchImage.matches("img")
+                ? branchImage.getAttribute("src") || ""
+                : branchImage.querySelector("img")?.getAttribute("src") || "",
+            );
+            if (!(parts && current && parts.stem === current.stem)) {
+              branchImage.outerHTML = responsivePictureHtml(full, {
+                alt: "",
+                sizes: "(max-width: 800px) 100vw, 560px",
+                widths: RESPONSIVE_WIDTHS.branch,
+                loading: "lazy",
+                width: 1600,
+                height: 1200,
+              });
+            }
           }
         }
       }
@@ -3406,6 +3716,7 @@
     setNewsImages,
     NEWS_IMAGES_MAX,
     NEWS_HOME_LIMIT,
+    NEWS_ARCHIVE_PAGE_SIZE,
     PLANNING_MONTHS,
     getMonthlyPlanning,
     setMonthlyPlanning,
