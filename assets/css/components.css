@@ -792,6 +792,15 @@ button:disabled {
     box-shadow: 0 22px 40px rgba(46, 26, 18, 0.08);
 }
 
+/* Hide the empty photo frame until a real image is injected. */
+.branch-photo:not(:has(img:not([hidden]))) {
+    display: none;
+}
+
+.branch-detail-layout:not(:has(.branch-photo img:not([hidden]))) {
+    grid-template-columns: 1fr;
+}
+
 .branch-photo img {
     width: 100%;
     height: 100%;

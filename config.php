@@ -54,7 +54,7 @@ const SCOUTS_MAX_PDF_UPLOAD_BYTES = 20971520;
  * Bump this on every deploy so HTML/CSS/JS URLs change and old caches are skipped.
  * Format: YYYYMMDD-N
  */
-const SCOUTS_ASSET_VERSION = '20261109-news-page-6';
+const SCOUTS_ASSET_VERSION = '20261109-plus-center';
 /** Microsoft Clarity project ID (public site only; loaded after analytics consent). */
 const SCOUTS_CLARITY_PROJECT_ID = 'z4c8od8ljm';
 const SCOUTS_LOGIN_ATTEMPTS_FILE = SCOUTS_ROOT . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . '.login-attempts.json';
@@ -1234,6 +1234,37 @@ function scouts_validate_site_data(array $data): void
             if (!is_array($item)) {
                 throw new InvalidArgumentException("Ongeldig item in {$listKey} op positie {$index}.");
             }
+        }
+    }
+
+    foreach ($data['agenda'] as $index => $item) {
+        $n = $index + 1;
+        $day = trim((string) ($item['day'] ?? ''));
+        $month = trim((string) ($item['month'] ?? ''));
+        $endDay = trim((string) ($item['endDay'] ?? ''));
+        $endMonth = trim((string) ($item['endMonth'] ?? ''));
+        $title = trim((string) ($item['title'] ?? ''));
+        $label = $title !== '' ? $title : "Activiteit {$n}";
+
+        if ($title === '') {
+            throw new InvalidArgumentException("«{$label}»: titel is verplicht.");
+        }
+        if ($day === '' || $month === '') {
+            throw new InvalidArgumentException("«{$label}»: startdag en startmaand zijn verplicht.");
+        }
+        if (($endDay === '') !== ($endMonth === '')) {
+            throw new InvalidArgumentException("«{$label}»: vul einddag én eindmaand in, of laat beide leeg.");
+        }
+    }
+
+    foreach ($data['faq'] as $index => $item) {
+        $n = $index + 1;
+        $question = trim((string) ($item['question'] ?? ''));
+        $answer = trim((string) ($item['answer'] ?? ''));
+        $label = $question !== '' ? $question : "Vraag {$n}";
+
+        if ($question === '' || $answer === '') {
+            throw new InvalidArgumentException("«{$label}»: vraag en antwoord zijn verplicht.");
         }
     }
 

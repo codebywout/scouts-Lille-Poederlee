@@ -1470,6 +1470,19 @@ html:has(body.admin-page) {
         0 0 0 3px rgba(78, 43, 26, 0.10);
 }
 
+.admin-item input[aria-invalid="true"],
+.admin-item textarea[aria-invalid="true"],
+.admin-item select[aria-invalid="true"] {
+    border-color: rgba(165, 72, 39, 0.55);
+    box-shadow: 0 0 0 3px rgba(165, 72, 39, 0.12);
+}
+
+.admin-item label abbr {
+    color: rgba(165, 72, 39, 0.9);
+    font-weight: 800;
+    text-decoration: none;
+}
+
 .admin-fields input:focus {
     border-color: #222;
     background: #fff;

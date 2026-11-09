@@ -24,6 +24,7 @@
     ["Kapoenen", "/kapoenen"],
     ["Over ons", "/over-ons"],
     ["Praktisch", "/#praktisch"],
+    ["Belangrijke data", "/#planning"],
     ["Planning", "/#planning"],
     ["Uniform", "/uniform"],
     ["Welpen", "/welpen"],
@@ -589,10 +590,14 @@
 
       const url = newsShareUrl(id);
       const label = trigger.querySelector(".news-share-label") || null;
-      const idleText = "Deel bericht";
-      const doneText = "Gekopieerd";
+      const idleText = label?.textContent?.trim() || "Deel";
+      const itemTitle =
+        trigger
+          .closest(".news-item")
+          ?.querySelector(".news-copy h3")
+          ?.textContent?.trim() || "Nieuws";
 
-      const showCopied = () => {
+      const showDone = (doneText) => {
         trigger.classList.add("is-copied");
         if (label) label.textContent = doneText;
         window.setTimeout(() => {
@@ -600,6 +605,20 @@
           if (label) label.textContent = idleText;
         }, 2200);
       };
+
+      if (typeof navigator.share === "function") {
+        try {
+          await navigator.share({
+            title: itemTitle,
+            text: itemTitle,
+            url,
+          });
+          return;
+        } catch (error) {
+          if (error && error.name === "AbortError") return;
+          /* Fall through to clipboard copy. */
+        }
+      }
 
       try {
         if (navigator.clipboard?.writeText) {
@@ -615,7 +634,7 @@
           document.execCommand("copy");
           field.remove();
         }
-        showCopied();
+        showDone("Gekopieerd");
       } catch {
         await openDialog({
           title: "Link naar dit bericht",
@@ -2430,12 +2449,10 @@
       : "";
     const bodyHtml = formatNewsBodyHtml(text);
     const shareHtml = `
-                      <div class="news-share-row">
-                        <button type="button" class="news-share" data-news-share="${escapeHtml(anchorId)}" title="${escapeHtml(shareUrl)}" aria-label="Deel bericht: ${escapeHtml(shareUrl)}">
+                        <button type="button" class="news-share" data-news-share="${escapeHtml(anchorId)}" title="${escapeHtml(shareUrl)}" aria-label="Deel bericht: ${escapeHtml(title || "Nieuws")}">
                           <span class="icon-share" aria-hidden="true"></span>
-                          <span class="news-share-label">Deel bericht</span>
-                        </button>
-                      </div>`;
+                          <span class="news-share-label">Deel</span>
+                        </button>`;
     const detailsHtml = hasDetails
       ? `
                   <div class="news-details">
@@ -2447,7 +2464,6 @@
                             ? `<a class="news-link" href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer">${escapeHtml(linkText)} <span class="icon-arrow-external" aria-hidden="true"></span></a>`
                             : ""
                         }
-                        ${shareHtml}
                       </div>
                       ${buildNewsCarouselHtml(images, title)}
                     </div>
@@ -2468,6 +2484,7 @@
                       <h3>${escapeHtml(title || "Nieuws")}</h3>
                       ${teaser ? `<p class="news-teaser">${escapeHtml(teaser)}</p>` : ""}
                     </div>
+                    ${shareHtml}
                   </summary>
                   ${detailsHtml}
                 </details>
@@ -3359,16 +3376,21 @@
                   : "";
                 const text =
                   typeof item.text === "string" ? item.text.trim() : "";
-                const hasDetails = Boolean(text || (link && linkText));
+                const hasCopy = Boolean(text || (link && linkText));
+                const hasDetails = Boolean(hasCopy || image);
                 const bodyHtml = formatNewsBodyHtml(text);
                 const detailsHtml = hasDetails
                   ? `
                   <div class="agenda-details">
-                    <div class="agenda-details-inner">
-                      <div class="agenda-details-copy">
+                    <div class="agenda-details-inner${hasCopy ? "" : " is-media-only"}">
+                      ${
+                        hasCopy
+                          ? `<div class="agenda-details-copy">
                         ${bodyHtml}
                         ${link && linkText ? `<a class="agenda-link" href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer">${escapeHtml(linkText)} <span class="icon-arrow-external" aria-hidden="true"></span></a>` : ""}
-                      </div>
+                      </div>`
+                          : ""
+                      }
                       ${
                         image
                           ? `<figure class="agenda-media">${responsivePictureHtml(image, {
@@ -3450,26 +3472,33 @@
 
       applyConfigurablePageBackgrounds(data);
 
-      if (data.photos.branches[pageName]) {
-        const branchPhoto = qs(".branch-photo");
-        const branchImage = branchPhoto?.querySelector("img, picture");
-        if (branchPhoto && branchImage) {
-          const full = data.photos.branches[pageName];
-          const parts = splitResponsiveAsset(full);
-          const current = splitResponsiveAsset(
-            branchImage.matches("img")
-              ? branchImage.getAttribute("src") || ""
-              : branchImage.querySelector("img")?.getAttribute("src") || "",
-          );
-          if (!(parts && current && parts.stem === current.stem)) {
-            branchImage.outerHTML = responsivePictureHtml(full, {
-              alt: "",
-              sizes: "(max-width: 800px) 100vw, 560px",
-              widths: RESPONSIVE_WIDTHS.branch,
-              loading: "lazy",
-              width: 1600,
-              height: 1200,
-            });
+      const branchPhoto = qs(".branch-photo");
+      if (branchPhoto) {
+        const full =
+          typeof data.photos?.branches?.[pageName] === "string"
+            ? data.photos.branches[pageName].trim()
+            : "";
+        if (!full) {
+          branchPhoto.innerHTML = '<img hidden alt="">';
+        } else {
+          const branchImage = branchPhoto.querySelector("img, picture");
+          if (branchImage) {
+            const parts = splitResponsiveAsset(full);
+            const current = splitResponsiveAsset(
+              branchImage.matches("img")
+                ? branchImage.getAttribute("src") || ""
+                : branchImage.querySelector("img")?.getAttribute("src") || "",
+            );
+            if (!(parts && current && parts.stem === current.stem)) {
+              branchImage.outerHTML = responsivePictureHtml(full, {
+                alt: "",
+                sizes: "(max-width: 800px) 100vw, 560px",
+                widths: RESPONSIVE_WIDTHS.branch,
+                loading: "lazy",
+                width: 1600,
+                height: 1200,
+              });
+            }
           }
         }
       }

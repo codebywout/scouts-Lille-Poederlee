@@ -958,12 +958,13 @@
           type: "number",
           row: true,
           dateGroup: "start",
+          required: true,
           default: "",
           min: 1,
           max: 31,
           inputmode: "numeric",
           placeholder: "Dag",
-          ariaLabel: "Dag",
+          ariaLabel: "Startdag",
         },
         {
           key: "month",
@@ -971,9 +972,10 @@
           tag: "select",
           row: true,
           dateGroup: "start",
+          required: true,
           default: "",
           placeholder: "Maand",
-          ariaLabel: "Maand",
+          ariaLabel: "Startmaand",
           options: [
             "SEP",
             "OKT",
@@ -1001,7 +1003,7 @@
           max: 31,
           inputmode: "numeric",
           placeholder: "Dag",
-          ariaLabel: "Dag",
+          ariaLabel: "Einddag",
         },
         {
           key: "endMonth",
@@ -1011,7 +1013,7 @@
           dateGroup: "end",
           default: "",
           placeholder: "Maand",
-          ariaLabel: "Maand",
+          ariaLabel: "Eindmaand",
           options: [
             "SEP",
             "OKT",
@@ -1032,6 +1034,7 @@
           label: "Titel",
           tag: "input",
           type: "text",
+          required: true,
           default: "",
           placeholder: "Titel van de activiteit",
         },
@@ -1080,6 +1083,7 @@
           label: "Vraag",
           tag: "input",
           type: "text",
+          required: true,
           default: "",
           placeholder: "Stel hier je vraag",
         },
@@ -1087,6 +1091,7 @@
           key: "answer",
           label: "Antwoord",
           tag: "textarea",
+          required: true,
           default: "",
           placeholder: "Antwoord",
         },
@@ -1470,7 +1475,11 @@
 
     const fieldHtml = (field, item, index) => {
       const value = escapeHtml(item[field.key] ?? "");
-      const attrs = `data-field="${type}-${field.key}" data-index="${index}"`;
+      const requiredAttr = field.required ? " required" : "";
+      const attrs = `data-field="${type}-${field.key}" data-index="${index}"${requiredAttr}`;
+      const labelHtml = field.label
+        ? `<span>${escapeHtml(field.label)}${field.required ? ' <abbr title="Verplicht">*</abbr>' : ""}</span>`
+        : "";
 
       if (field.tag === "file") {
         const alt = escapeHtml(item.title || item.question || "activiteit");
@@ -1501,7 +1510,7 @@
       if (field.tag === "textarea") {
         return `
                     <label>
-                        ${field.label}
+                        ${labelHtml || field.label}
                         <textarea ${attrs}${field.placeholder ? ` placeholder="${escapeHtml(field.placeholder)}"` : ""}>${value}</textarea>
                     </label>
                 `;
@@ -1515,7 +1524,7 @@
             : "";
         return `
                     <label>
-                        ${field.label ? `<span>${escapeHtml(field.label)}</span>` : ""}
+                        ${labelHtml}
                         <select ${attrs}${aria}>
                             <option value="" ${current ? "" : "selected"}${field.placeholder ? "" : " disabled"}>${escapeHtml(field.placeholder || "Kies…")}</option>
                             ${field.options
@@ -1538,7 +1547,7 @@
           : "";
       return `
                 <label>
-                    ${field.label ? `<span>${escapeHtml(field.label)}</span>` : ""}
+                    ${labelHtml}
                     <input
                         type="${field.type}"
                         ${attrs}${aria}
@@ -1556,11 +1565,12 @@
       {
         id: "start",
         title: "Startdatum",
-        hint: "",
+        hint: "Verplicht",
       },
       {
         id: "end",
-        title: "Einddatum (optioneel)",
+        title: "Einddatum",
+        hint: "Optioneel",
       },
     ];
 
@@ -1775,6 +1785,114 @@
         delete item.info;
       });
     }
+  }
+
+  function syncAgendaEndDateRequired(index = null) {
+    const dayInputs =
+      index === null
+        ? qsa("[data-field='agenda-endDay']")
+        : qsa(`[data-field='agenda-endDay'][data-index='${index}']`);
+    dayInputs.forEach((dayInput) => {
+      const i = Number(dayInput.dataset.index);
+      const monthInput = qs(
+        `[data-field='agenda-endMonth'][data-index='${i}']`,
+      );
+      if (!monthInput) return;
+      const either =
+        dayInput.value.trim() !== "" || monthInput.value.trim() !== "";
+      dayInput.required = either;
+      monthInput.required = either;
+      if (!either) {
+        dayInput.removeAttribute("aria-invalid");
+        monthInput.removeAttribute("aria-invalid");
+      }
+    });
+  }
+
+  function clearListFieldErrors(type) {
+    qsa(`[data-field^='${type}-'][aria-invalid='true']`).forEach((input) => {
+      input.removeAttribute("aria-invalid");
+    });
+  }
+
+  function validateAgendaItems(items) {
+    for (let index = 0; index < items.length; index += 1) {
+      const item = items[index] || {};
+      const day = String(item.day || "").trim();
+      const month = String(item.month || "").trim();
+      const endDay = String(item.endDay || "").trim();
+      const endMonth = String(item.endMonth || "").trim();
+      const title = String(item.title || "").trim();
+      const label = title || `Activiteit ${index + 1}`;
+
+      if (!title) {
+        return {
+          index,
+          fields: ["title"],
+          message: `«${label}»: titel is verplicht.`,
+        };
+      }
+      if (!day || !month) {
+        const fields = [];
+        if (!day) fields.push("day");
+        if (!month) fields.push("month");
+        return {
+          index,
+          fields,
+          message: `«${label}»: startdag en startmaand zijn verplicht.`,
+        };
+      }
+      if ((endDay && !endMonth) || (!endDay && endMonth)) {
+        return {
+          index,
+          fields: endDay ? ["endMonth"] : ["endDay"],
+          message: `«${label}»: vul einddag én eindmaand in, of laat beide leeg.`,
+        };
+      }
+    }
+    return null;
+  }
+
+  function validateFaqItems(items) {
+    for (let index = 0; index < items.length; index += 1) {
+      const item = items[index] || {};
+      const question = String(item.question || "").trim();
+      const answer = String(item.answer || "").trim();
+      const label = question || `Vraag ${index + 1}`;
+      if (question && answer) continue;
+      const fields = [];
+      if (!question) fields.push("question");
+      if (!answer) fields.push("answer");
+      return {
+        index,
+        fields,
+        message: `«${label}»: vraag en antwoord zijn verplicht.`,
+      };
+    }
+    return null;
+  }
+
+  function highlightListValidationError(type, error) {
+    if (!error) return;
+    clearListFieldErrors(type);
+    error.fields.forEach((key) => {
+      const input = qs(
+        `[data-field='${type}-${key}'][data-index='${error.index}']`,
+      );
+      if (!input) return;
+      input.setAttribute("aria-invalid", "true");
+      const card = input.closest(".admin-collapsible-item");
+      if (card?.classList.contains("is-collapsed")) {
+        card.querySelector("[data-collapse-toggle]")?.click();
+      }
+    });
+    const focusInput = qs(
+      `[data-field='${type}-${error.fields[0]}'][data-index='${error.index}']`,
+    );
+    window.requestAnimationFrame(() => {
+      focusInput?.focus();
+      focusInput?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
   }
 
 
@@ -2167,6 +2285,7 @@
                 </section>
             `;
       renderListEditor("agendaEditor", data.agenda, "agenda");
+      syncAgendaEndDateRequired();
       renderListEditor("faqEditor", data.faq, "faq");
       return;
     }
@@ -2694,6 +2813,17 @@
         }
       }
 
+      const listField = event.target.closest("[data-field]");
+      if (listField?.hasAttribute("aria-invalid")) {
+        listField.removeAttribute("aria-invalid");
+      }
+      const agendaEndField = event.target.closest(
+        "[data-field='agenda-endDay'], [data-field='agenda-endMonth']",
+      );
+      if (agendaEndField) {
+        syncAgendaEndDateRequired(Number(agendaEndField.dataset.index));
+      }
+
       const leadershipNameInput = event.target.closest(
         "[data-field='leadership-name']",
       );
@@ -2804,6 +2934,14 @@
     });
 
     document.addEventListener("change", async (event) => {
+      const endDateField = event.target.closest(
+        "[data-field='agenda-endDay'], [data-field='agenda-endMonth']",
+      );
+      if (endDateField) {
+        endDateField.removeAttribute("aria-invalid");
+        syncAgendaEndDateRequired(Number(endDateField.dataset.index));
+      }
+
       const newsPublishToggle = event.target.closest(
         "[data-field='news-published']",
       );
@@ -3570,17 +3708,32 @@
         event.preventDefault();
         if (saveMode === "saving" || !isDraft()) return;
         const data = readFormValues();
-        if (
-          data.activePage === "home" &&
-          data.agenda.some(
-            (item) => item.link?.trim() && !item.linkText?.trim(),
-          )
-        ) {
-          setSaveStatus(
-            "Vul een linktekst in bij elke activiteit met een link.",
-            "error",
-          );
-          return;
+        if (data.activePage === "home") {
+          const agendaError = validateAgendaItems(data.agenda || []);
+          if (agendaError) {
+            highlightListValidationError("agenda", agendaError);
+            setSaveStatus(agendaError.message, "error");
+            return;
+          }
+          clearListFieldErrors("agenda");
+          const faqError = validateFaqItems(data.faq || []);
+          if (faqError) {
+            highlightListValidationError("faq", faqError);
+            setSaveStatus(faqError.message, "error");
+            return;
+          }
+          clearListFieldErrors("faq");
+          if (
+            data.agenda.some(
+              (item) => item.link?.trim() && !item.linkText?.trim(),
+            )
+          ) {
+            setSaveStatus(
+              "Vul een linktekst in bij elke activiteit met een link.",
+              "error",
+            );
+            return;
+          }
         }
         if (data.activePage === "settings") {
           try {
