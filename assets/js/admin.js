@@ -191,7 +191,7 @@
 
     const idleLabel = button.querySelector(".save-button-label-idle");
     if (saveMode === "saving") {
-      status.textContent = saveMessage || "Bezig met opslaan";
+      status.textContent = saveMessage || "Bezig…";
       setSaveDetailText(saveDetail || "Even geduld…");
       if (idleLabel) idleLabel.textContent = "Opslaan";
       button.disabled = true;
@@ -202,7 +202,7 @@
     if (!button.classList.contains("is-saved")) setSaveButtonPhase("idle");
 
     if (state === "error") {
-      status.textContent = saveMessage || "Er ging iets mis";
+      status.textContent = saveMessage || "Opslaan mislukt";
       setSaveDetailText(
         draft
           ? "Probeer opnieuw op te slaan."
@@ -214,14 +214,14 @@
     }
 
     if (draft) {
-      status.textContent = saveMessage || "Wijzigingen klaar om te publiceren";
+      status.textContent = saveMessage || "Niet opgeslagen";
       setSaveDetailText(saveDetail || "Ctrl+S werkt ook.");
       if (idleLabel) idleLabel.textContent = publishFailed ? "Opnieuw" : "Opslaan";
       button.disabled = false;
       return;
     }
 
-    status.textContent = saveMessage || "Alles staat online";
+    status.textContent = saveMessage || "Alles online";
     setSaveDetailText(saveDetail);
     if (idleLabel) idleLabel.textContent = "Opgeslagen";
     button.disabled = true;
@@ -231,7 +231,7 @@
     window.clearTimeout(saveStatusTimer);
     if (state === "saving") {
       saveMode = "saving";
-      saveMessage = message || "Bezig met opslaan";
+      saveMessage = message || "Bezig…";
       saveDetail = "";
       renderSaveBar();
       return;

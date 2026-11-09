@@ -76,11 +76,14 @@
 
             <div class="save-row" data-save-state="clean">
                 <div class="save-bar-copy">
-                    <p id="saveStatus" class="save-bar-title" data-state="clean" aria-live="polite">Staat op de website</p>
+                    <p id="saveStatus" class="save-bar-title" data-state="clean" aria-live="polite">Alles online</p>
                     <p id="saveDetail" class="save-bar-detail" hidden></p>
                 </div>
                 <div class="save-bar-actions">
-                    <a id="viewLivePage" class="admin-view-live" href="/" target="_blank" rel="noopener noreferrer">Bekijk live</a>
+                    <a id="viewLivePage" class="admin-view-live" href="/" target="_blank" rel="noopener noreferrer">
+                        <span class="admin-view-live-full">Bekijk live</span>
+                        <span class="admin-view-live-short" aria-hidden="true">Live</span>
+                    </a>
                     <button type="submit" id="saveChanges" class="button button-primary" disabled>
                         <span class="save-button-label save-button-label-idle">Opgeslagen</span>
                         <span class="save-button-label save-button-label-saving" aria-hidden="true">

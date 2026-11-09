@@ -10,15 +10,17 @@
         display: none;
     }
 
-    /* Admin actions stay visible on every screen size. */
-    .admin-page .admin-toolbar {
-        display: flex;
-    }
-
+    /* Keep admin tool buttons visible (public .nav-cta is hidden above). */
     .admin-page .admin-tool-btn {
         display: inline-flex;
     }
+}
 
+/* Tablet/desktop admin toolbar; GSM one-row grid lives in admin.css @640. */
+@media (max-width: 950px) and (min-width: 641px) {
+    .admin-page .admin-toolbar {
+        display: flex;
+    }
 }
 
 /* Brieven + maandplanning: één kolom tot tabletbreedte (voorkomt krappe 2-koloms layout). */
@@ -512,9 +514,8 @@
     }
 
     .admin-page .admin-tool-btn {
-        flex: 1 1 0;
+        flex: unset;
         min-width: 0;
-        padding-inline: 10px;
         text-align: center;
     }
 
@@ -524,7 +525,7 @@
     }
 
     .save-row {
-        bottom: max(12px, env(safe-area-inset-bottom));
+        bottom: 0;
     }
 }
 
