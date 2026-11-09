@@ -77,19 +77,22 @@
             <div class="save-row" data-save-state="clean">
                 <div class="save-bar-copy">
                     <p id="saveStatus" class="save-bar-title" data-state="clean" aria-live="polite">Staat op de website</p>
+                    <p id="saveDetail" class="save-bar-detail" hidden></p>
                 </div>
-                <a id="viewLivePage" class="admin-view-live" href="/" target="_blank" rel="noopener noreferrer">Bekijk live</a>
-                <button type="submit" id="saveChanges" class="button button-primary" disabled>
-                    <span class="save-button-label save-button-label-idle">Opgeslagen</span>
-                    <span class="save-button-label save-button-label-saving" aria-hidden="true">
-                        <span class="save-button-spinner" aria-hidden="true"></span>
-                        <span>Opslaan...</span>
-                    </span>
-                    <span class="save-button-label save-button-label-done" aria-hidden="true">
-                        <span class="save-button-check" aria-hidden="true">✓</span>
-                        <span>Opgeslagen</span>
-                    </span>
-                </button>
+                <div class="save-bar-actions">
+                    <a id="viewLivePage" class="admin-view-live" href="/" target="_blank" rel="noopener noreferrer">Bekijk live</a>
+                    <button type="submit" id="saveChanges" class="button button-primary" disabled>
+                        <span class="save-button-label save-button-label-idle">Opgeslagen</span>
+                        <span class="save-button-label save-button-label-saving" aria-hidden="true">
+                            <span class="save-button-spinner" aria-hidden="true"></span>
+                            <span>Opslaan...</span>
+                        </span>
+                        <span class="save-button-label save-button-label-done" aria-hidden="true">
+                            <span class="save-button-check" aria-hidden="true">✓</span>
+                            <span>Opgeslagen</span>
+                        </span>
+                    </button>
+                </div>
             </div>
         </form>
     </main>

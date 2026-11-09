@@ -162,23 +162,37 @@
     }, 1600);
   }
 
+  function setSaveDetailText(text) {
+    const detail = document.getElementById("saveDetail");
+    if (!detail) return;
+    const value = String(text || "").trim();
+    detail.textContent = value;
+    detail.hidden = !value;
+  }
+
   function renderSaveBar() {
     const row = document.querySelector(".save-row");
     const status = document.getElementById("saveStatus");
-    const detail = document.getElementById("saveDetail");
     const button = document.getElementById("saveChanges");
     if (!row || !status || !button) return;
 
     const draft = isDraft();
     adminHasUnsavedChanges = draft || saveMode === "saving";
-    const state = saveMode === "saving" ? "saving" : saveMode === "error" ? "error" : draft ? "dirty" : "clean";
+    const state =
+      saveMode === "saving"
+        ? "saving"
+        : saveMode === "error"
+          ? "error"
+          : draft
+            ? "dirty"
+            : "clean";
     row.dataset.saveState = state;
     status.dataset.state = state;
 
     const idleLabel = button.querySelector(".save-button-label-idle");
     if (saveMode === "saving") {
       status.textContent = saveMessage || "Bezig met opslaan";
-      if (detail) detail.textContent = saveDetail || "Even geduld. Sluit dit venster niet.";
+      setSaveDetailText(saveDetail || "Even geduld…");
       if (idleLabel) idleLabel.textContent = "Opslaan";
       button.disabled = true;
       setSaveButtonPhase("saving");
@@ -189,32 +203,26 @@
 
     if (state === "error") {
       status.textContent = saveMessage || "Er ging iets mis";
-      if (detail) {
-        detail.textContent = draft
-          ? "De website is niet bijgewerkt. Probeer opnieuw."
-          : "De website is niet gewijzigd.";
-      }
-      if (idleLabel) idleLabel.textContent = draft ? "Opnieuw opslaan" : "Opgeslagen";
+      setSaveDetailText(
+        draft
+          ? "Probeer opnieuw op te slaan."
+          : "De website is niet gewijzigd.",
+      );
+      if (idleLabel) idleLabel.textContent = draft ? "Opnieuw" : "Opgeslagen";
       button.disabled = !draft;
       return;
     }
 
     if (draft) {
-      status.textContent = saveMessage || "Nog niet op de website";
-      if (detail) {
-        detail.textContent =
-          saveDetail || "Klik op Opslaan of gebruik Ctrl+S om dit te publiceren.";
-      }
-      if (idleLabel) idleLabel.textContent = publishFailed ? "Opnieuw opslaan" : "Opslaan";
+      status.textContent = saveMessage || "Wijzigingen klaar om te publiceren";
+      setSaveDetailText(saveDetail || "Ctrl+S werkt ook.");
+      if (idleLabel) idleLabel.textContent = publishFailed ? "Opnieuw" : "Opslaan";
       button.disabled = false;
       return;
     }
 
-    status.textContent = saveMessage || "Staat op de website";
-    if (detail) {
-      detail.textContent =
-        saveDetail || "Tekst, lijsten en documenten publiceer je met Opslaan.";
-    }
+    status.textContent = saveMessage || "Alles staat online";
+    setSaveDetailText(saveDetail);
     if (idleLabel) idleLabel.textContent = "Opgeslagen";
     button.disabled = true;
   }

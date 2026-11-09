@@ -2935,29 +2935,49 @@ html:has(body.admin-page) {
 
     display: flex;
     align-items: center;
-    flex-wrap: wrap;
-    gap: 14px;
+    flex-wrap: nowrap;
+    gap: 12px 16px;
 
     margin-top: auto;
-    padding: 13px 16px;
+    padding: 10px 12px 10px 14px;
 
-    background: rgba(247, 241, 232, 0.90);
+    background: rgba(255, 252, 247, 0.92);
     border: 1px solid rgba(78, 43, 26, 0.12);
-    border-radius: 14px;
+    border-radius: 16px;
 
     box-shadow:
-        0 -8px 24px rgba(28, 18, 12, 0.06),
-        0 4px 12px rgba(28, 18, 12, 0.03);
+        0 -10px 28px rgba(28, 18, 12, 0.08),
+        0 6px 16px rgba(28, 18, 12, 0.04);
 
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+}
+
+.save-row[data-save-state="dirty"],
+.save-row[data-save-state="error"] {
+    border-color: rgba(165, 72, 39, 0.22);
+    box-shadow:
+        0 -10px 28px rgba(28, 18, 12, 0.08),
+        0 0 0 3px rgba(211, 138, 45, 0.12);
+}
+
+.save-row[data-save-state="saving"] {
+    border-color: rgba(152, 101, 29, 0.22);
 }
 
 .save-bar-copy {
-    order: 1;
-    flex: 1 1 240px;
+    flex: 1 1 auto;
     display: grid;
     gap: 2px;
+    min-width: 0;
+}
+
+.save-bar-actions {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
     min-width: 0;
 }
 
@@ -2970,42 +2990,73 @@ html:has(body.admin-page) {
 
 .save-bar-detail {
     margin: 0;
-    color: rgba(78, 43, 26, 0.68);
-    font-size: 12.5px;
+    color: rgba(78, 43, 26, 0.62);
+    font-size: 12px;
     font-weight: 500;
-    line-height: 1.45;
+    line-height: 1.35;
+}
+
+.save-bar-detail[hidden] {
+    display: none !important;
 }
 
 .save-row .admin-view-live {
-    order: 2;
+    display: inline-flex;
+    align-items: center;
+    min-height: 36px;
+    padding: 0 4px;
+    color: rgba(78, 43, 26, 0.72);
+    font-size: 12.5px;
+    font-weight: 700;
+    text-decoration: none;
+    white-space: nowrap;
+    border-bottom: 1px solid transparent;
+}
+
+.save-row .admin-view-live:hover,
+.save-row .admin-view-live:focus-visible {
+    color: var(--scout-brown);
+    border-bottom-color: rgba(78, 43, 26, 0.28);
 }
 
 .save-row .button {
     position: relative;
-    order: 3;
     margin-left: 0;
     display: inline-grid;
     place-items: center;
+    min-width: 7.5rem;
+    min-height: 42px;
+    padding: 0 16px;
     border-color: var(--scout-orange);
-    transition: transform 0.2s ease, background 0.2s ease, color 0.2s ease, border-color 0.45s ease, box-shadow 0.2s ease;
+    transition: transform 0.2s ease, background 0.2s ease, color 0.2s ease, border-color 0.45s ease, box-shadow 0.2s ease, opacity 0.2s ease;
 }
 
 .save-row[data-save-state="clean"] .button:disabled:not(.is-saved) {
-    opacity: 0.62;
     cursor: default;
     box-shadow: none;
+    border-color: #1d6d4a;
+    background: #1d6d4a;
+    color: #fff;
+    opacity: 0.92;
+}
+
+.save-row[data-save-state="clean"] .button:disabled:not(.is-saved) .save-button-label,
+.save-row[data-save-state="clean"] .button:disabled:not(.is-saved) .save-button-label span {
+    color: #fff;
 }
 
 .save-row[data-save-state="dirty"] .button,
 .save-row[data-save-state="error"] .button:not(:disabled) {
-    box-shadow: 0 0 0 3px rgba(211, 138, 45, 0.28);
+    box-shadow: 0 8px 18px rgba(211, 138, 45, 0.22);
 }
 
 #saveStatus.save-bar-title {
-    display: block;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
     width: auto;
     min-width: 0;
-    max-width: none;
+    max-width: 100%;
     min-height: 0;
     margin: 0;
     padding: 0;
@@ -3013,14 +3064,16 @@ html:has(body.admin-page) {
     border-radius: 0;
     background: transparent;
     color: #1d6d4a;
-    font-size: 14px;
-    font-weight: 700;
-    line-height: 1.3;
-    white-space: normal;
+    font-size: 13.5px;
+    font-weight: 800;
+    line-height: 1.25;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 #saveStatus.save-bar-title::before {
-    margin-right: 6px;
+    flex: 0 0 auto;
 }
 
 .save-row[data-save-state="clean"] #saveStatus { color: #1d6d4a; }
@@ -3082,6 +3135,8 @@ html:has(body.admin-page) {
 .save-row .button .save-button-label-saving,
 .save-row .button .save-button-label-done {
     opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
     transform: translateY(8px);
 }
 
@@ -3089,12 +3144,16 @@ html:has(body.admin-page) {
 .save-row .button.is-saved .save-button-label-idle,
 .save-row .button.is-saved .save-button-label-saving {
     opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
     transform: translateY(-8px);
 }
 
 .save-row .button.is-saving .save-button-label-saving,
 .save-row .button.is-saved .save-button-label-done {
     opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
     transform: none;
 }
 
@@ -3137,8 +3196,10 @@ html:has(body.admin-page) {
 }
 
 #saveStatus.save-bar-title::before {
-    display: inline-block;
-    margin-right: 6px;
+    display: inline-grid;
+    place-items: center;
+    flex: 0 0 auto;
+    width: 1.1em;
     font-weight: 800;
 }
 
@@ -3155,14 +3216,11 @@ html:has(body.admin-page) {
 
 #saveStatus[data-state="saving"]::before {
     content: "";
-    display: inline-block;
     width: 12px;
     height: 12px;
-    margin-right: 8px;
     border: 2px solid rgba(152, 101, 29, 0.25);
     border-top-color: #98651d;
     border-radius: 50%;
-    vertical-align: -1px;
     animation: planning-upload-spin 0.75s linear infinite;
 }
 
@@ -3431,46 +3489,50 @@ html:has(body.admin-page) {
 
     .save-row {
         bottom: max(10px, env(safe-area-inset-bottom));
-        left: 0;
-        right: 0;
+        left: 10px;
+        right: 10px;
+        width: auto;
         flex-direction: row;
-        flex-wrap: wrap;
+        flex-wrap: nowrap;
         align-items: center;
-        gap: 8px 12px;
+        gap: 8px;
         margin-inline: 0;
-        padding: 10px 12px;
+        padding: 8px 8px 8px 12px;
+        border-radius: 14px;
     }
 
     .save-bar-copy {
-        order: 1;
         flex: 1 1 auto;
         width: auto;
         min-width: 0;
     }
 
+    .save-bar-actions {
+        gap: 6px;
+    }
+
     .save-row .admin-view-live {
-        order: 2;
-        flex: 0 0 auto;
-        width: auto;
-        text-align: right;
-        white-space: nowrap;
+        min-height: 34px;
+        padding: 0 2px;
+        font-size: 12px;
     }
 
     .save-row .button {
-        order: 3;
-        flex: 1 1 100%;
-        width: 100%;
+        flex: 0 0 auto;
+        width: auto;
+        min-width: 5.8rem;
+        min-height: 40px;
         margin-left: 0;
-        min-height: 46px;
+        padding: 0 12px;
     }
 
     #saveStatus.save-bar-title {
         width: auto;
-        font-size: 13px;
+        font-size: 12.5px;
     }
 
     .save-bar-detail {
-        font-size: 12px;
+        display: none !important;
     }
 
     .admin-utilities {
