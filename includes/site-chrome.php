@@ -105,7 +105,7 @@ function scouts_render_site_footer(array $options = []): string
             <div class="brand">
                 <img class="brand-logo" src="{$assets}images/scouts.png" alt="Scouts Lille-Poederlee logo">
             </div>
-            <p>Scouts Lille-Poederlee is een jeugdbeweging voor kinderen en jongeren in de regio.</p>
+            <p>Scouts Lille-Poederlee is een jeugdbeweging voor jongens in de regio.</p>
         </div>
 
         <div class="footer-column">

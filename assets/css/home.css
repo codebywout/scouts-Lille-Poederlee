@@ -124,6 +124,14 @@ body.home-page .hero {
         animation-timeline: view();
         animation-range: entry 0% cover 40%;
     }
+
+    /* List cards are short: finish fade-in as soon as they enter,
+       so Samsung/Chrome doesn't leave lower items half-transparent. */
+    .agenda-item.reveal-in,
+    .news-item.reveal-in,
+    .faq-item.reveal-in {
+        animation-range: entry 0% entry 55%;
+    }
 }
 
 @supports not (animation-timeline: view()) {
@@ -320,16 +328,6 @@ body.home-page .hero {
     .section-top > p {
         max-width: 100%;
     }
-
-    .branch-list {
-        grid-template-columns: 1fr;
-        gap: 12px;
-    }
-
-    .branch {
-        min-height: 210px;
-        padding: 22px;
-    }
 }
 
 .home-page .planning .section-top {
@@ -454,10 +452,13 @@ body.home-page .hero {
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    width: 76px;
-    height: 76px;
-    aspect-ratio: 1;
-    padding: 8px 6px;
+    width: 118px;
+    min-width: 118px;
+    max-width: 118px;
+    height: 88px;
+    min-height: 88px;
+    max-height: 88px;
+    padding: 10px 8px;
     background: #fff;
     border: 1px solid rgba(78, 43, 26, 0.1);
     border-radius: 14px;
@@ -465,15 +466,8 @@ body.home-page .hero {
 }
 
 .agenda-date.is-range {
-    width: 96px;
-    min-width: 96px;
-    max-width: 96px;
-    height: 76px;
-    min-height: 76px;
-    max-height: 76px;
-    aspect-ratio: auto;
-    padding: 7px 6px;
-    gap: 4px;
+    padding: 9px 8px;
+    gap: 5px;
 }
 
 .agenda-date-range {
@@ -518,37 +512,71 @@ body.home-page .hero {
 .agenda-date strong {
     display: block;
     font-family: "Montserrat", sans-serif;
-    font-size: 24px;
+    font-size: 22px;
     font-weight: 800;
-    line-height: 0.9;
+    line-height: 1;
     color: var(--scout-brown);
 }
 
-.agenda-date.is-range strong {
-    font-size: 20px;
-    line-height: 1;
-}
-
-.agenda-date > span,
-.agenda-date-side > span {
-    margin-top: 5px;
-    font-size: 10px;
+.agenda-month {
+    display: block;
+    margin-top: 7px;
+    font-family: "Montserrat", sans-serif;
+    font-size: 12.5px;
     font-weight: 800;
-    letter-spacing: 1.2px;
+    letter-spacing: 0.7px;
+    line-height: 1.15;
     color: var(--scout-orange);
     text-transform: uppercase;
+    text-align: center;
+    white-space: nowrap;
 }
 
-.agenda-date.is-range > span {
+.agenda-month-short {
+    display: none;
+}
+
+.agenda-month-full {
+    display: inline;
+}
+
+.agenda-date.is-range > .agenda-month {
+    margin-top: 0;
+    font-size: 12.5px;
+    letter-spacing: 0.65px;
+}
+
+.agenda-date-months {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    width: 100%;
+    min-width: 0;
+}
+
+.agenda-date-months-sep {
+    flex-shrink: 0;
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: var(--scout-orange);
+    opacity: 0.55;
+}
+
+.agenda-date.is-cross-month .agenda-date-months > .agenda-month {
     margin-top: 0;
     font-size: 11px;
-    letter-spacing: 1.2px;
+    letter-spacing: 0.55px;
 }
 
-.agenda-date.is-range .agenda-date-side > span {
-    margin-top: 3px;
-    font-size: 9px;
-    letter-spacing: 0.8px;
+/* Two months never fit as full names in the shared badge width. */
+.agenda-date.is-cross-month .agenda-month-short {
+    display: inline;
+}
+
+.agenda-date.is-cross-month .agenda-month-full {
+    display: none;
 }
 
 .agenda-body {
@@ -1172,49 +1200,62 @@ body.home-page .hero {
 
     .agenda-date {
         width: 64px;
+        min-width: 64px;
+        max-width: 64px;
         height: 64px;
+        min-height: 64px;
+        max-height: 64px;
         border-radius: 12px;
         padding: 8px 6px;
     }
 
     .agenda-date.is-range {
-        width: 84px;
-        min-width: 84px;
-        max-width: 84px;
+        width: 64px;
+        min-width: 64px;
+        max-width: 64px;
         height: 64px;
         min-height: 64px;
         max-height: 64px;
-        padding: 6px 6px;
+        padding: 6px 5px;
         gap: 3px;
     }
 
     .agenda-date strong {
-        font-size: 22px;
+        font-size: 16px;
     }
 
-    .agenda-date.is-range strong {
-        font-size: 18px;
-    }
-
-    .agenda-date > span,
-    .agenda-date-side > span {
+    .agenda-month {
         margin-top: 5px;
         font-size: 10px;
-        letter-spacing: 1.2px;
+        letter-spacing: 1.1px;
     }
 
-    .agenda-date.is-range > span {
+    .agenda-month-short {
+        display: inline;
+    }
+
+    .agenda-month-full {
+        display: none;
+    }
+
+    .agenda-date.is-range > .agenda-month {
         margin-top: 0;
-        font-size: 10px;
+        font-size: 9px;
+        letter-spacing: 1px;
     }
 
-    .agenda-date.is-range .agenda-date-side > span {
-        margin-top: 2px;
+    .agenda-date-months {
+        gap: 3px;
+    }
+
+    .agenda-date.is-cross-month .agenda-date-months > .agenda-month {
         font-size: 8px;
+        letter-spacing: 0.7px;
     }
 
     .agenda-date-arrow {
         width: 10px;
+        margin: 0 1px;
     }
 
     .agenda-body {
@@ -1308,10 +1349,6 @@ body.home-page .hero {
         width: 100%;
         max-width: none;
         border-radius: 14px;
-    }
-
-    .news-media:not(.news-carousel) {
-        aspect-ratio: 4 / 3;
     }
 
 
@@ -1637,29 +1674,6 @@ body.home-page .hero {
         font-size: clamp(29px, 8.8vw, 39px);
     }
 
-    .branch {
-        grid-template-columns: minmax(0, 1fr) 48px;
-        min-height: 94px;
-        padding: 14px;
-        border-radius: 16px;
-        gap: 3px 8px;
-    }
-
-    .branch-logo {
-        width: 48px;
-        height: 48px;
-        min-width: 48px;
-    }
-
-    .branch-main h3 {
-        font-size: clamp(23px, 6vw, 26px);
-    }
-
-    .branch-main span,
-    .branch-age {
-        font-size: 15px;
-    }
-
     .agenda-item,
     .news-item {
         padding: 11px;
@@ -1684,57 +1698,73 @@ body.home-page .hero {
 
     .agenda-date {
         width: 58px;
+        min-width: 58px;
+        max-width: 58px;
         height: 58px;
-        padding: 7px 5px;
+        min-height: 58px;
+        max-height: 58px;
+        padding: 7px 4px;
         border-radius: 11px;
     }
 
     .agenda-date.is-range {
-        width: 76px;
-        min-width: 76px;
-        max-width: 76px;
+        width: 58px;
+        min-width: 58px;
+        max-width: 58px;
         height: 58px;
         min-height: 58px;
         max-height: 58px;
-        padding: 5px 5px;
+        padding: 5px 4px;
         gap: 2px;
     }
 
     .agenda-date strong {
-        font-size: 20px;
+        font-size: 14px;
     }
 
-    .agenda-date.is-range strong {
-        font-size: 16px;
-    }
-
-    .agenda-date > span,
-    .agenda-date-side > span {
+    .agenda-month {
         margin-top: 4px;
         font-size: 9px;
-        letter-spacing: 1px;
+        letter-spacing: 0.9px;
     }
 
-    .agenda-date.is-range > span {
+    .agenda-month-short {
+        display: inline;
+    }
+
+    .agenda-month-full {
+        display: none;
+    }
+
+    .agenda-date.is-range > .agenda-month {
         margin-top: 0;
-        font-size: 9px;
-        letter-spacing: 1px;
+        font-size: 8px;
+        letter-spacing: 0.8px;
     }
 
-    .agenda-date.is-range .agenda-date-side > span {
-        margin-top: 2px;
+    .agenda-date-months {
+        gap: 2px;
+    }
+
+    .agenda-date-months-sep {
+        width: 2px;
+        height: 2px;
+    }
+
+    .agenda-date.is-cross-month .agenda-date-months > .agenda-month {
         font-size: 7px;
         letter-spacing: 0.5px;
     }
 
     .agenda-date-arrow {
-        width: 8px;
+        width: 7px;
+        height: 1.5px;
         margin: 0 1px;
+        border-radius: 1px;
     }
 
     .agenda-date-arrow::after {
-        width: 4px;
-        height: 4px;
+        content: none;
     }
 
     .agenda-body h3,
@@ -1842,26 +1872,6 @@ body.home-page .hero {
     .section {
         padding-left: 5%;
         padding-right: 5%;
-    }
-
-    .branch {
-        grid-template-columns: minmax(0, 1fr) 44px;
-        padding: 13px;
-    }
-
-    .branch-logo {
-        width: 44px;
-        height: 44px;
-        min-width: 44px;
-    }
-
-    .branch-main h3 {
-        font-size: clamp(22px, 6.4vw, 25px);
-    }
-
-    .branch-main span,
-    .branch-age {
-        font-size: 15px;
     }
 
     .agenda-item {
@@ -2024,13 +2034,11 @@ html {
     text-decoration: none;
 }
 
-.news-media .responsive-full-link,
 .secondhand-item-image .responsive-full-link,
 .branch-photo .responsive-full-link {
     height: 100%;
 }
 
-.news-media picture,
 .secondhand-item-image picture,
 .branch-photo picture {
     display: block;
@@ -2038,7 +2046,6 @@ html {
     height: 100%;
 }
 
-.news-media img,
 .secondhand-item-image img,
 .branch-photo img {
     width: 100%;
@@ -2230,36 +2237,51 @@ html {
 @media (max-width: 640px) {
     .branch-list {
         grid-template-columns: 1fr;
-        gap: 12px;
+        gap: 10px;
     }
 
     .branch {
-        min-height: 152px;
-        justify-content: center;
-        padding: 20px 76px 20px 18px;
-        border-radius: 20px;
-        background: color-mix(in srgb, var(--branch-accent) 14%, #fff);
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        min-height: 112px;
+        height: auto;
+        padding: 16px 16px 16px 18px;
+        border-radius: 18px;
+        border-color: color-mix(in srgb, var(--branch-accent) 28%, rgba(78, 43, 26, 0.1));
+        background: color-mix(in srgb, var(--branch-accent) 12%, #fff8f1);
+        box-shadow: 0 6px 18px rgba(46, 26, 18, 0.05);
+        overflow: hidden;
     }
 
-    /* Leesbaarheid links; foto rechts blijft helder. */
+    /* Leesbaarheid links; foto rechts blijft zichtbaar. */
     .branch::before {
         display: block;
         z-index: 1;
         background: linear-gradient(
             90deg,
-            color-mix(in srgb, var(--branch-accent) 18%, rgba(255, 248, 241, 0.82)) 0%,
-            color-mix(in srgb, var(--branch-accent) 10%, rgba(255, 248, 241, 0.42)) 34%,
-            color-mix(in srgb, var(--branch-accent) 6%, transparent) 58%,
-            transparent 78%
+            color-mix(in srgb, var(--branch-accent) 22%, rgba(255, 248, 241, 0.96)) 0%,
+            color-mix(in srgb, var(--branch-accent) 14%, rgba(255, 248, 241, 0.88)) 42%,
+            color-mix(in srgb, var(--branch-accent) 8%, rgba(255, 248, 241, 0.35)) 68%,
+            transparent 100%
         );
         transform: none;
         skewX(0);
     }
 
+    .branch::after {
+        display: none;
+    }
+
     .branch-main {
+        position: relative;
         z-index: 2;
-        padding-right: 8px;
-        max-width: calc(100% - 64px);
+        flex: 1 1 auto;
+        min-width: 0;
+        max-width: none;
+        padding-right: 0;
     }
 
     .branch-bg-picture,
@@ -2269,96 +2291,104 @@ html {
 
     .branch-bg-picture img,
     .branch-bg {
-        object-position: center 30%;
+        object-position: 72% 28%;
         opacity: 1;
         -webkit-mask-image: linear-gradient(
             to right,
-            rgba(0, 0, 0, 0.72) 0%,
-            rgba(0, 0, 0, 0.9) 36%,
-            #000 68%
+            transparent 0%,
+            rgba(0, 0, 0, 0.35) 38%,
+            rgba(0, 0, 0, 0.85) 62%,
+            #000 100%
         );
         mask-image: linear-gradient(
             to right,
-            rgba(0, 0, 0, 0.72) 0%,
-            rgba(0, 0, 0, 0.9) 36%,
-            #000 68%
+            transparent 0%,
+            rgba(0, 0, 0, 0.35) 38%,
+            rgba(0, 0, 0, 0.85) 62%,
+            #000 100%
         );
     }
 
     .branch-main h3 {
         color: #2f1810;
-        font-size: clamp(26px, 7vw, 30px);
+        font-size: clamp(22px, 6.4vw, 26px);
         font-weight: 800;
         line-height: 1.12;
         letter-spacing: -0.02em;
-        text-shadow:
-            0 1px 0 rgba(255, 248, 241, 0.95),
-            0 0 10px rgba(255, 248, 241, 0.75),
-            0 0 18px rgba(255, 248, 241, 0.45);
+        text-shadow: none;
     }
 
     .branch-age {
-        margin-top: 8px !important;
-        color: color-mix(in srgb, var(--branch-accent) 40%, #2f1810) !important;
-        font-size: 16px !important;
+        margin-top: 6px !important;
+        color: color-mix(in srgb, var(--branch-accent) 48%, #2f1810) !important;
+        font-size: 14px !important;
         font-weight: 700 !important;
-        line-height: 1.35;
-        text-shadow:
-            0 1px 0 rgba(255, 248, 241, 0.9),
-            0 0 8px rgba(255, 248, 241, 0.65);
+        line-height: 1.3;
+        text-shadow: none;
     }
 
     .branch-kenteken {
+        position: relative;
+        top: auto;
+        right: auto;
         z-index: 2;
-        top: 50%;
-        right: 14px;
-        width: 64px;
-        height: 64px;
-        transform: translateY(-50%);
-        background: color-mix(in srgb, var(--branch-accent) 22%, white);
+        flex: 0 0 auto;
+        width: 58px;
+        height: 58px;
+        transform: none;
+        background: color-mix(in srgb, var(--branch-accent) 18%, white);
         box-shadow:
-            0 8px 18px rgba(46, 26, 18, 0.16),
-            inset 0 0 0 1px color-mix(in srgb, var(--branch-accent) 36%, transparent);
-    }
-
-    .branch-logo {
-        width: 52px;
-        height: 52px;
-    }
-
-    .branch:hover .branch-kenteken,
-    .branch:focus-visible .branch-kenteken {
-        transform: translateY(-50%) rotate(3deg);
-    }
-}
-
-@media (max-width: 360px) {
-    .branch {
-        min-height: 144px;
-        padding: 18px 68px 18px 16px;
-    }
-
-    .branch-main {
-        max-width: calc(100% - 56px);
-    }
-
-    .branch-main h3 {
-        font-size: 25px;
-    }
-
-    .branch-age {
-        font-size: 15px !important;
-    }
-
-    .branch-kenteken {
-        right: 12px;
-        width: 56px;
-        height: 56px;
+            0 6px 14px rgba(46, 26, 18, 0.12),
+            inset 0 0 0 1px color-mix(in srgb, var(--branch-accent) 34%, transparent);
     }
 
     .branch-logo {
         width: 46px;
         height: 46px;
+        min-width: 46px;
+    }
+
+    .branch:hover,
+    .branch:focus-visible {
+        transform: none;
+        box-shadow: 0 8px 20px rgba(46, 26, 18, 0.08);
+    }
+
+    .branch:active {
+        transform: scale(0.985);
+    }
+
+    .branch:hover .branch-kenteken,
+    .branch:focus-visible .branch-kenteken {
+        transform: none;
+    }
+}
+
+@media (max-width: 360px) {
+    .branch {
+        min-height: 104px;
+        gap: 10px;
+        padding: 14px 14px 14px 16px;
+        border-radius: 16px;
+    }
+
+    .branch-main h3 {
+        font-size: 22px;
+    }
+
+    .branch-age {
+        font-size: 13.5px !important;
+    }
+
+    .branch-kenteken {
+        width: 52px;
+        height: 52px;
+    }
+
+    .branch-logo {
+        width: 42px;
+        height: 42px;
+        min-width: 42px;
     }
 }
 
@@ -2875,6 +2905,7 @@ html {
     overflow: hidden;
     width: 100%;
     max-width: 520px;
+    max-height: min(70vh, 420px);
     border: 1px solid rgba(78, 43, 26, 0.1);
     border-radius: 16px;
     background: #1a1410;
@@ -2882,21 +2913,58 @@ html {
 }
 
 .news-media:not(.news-carousel) {
-    aspect-ratio: 4 / 3;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    aspect-ratio: auto;
+    height: auto;
 }
 
-.news-media:not(.news-carousel) > picture,
-.news-media:not(.news-carousel) > img {
+.news-media:not(.news-carousel) .responsive-full-link,
+.news-media:not(.news-carousel) picture {
+    position: static;
+    inset: auto;
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+.news-media:not(.news-carousel) img {
+    position: static;
+    inset: auto;
+    display: block;
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    max-height: min(70vh, 420px);
+    margin: 0 auto;
+    object-fit: contain;
+    object-position: center;
+    user-select: none;
+    -webkit-user-drag: none;
+}
+
+/* Carousel slides keep an absolute fit box. */
+.news-carousel .responsive-full-link,
+.news-carousel picture {
+    position: absolute;
+    inset: 0;
     display: block;
     width: 100%;
     height: 100%;
 }
 
-.news-media img {
+.news-carousel img {
+    position: absolute;
+    inset: 0;
     display: block;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    max-height: 100%;
+    margin: auto;
+    object-fit: contain;
     object-position: center;
     user-select: none;
     -webkit-user-drag: none;
@@ -2904,6 +2972,7 @@ html {
 
 .news-carousel {
     position: relative;
+    display: block;
     touch-action: pan-y;
 }
 
@@ -2912,7 +2981,8 @@ html {
     overflow: hidden;
     width: 100%;
     min-height: 200px;
-    aspect-ratio: 4 / 3;
+    max-height: min(70vh, 420px);
+    aspect-ratio: auto;
     background: #1a1410;
     cursor: grab;
     touch-action: pan-y pinch-zoom;
@@ -2938,21 +3008,34 @@ html {
 }
 
 .news-carousel-slide {
-    display: grid;
+    position: relative;
     flex: 0 0 100%;
-    place-items: center;
     width: 100%;
     height: 100%;
     min-width: 0;
+    min-height: 0;
+    overflow: hidden;
 }
 
-.news-carousel-slide img {
+.news-carousel-slide .responsive-full-link,
+.news-carousel-slide picture {
+    position: absolute;
+    inset: 0;
     display: block;
     width: 100%;
     height: 100%;
+}
+
+.news-carousel-slide img {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: auto;
+    height: auto;
     max-width: 100%;
     max-height: 100%;
-    object-fit: cover;
+    margin: auto;
+    object-fit: contain;
     object-position: center;
     pointer-events: none;
 }

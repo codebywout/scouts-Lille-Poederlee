@@ -761,6 +761,32 @@
     AUG: 7,
   };
 
+  const AGENDA_MONTH_FULL = {
+    JAN: "JANUARI",
+    FEB: "FEBRUARI",
+    MAA: "MAART",
+    APR: "APRIL",
+    MEI: "MEI",
+    JUN: "JUNI",
+    JUL: "JULI",
+    AUG: "AUGUSTUS",
+    SEP: "SEPTEMBER",
+    OKT: "OKTOBER",
+    NOV: "NOVEMBER",
+    DEC: "DECEMBER",
+  };
+
+  function agendaMonthFull(monthKey) {
+    const short = String(monthKey || "").trim().toUpperCase();
+    return AGENDA_MONTH_FULL[short] || short;
+  }
+
+  function agendaMonthLabelHtml(monthKey) {
+    const short = String(monthKey || "").trim().toUpperCase();
+    const full = agendaMonthFull(short);
+    return `<span class="agenda-month"><span class="agenda-month-short">${escapeHtml(short)}</span><span class="agenda-month-full" aria-hidden="true">${escapeHtml(full)}</span></span>`;
+  }
+
   function sortAgendaItems(items) {
     return (Array.isArray(items) ? items : [])
       .map((item, index) => ({ item, index }))
@@ -853,12 +879,12 @@
       return `
                     <div class="agenda-date">
                       <strong>${escapeHtml(parts.day)}</strong>
-                      <span>${escapeHtml(parts.month)}</span>
+                      ${agendaMonthLabelHtml(parts.month)}
                     </div>`;
     }
 
     const sameMonth = parts.month === parts.endMonth;
-    const label = `${parts.day} ${parts.month} tot ${parts.endDay} ${parts.endMonth}`;
+    const label = `${parts.day} ${agendaMonthFull(parts.month)} tot ${parts.endDay} ${agendaMonthFull(parts.endMonth)}`;
 
     // Compact period badge: "12 → 14" + month (same height as a single date).
     if (sameMonth) {
@@ -869,22 +895,22 @@
                         <span class="agenda-date-arrow" aria-hidden="true"></span>
                         <strong>${escapeHtml(parts.endDay)}</strong>
                       </div>
-                      <span>${escapeHtml(parts.month)}</span>
+                      ${agendaMonthLabelHtml(parts.month)}
                     </div>`;
     }
 
+    // Two months: keep the same day→day rhythm, months paired underneath.
     return `
-                    <div class="agenda-date is-range" aria-label="${escapeHtml(label)}">
+                    <div class="agenda-date is-range is-cross-month" aria-label="${escapeHtml(label)}">
                       <div class="agenda-date-range">
-                        <span class="agenda-date-side">
-                          <strong>${escapeHtml(parts.day)}</strong>
-                          <span>${escapeHtml(parts.month)}</span>
-                        </span>
+                        <strong>${escapeHtml(parts.day)}</strong>
                         <span class="agenda-date-arrow" aria-hidden="true"></span>
-                        <span class="agenda-date-side">
-                          <strong>${escapeHtml(parts.endDay)}</strong>
-                          <span>${escapeHtml(parts.endMonth)}</span>
-                        </span>
+                        <strong>${escapeHtml(parts.endDay)}</strong>
+                      </div>
+                      <div class="agenda-date-months">
+                        ${agendaMonthLabelHtml(parts.month)}
+                        <span class="agenda-date-months-sep" aria-hidden="true"></span>
+                        ${agendaMonthLabelHtml(parts.endMonth)}
                       </div>
                     </div>`;
   }
@@ -1705,7 +1731,7 @@
   function isAccordionInteractiveTarget(target) {
     return Boolean(
       target?.closest?.(
-        "a[href], button, input, textarea, select, label, [data-news-share]",
+        "a[href], button, input, textarea, select, label, [data-news-share], .news-media, .agenda-media, [data-news-carousel]",
       ),
     );
   }
@@ -2064,6 +2090,9 @@
           bestArea = area;
         }
       });
+
+      // Use the real photo ratio. CSS max-height keeps tall shots in check
+      // while object-fit: contain shows the full image (no cropping).
       viewport.style.aspectRatio = `${best.naturalWidth} / ${best.naturalHeight}`;
     };
 
