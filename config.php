@@ -780,6 +780,108 @@ function scouts_send_not_found(): never
 }
 
 /**
+ * True only for the local PHP built-in server when start-server.ps1 enables live reload.
+ * Never active under Apache/FPM production SAPI.
+ */
+function scouts_dev_live_reload_enabled(): bool
+{
+    return PHP_SAPI === 'cli-server'
+        && getenv('SCOUTS_DEV_LIVE_RELOAD') === '1';
+}
+
+/**
+ * Fingerprint of local source files for phone/PC live reload polling.
+ */
+function scouts_dev_reload_token(): string
+{
+    $paths = [
+        SCOUTS_ROOT . DIRECTORY_SEPARATOR . 'assets',
+        SCOUTS_ROOT . DIRECTORY_SEPARATOR . 'includes',
+        SCOUTS_ROOT . DIRECTORY_SEPARATOR . 'pages',
+        SCOUTS_ROOT . DIRECTORY_SEPARATOR . 'api',
+        SCOUTS_ROOT . DIRECTORY_SEPARATOR . 'config.php',
+        SCOUTS_ROOT . DIRECTORY_SEPARATOR . 'router.php',
+        SCOUTS_ROOT . DIRECTORY_SEPARATOR . 'page.php',
+        SCOUTS_ROOT . DIRECTORY_SEPARATOR . 'admin.html',
+        SCOUTS_ROOT . DIRECTORY_SEPARATOR . 'admin-gate.php',
+        SCOUTS_ROOT . DIRECTORY_SEPARATOR . 'login.html',
+        SCOUTS_ROOT . DIRECTORY_SEPARATOR . 'index.html',
+        SCOUTS_ROOT . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . 'site-data.json',
+    ];
+
+    $max = 0;
+    $allowed = ['php' => true, 'html' => true, 'css' => true, 'js' => true, 'json' => true];
+
+    foreach ($paths as $path) {
+        if (is_file($path)) {
+            $mtime = @filemtime($path);
+            if ($mtime !== false) {
+                $max = max($max, (int) $mtime);
+            }
+            continue;
+        }
+        if (!is_dir($path)) {
+            continue;
+        }
+
+        try {
+            $iterator = new RecursiveIteratorIterator(
+                new RecursiveDirectoryIterator($path, FilesystemIterator::SKIP_DOTS)
+            );
+        } catch (Throwable) {
+            continue;
+        }
+
+        foreach ($iterator as $file) {
+            /** @var SplFileInfo $file */
+            if (!$file->isFile()) {
+                continue;
+            }
+            $ext = strtolower($file->getExtension());
+            if (!isset($allowed[$ext])) {
+                continue;
+            }
+            $mtime = $file->getMTime();
+            if ($mtime > $max) {
+                $max = $mtime;
+            }
+        }
+    }
+
+    return (string) $max;
+}
+
+/**
+ * Tiny poll script injected into HTML during local LAN preview.
+ */
+function scouts_render_dev_live_reload_script(): string
+{
+    if (!scouts_dev_live_reload_enabled()) {
+        return '';
+    }
+
+    return <<<'HTML'
+<script>
+(function () {
+  var last = null;
+  function poll() {
+    fetch('/api/dev-reload', { cache: 'no-store', credentials: 'same-origin' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (data) {
+        if (!data || typeof data.v === 'undefined') return;
+        if (last === null) { last = String(data.v); return; }
+        if (String(data.v) !== last) location.reload();
+      })
+      .catch(function () {})
+      .then(function () { setTimeout(poll, 1000); });
+  }
+  setTimeout(poll, 800);
+})();
+</script>
+HTML;
+}
+
+/**
  * Serve an HTML file with no-store headers and the current asset version
  * injected into stylesheet/script/image query strings.
  */
@@ -967,6 +1069,15 @@ function scouts_send_html_file(string $absolutePath, ?string $pageId = null): ne
         },
         $html
     ) ?? $html;
+
+    $liveReload = scouts_render_dev_live_reload_script();
+    if ($liveReload !== '') {
+        if (stripos($html, '</body>') !== false) {
+            $html = preg_replace('/<\/body>/i', $liveReload . '</body>', $html, 1) ?? ($html . $liveReload);
+        } else {
+            $html .= $liveReload;
+        }
+    }
 
     header('Content-Type: text/html; charset=utf-8');
     scouts_send_html_cache_headers();

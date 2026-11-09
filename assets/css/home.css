@@ -328,6 +328,11 @@ body.home-page .hero {
     .section-top > p {
         max-width: 100%;
     }
+
+    .branch-list {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
 }
 
 .home-page .planning .section-top {
@@ -2243,165 +2248,8 @@ html {
 @media (max-width: 760px) {
     .branch-list {
         display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-}
-
-@media (max-width: 640px) {
-    .branch-list {
         grid-template-columns: 1fr;
         gap: 10px;
-    }
-
-    .branch {
-        display: flex;
-        flex-direction: row;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        min-height: 112px;
-        height: auto;
-        padding: 16px 16px 16px 18px;
-        border-radius: 18px;
-        border-color: color-mix(in srgb, var(--branch-accent) 28%, rgba(78, 43, 26, 0.1));
-        background: color-mix(in srgb, var(--branch-accent) 12%, #fff8f1);
-        box-shadow: 0 6px 18px rgba(46, 26, 18, 0.05);
-        overflow: hidden;
-    }
-
-    /* Leesbaarheid links; foto rechts blijft zichtbaar. */
-    .branch::before {
-        display: block;
-        z-index: 1;
-        background: linear-gradient(
-            90deg,
-            color-mix(in srgb, var(--branch-accent) 22%, rgba(255, 248, 241, 0.96)) 0%,
-            color-mix(in srgb, var(--branch-accent) 14%, rgba(255, 248, 241, 0.88)) 42%,
-            color-mix(in srgb, var(--branch-accent) 8%, rgba(255, 248, 241, 0.35)) 68%,
-            transparent 100%
-        );
-        transform: none;
-        skewX(0);
-    }
-
-    .branch::after {
-        display: none;
-    }
-
-    .branch-main {
-        position: relative;
-        z-index: 2;
-        flex: 1 1 auto;
-        min-width: 0;
-        max-width: none;
-        padding-right: 0;
-    }
-
-    .branch-bg-picture,
-    .branch > picture.branch-bg-picture {
-        z-index: 0;
-    }
-
-    .branch-bg-picture img,
-    .branch-bg {
-        object-position: 72% 28%;
-        opacity: 1;
-        -webkit-mask-image: linear-gradient(
-            to right,
-            transparent 0%,
-            rgba(0, 0, 0, 0.35) 38%,
-            rgba(0, 0, 0, 0.85) 62%,
-            #000 100%
-        );
-        mask-image: linear-gradient(
-            to right,
-            transparent 0%,
-            rgba(0, 0, 0, 0.35) 38%,
-            rgba(0, 0, 0, 0.85) 62%,
-            #000 100%
-        );
-    }
-
-    .branch-main h3 {
-        color: #2f1810;
-        font-size: clamp(22px, 6.4vw, 26px);
-        font-weight: 800;
-        line-height: 1.12;
-        letter-spacing: -0.02em;
-        text-shadow: none;
-    }
-
-    .branch-age {
-        margin-top: 6px !important;
-        color: color-mix(in srgb, var(--branch-accent) 48%, #2f1810) !important;
-        font-size: 14px !important;
-        font-weight: 700 !important;
-        line-height: 1.3;
-        text-shadow: none;
-    }
-
-    .branch-kenteken {
-        position: relative;
-        top: auto;
-        right: auto;
-        z-index: 2;
-        flex: 0 0 auto;
-        width: 58px;
-        height: 58px;
-        transform: none;
-        background: color-mix(in srgb, var(--branch-accent) 18%, white);
-        box-shadow:
-            0 6px 14px rgba(46, 26, 18, 0.12),
-            inset 0 0 0 1px color-mix(in srgb, var(--branch-accent) 34%, transparent);
-    }
-
-    .branch-logo {
-        width: 46px;
-        height: 46px;
-        min-width: 46px;
-    }
-
-    .branch:hover,
-    .branch:focus-visible {
-        transform: none;
-        box-shadow: 0 8px 20px rgba(46, 26, 18, 0.08);
-    }
-
-    .branch:active {
-        transform: scale(0.985);
-    }
-
-    .branch:hover .branch-kenteken,
-    .branch:focus-visible .branch-kenteken {
-        transform: none;
-    }
-}
-
-@media (max-width: 360px) {
-    .branch {
-        min-height: 104px;
-        gap: 10px;
-        padding: 14px 14px 14px 16px;
-        border-radius: 16px;
-    }
-
-    .branch-main h3 {
-        font-size: 22px;
-    }
-
-    .branch-age {
-        font-size: 13.5px !important;
-    }
-
-    .branch-kenteken {
-        width: 52px;
-        height: 52px;
-    }
-
-    .branch-logo {
-        width: 42px;
-        height: 42px;
-        min-width: 42px;
     }
 }
 

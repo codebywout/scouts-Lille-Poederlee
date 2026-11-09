@@ -111,6 +111,18 @@ if ($requestPath === '/sitemap.xml') {
     exit;
 }
 
+// Local-only live-reload fingerprint for phone/PC preview (start-server.ps1 sets the env flag).
+if ($requestPath === '/api/dev-reload') {
+    if (!scouts_dev_live_reload_enabled()) {
+        http_response_code(404);
+        exit;
+    }
+    header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: no-store');
+    echo json_encode(['v' => scouts_dev_reload_token()], JSON_UNESCAPED_SLASHES);
+    exit;
+}
+
 // Revalidate headers for static CSS/JS during local PHP server development.
 if (preg_match('#^/assets/.+\.(css|js)$#', $requestPath) === 1) {
     $file = __DIR__ . str_replace('/', DIRECTORY_SEPARATOR, $requestPath);
