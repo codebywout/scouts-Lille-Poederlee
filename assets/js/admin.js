@@ -66,6 +66,24 @@
   let orphanUploadNames = [];
   let orphanScanResetTimer = 0;
   let settingsReturnPage = "home";
+  const ADMIN_LOG_PAGE_SIZE = 25;
+  const ADMIN_LOG_TYPE_GROUPS = {
+    security: new Set(["login_failed"]),
+    news: new Set(["news_publish"]),
+    uploads: new Set([
+      "planning_upload",
+      "letter_upload",
+      "document_delete",
+      "orphans_purge",
+    ]),
+    drive: new Set(["drive_settings", "drive_connect", "drive_disconnect"]),
+    backup: new Set(["site_restore", "site_reset"]),
+  };
+  let adminLogState = {
+    entries: [],
+    filterType: "",
+    visible: ADMIN_LOG_PAGE_SIZE,
+  };
   /** Admin-only screens that must not be remembered as the next login page. */
   const EPHEMERAL_ADMIN_PAGES = new Set(["settings", "achtergronden"]);
 
@@ -669,6 +687,7 @@
     const formData = new FormData();
     formData.append("letter", file);
     formData.append("branch", branch);
+    formData.append("title", title);
     const response = await fetch("/api/uploads/letter", {
       method: "POST",
       body: formData,
@@ -2225,6 +2244,39 @@
               </div>
             </div>
 
+            <section class="admin-card compact-card admin-settings-card admin-settings-card--log">
+              <div class="admin-card-head">
+                <h2>Activiteitenlog</h2>
+                <div class="admin-log-actions">
+                  <button type="button" class="mini-button" data-admin-log-refresh>Vernieuwen</button>
+                  <button type="button" class="mini-button" data-admin-log-clear>Wissen</button>
+                </div>
+              </div>
+              <p class="form-help admin-settings-side-help">Items ouder dan 2 maanden verdwijnen automatisch.</p>
+              <div class="admin-log-toolbar" data-admin-log-toolbar hidden>
+                <label class="admin-log-filter">
+                  <span class="visually-hidden">Filter op type</span>
+                  <select data-admin-log-type>
+                    <option value="">Alle acties</option>
+                    <option value="security">Beveiliging</option>
+                    <option value="news">Nieuws</option>
+                    <option value="uploads">Uploads</option>
+                    <option value="drive">Google Drive</option>
+                    <option value="backup">Backup &amp; reset</option>
+                  </select>
+                </label>
+                <p class="admin-log-count" data-admin-log-count></p>
+              </div>
+              <div class="admin-log-shell">
+                <div class="admin-log-list" data-admin-log-list role="status" tabindex="0">
+                  <p class="admin-log-empty">Log laden…</p>
+                </div>
+                <div class="admin-log-footer" data-admin-log-footer hidden>
+                  <button type="button" class="mini-button" data-admin-log-more>Meer tonen</button>
+                </div>
+              </div>
+            </section>
+
             <section class="admin-card compact-card admin-backgrounds-card admin-settings-card admin-settings-card--backgrounds">
               <div class="admin-card-head"><h2>Achtergronden</h2></div>
               <div id="backgroundEditor" class="admin-bg-grid"></div>
@@ -2232,6 +2284,7 @@
           </div>
         `;
       renderBackgroundEditor(data);
+      void loadAdminActivityLog();
       return;
     }
 
@@ -2702,6 +2755,243 @@
     }
     googleDriveSettings = await settingsResponse.json();
     return googleDriveSettings;
+  }
+
+  function parseAdminLogDate(iso) {
+    const raw = String(iso || "").trim();
+    if (!raw) return null;
+    const date = new Date(raw);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
+  function formatAdminLogTime(date) {
+    if (!date) return "";
+    try {
+      return new Intl.DateTimeFormat("nl-BE", {
+        hour: "2-digit",
+        minute: "2-digit",
+      }).format(date);
+    } catch {
+      return date.toLocaleTimeString("nl-BE", {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    }
+  }
+
+  function formatAdminLogDayLabel(date) {
+    if (!date) return "Onbekende datum";
+    const today = new Date();
+    const startToday = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate(),
+    );
+    const startDay = new Date(
+      date.getFullYear(),
+      date.getMonth(),
+      date.getDate(),
+    );
+    const diffDays = Math.round((startToday - startDay) / 86400000);
+    if (diffDays === 0) return "Vandaag";
+    if (diffDays === 1) return "Gisteren";
+    try {
+      return new Intl.DateTimeFormat("nl-BE", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+      }).format(date);
+    } catch {
+      return date.toLocaleDateString("nl-BE");
+    }
+  }
+
+  function adminLogDayKey(date) {
+    if (!date) return "unknown";
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  }
+
+  function normalizeAdminLogEntries(entries) {
+    return (Array.isArray(entries) ? entries : []).filter(
+      (entry) =>
+        entry &&
+        entry.action &&
+        entry.action !== "site_save" &&
+        entry.action !== "login" &&
+        entry.action !== "logout",
+    );
+  }
+
+  function adminLogMatchesFilters(entry) {
+    const type = adminLogState.filterType;
+    if (type && ADMIN_LOG_TYPE_GROUPS[type]) {
+      if (!ADMIN_LOG_TYPE_GROUPS[type].has(entry.action)) return false;
+    }
+    return true;
+  }
+
+  function filteredAdminLogEntries() {
+    return adminLogState.entries.filter(adminLogMatchesFilters);
+  }
+
+  function syncAdminLogFilters() {
+    const toolbar = qs("[data-admin-log-toolbar]");
+    const typeSelect = qs("[data-admin-log-type]");
+    if (!toolbar || !typeSelect) return;
+
+    const hasEntries = adminLogState.entries.length > 0;
+    toolbar.hidden = !hasEntries;
+    if (!hasEntries) return;
+    typeSelect.value = adminLogState.filterType || "";
+  }
+
+  function setAdminLogCount(shown, total) {
+    const counter = qs("[data-admin-log-count]");
+    if (!counter) return;
+    if (!total) {
+      counter.textContent = "";
+      return;
+    }
+    if (shown < total) {
+      counter.textContent = `${shown} van ${total}`;
+      return;
+    }
+    counter.textContent =
+      total === 1 ? "1 gebeurtenis" : `${total} gebeurtenissen`;
+  }
+
+  function renderAdminActivityLog(entries, { resetVisible = true } = {}) {
+    const list = qs("[data-admin-log-list]");
+    const footer = qs("[data-admin-log-footer]");
+    const moreButton = qs("[data-admin-log-more]");
+    if (!list) return;
+
+    if (entries !== undefined) {
+      adminLogState.entries = normalizeAdminLogEntries(entries);
+      if (resetVisible) adminLogState.visible = ADMIN_LOG_PAGE_SIZE;
+    }
+
+    syncAdminLogFilters();
+
+    const filtered = filteredAdminLogEntries();
+    const visibleItems = filtered.slice(0, adminLogState.visible);
+    const remaining = Math.max(0, filtered.length - visibleItems.length);
+    setAdminLogCount(visibleItems.length, filtered.length);
+
+    if (footer) footer.hidden = remaining === 0;
+    if (moreButton) {
+      moreButton.textContent =
+        remaining === 1
+          ? "1 oudere tonen"
+          : remaining > 0
+            ? `${Math.min(ADMIN_LOG_PAGE_SIZE, remaining)} oudere tonen`
+            : "Meer tonen";
+    }
+
+    if (!adminLogState.entries.length) {
+      list.innerHTML =
+        '<p class="admin-log-empty">Nog geen belangrijke acties gelogd.</p>';
+      list.classList.remove("has-overflow");
+      return;
+    }
+
+    if (!filtered.length) {
+      list.innerHTML =
+        '<p class="admin-log-empty">Geen resultaten voor deze filter.</p>';
+      list.classList.remove("has-overflow");
+      return;
+    }
+
+    const groups = [];
+    const groupMap = new Map();
+    visibleItems.forEach((entry) => {
+      const date = parseAdminLogDate(entry.at);
+      const key = adminLogDayKey(date);
+      if (!groupMap.has(key)) {
+        const group = {
+          key,
+          label: formatAdminLogDayLabel(date),
+          entries: [],
+        };
+        groupMap.set(key, group);
+        groups.push(group);
+      }
+      groupMap.get(key).entries.push({ entry, date });
+    });
+
+    list.innerHTML = groups
+      .map((group) => {
+        const rows = group.entries
+          .map(({ entry, date }) => {
+            const message = escapeHtml(
+              entry.message || entry.action || "Actie",
+            );
+            const time = escapeHtml(formatAdminLogTime(date));
+            const detail = String(entry.detail || "").trim();
+            return `
+              <li class="admin-log-entry" data-log-action="${escapeHtml(entry.action || "")}">
+                <time class="admin-log-time" datetime="${escapeHtml(entry.at || "")}">${time || "—"}</time>
+                <div class="admin-log-body">
+                  <strong class="admin-log-message">${message}</strong>
+                  ${
+                    detail
+                      ? `<span class="admin-log-meta">${escapeHtml(detail)}</span>`
+                      : ""
+                  }
+                </div>
+              </li>
+            `;
+          })
+          .join("");
+        return `
+          <section class="admin-log-day">
+            <h3 class="admin-log-day-label">
+              <span>${escapeHtml(group.label)}</span>
+              <span class="admin-log-day-count">${group.entries.length}</span>
+            </h3>
+            <ul class="admin-log-entries">${rows}</ul>
+          </section>
+        `;
+      })
+      .join("");
+
+    requestAnimationFrame(() => {
+      if (!list.isConnected) return;
+      list.classList.toggle(
+        "has-overflow",
+        list.scrollHeight > list.clientHeight + 4,
+      );
+    });
+  }
+
+  async function loadAdminActivityLog() {
+    const list = qs("[data-admin-log-list]");
+    const toolbar = qs("[data-admin-log-toolbar]");
+    const footer = qs("[data-admin-log-footer]");
+    if (!list) return;
+    if (toolbar) toolbar.hidden = true;
+    if (footer) footer.hidden = true;
+    setAdminLogCount(0, 0);
+    list.classList.remove("has-overflow");
+    list.innerHTML = '<p class="admin-log-empty">Log laden…</p>';
+    try {
+      const response = await fetch("/api/admin-log?limit=200", {
+        cache: "no-store",
+      });
+      if (!response.ok) {
+        const result = await readResponseJson(response);
+        throw new Error(result.message || "Log laden mislukt");
+      }
+      const payload = await response.json();
+      renderAdminActivityLog(payload.entries || [], { resetVisible: true });
+    } catch (error) {
+      adminLogState.entries = [];
+      setAdminLogCount(0, 0);
+      list.innerHTML = `<p class="admin-log-empty">${escapeHtml(error.message || "Log laden mislukt")}</p>`;
+    }
   }
 
   async function unlockGoogleDriveSettings() {
@@ -3819,6 +4109,50 @@
       });
 
     document.addEventListener("click", async (event) => {
+      const refreshLog = event.target.closest("[data-admin-log-refresh]");
+      if (refreshLog) {
+        event.preventDefault();
+        await loadAdminActivityLog();
+        return;
+      }
+
+      const moreLog = event.target.closest("[data-admin-log-more]");
+      if (moreLog) {
+        event.preventDefault();
+        adminLogState.visible += ADMIN_LOG_PAGE_SIZE;
+        renderAdminActivityLog(undefined, { resetVisible: false });
+        return;
+      }
+
+      const clearLog = event.target.closest("[data-admin-log-clear]");
+      if (clearLog) {
+        event.preventDefault();
+        const confirmed = window.confirm(
+          "Activiteitenlog wissen? Dit kan niet ongedaan gemaakt worden.",
+        );
+        if (!confirmed) return;
+        clearLog.disabled = true;
+        try {
+          const response = await fetch("/api/admin-log/clear", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: "{}",
+          });
+          const result = await readResponseJson(response);
+          if (!response.ok) {
+            throw new Error(result.message || "Log wissen mislukt");
+          }
+          adminLogState.filterType = "";
+          renderAdminActivityLog(result.entries || [], { resetVisible: true });
+          setSaveStatus("Activiteitenlog gewist", "saved");
+        } catch (error) {
+          setSaveStatus(error.message || "Log wissen mislukt", "error");
+        } finally {
+          clearLog.disabled = false;
+        }
+        return;
+      }
+
       const downloadBackup = event.target.closest(
         "#downloadBackup, [data-download-backup]",
       );
@@ -3992,6 +4326,14 @@
     });
 
     document.addEventListener("change", async (event) => {
+      const logTypeFilter = event.target.closest("[data-admin-log-type]");
+      if (logTypeFilter) {
+        adminLogState.filterType = String(logTypeFilter.value || "");
+        adminLogState.visible = ADMIN_LOG_PAGE_SIZE;
+        renderAdminActivityLog(undefined, { resetVisible: false });
+        return;
+      }
+
       const input = event.target.closest("#restoreBackup");
       if (!input) return;
 

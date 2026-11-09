@@ -152,6 +152,7 @@ try {
             unset($settings['planningFileIds']);
         }
         scouts_write_google_drive_settings($settings);
+        scouts_admin_log_append('drive_settings');
         scouts_json_response(['success' => true]);
     }
 
@@ -191,6 +192,7 @@ try {
             }
         }
         scouts_write_google_oauth($kept);
+        scouts_admin_log_append('drive_disconnect');
         scouts_json_response(['success' => true]);
     }
 
@@ -355,6 +357,10 @@ try {
                 throw new RuntimeException('Koppeling kon niet worden bewaard. Probeer opnieuw.');
             }
             $_SESSION['google_settings_unlocked_until'] = time() + 900;
+            scouts_admin_log_append(
+                'drive_connect',
+                is_string($email) && $email !== '' ? $email : ''
+            );
             scouts_google_oauth_admin_redirect('connected');
         } catch (Throwable $oauthCallbackError) {
             error_log('Scouts Google OAuth callback: ' . $oauthCallbackError->getMessage());
@@ -389,6 +395,7 @@ try {
         $usernameOk = hash_equals(scouts_admin_username(), $username);
         $passwordOk = password_verify($password, scouts_admin_password_hash());
         if (!$usernameOk || !$passwordOk) {
+            scouts_admin_log_append('login_failed');
             $lockAfterFail = scouts_login_record_failure();
             if ($lockAfterFail > 0) {
                 $minutes = (int) ceil($lockAfterFail / 60);
@@ -425,6 +432,25 @@ try {
         scouts_json_response(['success' => true, 'redirectTo' => '/login']);
     }
 
+    if ($route === 'admin-log' && $method === 'GET') {
+        scouts_require_admin();
+        $limit = (int) ($_GET['limit'] ?? 100);
+        scouts_json_response([
+            'entries' => scouts_admin_log_read($limit),
+        ]);
+    }
+
+    if ($route === 'admin-log/clear' && $method === 'POST') {
+        scouts_require_admin();
+        scouts_require_same_origin();
+        scouts_admin_log_clear();
+        scouts_admin_log_append('log_clear');
+        scouts_json_response([
+            'success' => true,
+            'entries' => scouts_admin_log_read(100),
+        ]);
+    }
+
     if ($route === 'site-data' && $method === 'POST') {
         scouts_require_admin();
         scouts_require_same_origin();
@@ -451,7 +477,9 @@ try {
             ], 409);
         }
 
+        $previousData = scouts_read_site_data();
         scouts_write_site_data($data);
+        scouts_admin_log_news_publish_changes($previousData, $data);
         $newVersion = scouts_site_data_version();
         header('X-Scouts-Data-Version: ' . $newVersion);
         header('ETag: "' . $newVersion . '-a"');
@@ -468,6 +496,7 @@ try {
             scouts_json_response(['message' => $error->getMessage()], 400);
         }
         scouts_write_site_data($data);
+        scouts_admin_log_append('site_restore');
         $newVersion = scouts_site_data_version();
         header('X-Scouts-Data-Version: ' . $newVersion);
         header('ETag: "' . $newVersion . '-a"');
@@ -478,6 +507,7 @@ try {
         scouts_require_admin();
         scouts_require_same_origin();
         scouts_write_site_data(scouts_decode_json_file(SCOUTS_DEFAULT_DATA_FILE));
+        scouts_admin_log_append('site_reset');
         $newVersion = scouts_site_data_version();
         header('X-Scouts-Data-Version: ' . $newVersion);
         scouts_json_response(['success' => true, 'version' => $newVersion]);
@@ -654,6 +684,12 @@ try {
             }
         }
 
+        $planningDetail = scouts_admin_log_branch_label($branch);
+        if ($planningTitle !== '') {
+            $planningDetail .= ' · ' . $planningTitle;
+        }
+        scouts_admin_log_append('planning_upload', $planningDetail);
+
         scouts_json_response([
             'success' => true,
             'driveUploaded' => $driveUploaded,
@@ -720,6 +756,13 @@ try {
             throw new RuntimeException('Brief kon niet worden opgeslagen.');
         }
 
+        $letterTitle = trim((string) ($_POST['title'] ?? ''));
+        $letterDetail = scouts_admin_log_branch_label($branch);
+        if ($letterTitle !== '') {
+            $letterDetail .= ' · ' . $letterTitle;
+        }
+        scouts_admin_log_append('letter_upload', $letterDetail);
+
         scouts_json_response(['success' => true, 'path' => '/uploads/' . $filename . '?v=' . time()]);
     }
 
@@ -753,6 +796,7 @@ try {
         if (is_file($path) && !unlink($path)) {
             scouts_json_response(['message' => 'Document kon niet worden verwijderd.'], 500);
         }
+        scouts_admin_log_append('document_delete', $filename);
         scouts_json_response(['success' => true]);
     }
 
@@ -799,9 +843,14 @@ try {
             $names = $body['names'];
         }
         $deleted = scouts_purge_orphan_uploads($names);
+        $count = count($deleted);
+        scouts_admin_log_append(
+            'orphans_purge',
+            $count === 1 ? '1 bestand' : "{$count} bestanden"
+        );
         scouts_json_response([
             'success' => true,
-            'deleted' => count($deleted),
+            'deleted' => $count,
             'names' => $deleted,
         ]);
     }
