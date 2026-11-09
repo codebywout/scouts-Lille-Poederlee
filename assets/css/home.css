@@ -323,12 +323,7 @@ body.home-page .hero {
 
     .branch-list {
         grid-template-columns: 1fr;
-        gap: 12px;
-    }
-
-    .branch {
-        min-height: 210px;
-        padding: 22px;
+        gap: 10px;
     }
 }
 
@@ -2162,142 +2157,8 @@ html {
 @media (max-width: 760px) {
     .branch-list {
         display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-}
-
-@media (max-width: 640px) {
-    .branch-list {
         grid-template-columns: 1fr;
-        gap: 12px;
-    }
-
-    .branch {
-        min-height: 152px;
-        justify-content: center;
-        padding: 20px 76px 20px 18px;
-        border-radius: 20px;
-        background: color-mix(in srgb, var(--branch-accent) 14%, #fff);
-    }
-
-    /* Leesbaarheid links; foto rechts blijft helder. */
-    .branch::before {
-        display: block;
-        z-index: 1;
-        background: linear-gradient(
-            90deg,
-            color-mix(in srgb, var(--branch-accent) 18%, rgba(255, 248, 241, 0.82)) 0%,
-            color-mix(in srgb, var(--branch-accent) 10%, rgba(255, 248, 241, 0.42)) 34%,
-            color-mix(in srgb, var(--branch-accent) 6%, transparent) 58%,
-            transparent 78%
-        );
-        transform: none;
-        skewX(0);
-    }
-
-    .branch-main {
-        z-index: 2;
-        padding-right: 8px;
-        max-width: calc(100% - 64px);
-    }
-
-    .branch-bg-picture,
-    .branch > picture.branch-bg-picture {
-        z-index: 0;
-    }
-
-    .branch-bg-picture img,
-    .branch-bg {
-        object-position: center 30%;
-        opacity: 1;
-        -webkit-mask-image: linear-gradient(
-            to right,
-            rgba(0, 0, 0, 0.72) 0%,
-            rgba(0, 0, 0, 0.9) 36%,
-            #000 68%
-        );
-        mask-image: linear-gradient(
-            to right,
-            rgba(0, 0, 0, 0.72) 0%,
-            rgba(0, 0, 0, 0.9) 36%,
-            #000 68%
-        );
-    }
-
-    .branch-main h3 {
-        color: #2f1810;
-        font-size: clamp(26px, 7vw, 30px);
-        font-weight: 800;
-        line-height: 1.12;
-        letter-spacing: -0.02em;
-        text-shadow:
-            0 1px 0 rgba(255, 248, 241, 0.95),
-            0 0 10px rgba(255, 248, 241, 0.75),
-            0 0 18px rgba(255, 248, 241, 0.45);
-    }
-
-    .branch-age {
-        margin-top: 8px !important;
-        color: color-mix(in srgb, var(--branch-accent) 40%, #2f1810) !important;
-        font-size: 16px !important;
-        font-weight: 700 !important;
-        line-height: 1.35;
-        text-shadow:
-            0 1px 0 rgba(255, 248, 241, 0.9),
-            0 0 8px rgba(255, 248, 241, 0.65);
-    }
-
-    .branch-kenteken {
-        z-index: 2;
-        top: 50%;
-        right: 14px;
-        width: 64px;
-        height: 64px;
-        transform: translateY(-50%);
-        background: color-mix(in srgb, var(--branch-accent) 22%, white);
-        box-shadow:
-            0 8px 18px rgba(46, 26, 18, 0.16),
-            inset 0 0 0 1px color-mix(in srgb, var(--branch-accent) 36%, transparent);
-    }
-
-    .branch-logo {
-        width: 52px;
-        height: 52px;
-    }
-
-    .branch:hover .branch-kenteken,
-    .branch:focus-visible .branch-kenteken {
-        transform: translateY(-50%) rotate(3deg);
-    }
-}
-
-@media (max-width: 360px) {
-    .branch {
-        min-height: 144px;
-        padding: 18px 68px 18px 16px;
-    }
-
-    .branch-main {
-        max-width: calc(100% - 56px);
-    }
-
-    .branch-main h3 {
-        font-size: 25px;
-    }
-
-    .branch-age {
-        font-size: 15px !important;
-    }
-
-    .branch-kenteken {
-        right: 12px;
-        width: 56px;
-        height: 56px;
-    }
-
-    .branch-logo {
-        width: 46px;
-        height: 46px;
+        gap: 10px;
     }
 }
 
