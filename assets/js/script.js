@@ -131,7 +131,7 @@
       });
   }
 
-  const IMAGE_ASSET_VERSION = "20261109-save-scroll-pad";
+  const IMAGE_ASSET_VERSION = "20261109-news-photo-drag-clamp";
 
   function formatLidgeldLabel(amount) {
     const amountNumber = Number(String(amount || "").replace(",", ".").replace(/[^\d.]/g, ""));
@@ -1972,7 +1972,6 @@
   const NEWS_HOME_LIMIT = 3;
   const NEWS_ARCHIVE_PAGE_SIZE = 6;
   const NEWS_IMAGES_MAX = 8;
-  const NEWS_CAROUSEL_INTERVAL_MS = 5000;
 
   let newsArchiveItemsCache = [];
   let newsArchiveCurrentPage = 1;
@@ -2105,7 +2104,7 @@
     if (!images.length) return "";
     const altText = title || "Nieuwsfoto";
     if (images.length === 1) {
-      return `<figure class="news-media">${responsivePictureHtml(images[0], {
+      return `<figure class="news-media news-media--single">${responsivePictureHtml(images[0], {
         alt: altText,
         sizes: "(max-width: 800px) 100vw, 42vw",
         widths: RESPONSIVE_WIDTHS.content,
@@ -2117,10 +2116,10 @@
     const slides = images
       .map(
         (src, index) => `
-                      <div class="news-carousel-slide${index === 0 ? " is-active" : ""}" data-slide-index="${index}" role="group" aria-roledescription="slide" aria-label="Foto ${index + 1} van ${total}">
+                      <div class="news-carousel-slide${index === 0 ? " is-active" : ""}" data-slide-index="${index}" data-card-shape="${index % 3}" role="group" aria-roledescription="slide" aria-label="Foto ${index + 1} van ${total}">
                         ${responsivePictureHtml(src, {
                           alt: `${altText} ${index + 1}`,
-                          sizes: "(max-width: 800px) 100vw, 42vw",
+                          sizes: "(max-width: 800px) 92vw, 38vw",
                           widths: RESPONSIVE_WIDTHS.content,
                           loading: index === 0 ? "eager" : "lazy",
                         }).replaceAll("<img", '<img draggable="false"')}
@@ -2135,20 +2134,20 @@
       .join("");
 
     return `
-                      <figure class="news-media news-carousel" data-news-carousel aria-roledescription="carousel" aria-label="Foto's bij ${escapeHtml(altText)}">
-                        <div class="news-carousel-viewport" tabindex="0">
-                          <div class="news-carousel-track">
+                      <figure class="news-media news-carousel news-carousel--stack" data-news-carousel aria-roledescription="carousel" aria-label="Foto's bij ${escapeHtml(altText)}">
+                        <div class="news-carousel-viewport" tabindex="0" aria-description="Swipe of sleep om door de foto's te bladeren">
+                          <div class="news-carousel-stack">
                             ${slides}
                           </div>
-                          <div class="news-carousel-overlay">
-                            <div class="news-carousel-dots" role="tablist" aria-label="Foto's">
-                              ${dots}
-                            </div>
-                            <p class="news-carousel-status" aria-live="polite">
-                              <span data-carousel-current>${padTwoDigits(1)}</span><span class="news-carousel-status-sep" aria-hidden="true">/</span><span data-carousel-total>${padTwoDigits(total)}</span>
-                            </p>
+                        </div>
+                        <div class="news-carousel-chrome" aria-hidden="false">
+                          <div class="news-carousel-dots" role="tablist" aria-label="Foto's">
+                            ${dots}
                           </div>
-                          <div class="news-carousel-progress" aria-hidden="true"><span></span></div>
+                          <p class="news-carousel-hint">Swipe voor meer</p>
+                          <p class="news-carousel-status" aria-live="polite">
+                            <span data-carousel-current>${padTwoDigits(1)}</span><span class="news-carousel-status-sep" aria-hidden="true">/</span><span data-carousel-total>${padTwoDigits(total)}</span>
+                          </p>
                         </div>
                       </figure>`;
   }
@@ -2158,94 +2157,98 @@
     const slides = qsa(".news-carousel-slide", carousel);
     const dots = qsa("[data-carousel-dot]", carousel);
     const dotsWrap = qs(".news-carousel-dots", carousel);
-    const track = qs(".news-carousel-track", carousel);
+    const stack = qs(".news-carousel-stack", carousel);
     const viewport = qs(".news-carousel-viewport", carousel);
     const currentLabel = qs("[data-carousel-current]", carousel);
-    const progress = qs(".news-carousel-progress", carousel);
-    const progressBar = qs(".news-carousel-progress > span", carousel);
-    if (slides.length <= 1 || !track || !viewport) return;
+    if (slides.length <= 1 || !stack || !viewport) return;
 
     carousel.dataset.carouselReady = "true";
     let index = 0;
-    let timer = 0;
     let pointerId = null;
     let startX = 0;
     let startY = 0;
     let deltaX = 0;
     let axis = null;
     let dragging = false;
-    let pausedByUser = false;
+    let didDrag = false;
     const reduceMotion = window.matchMedia(
       "(prefers-reduced-motion: reduce)",
     ).matches;
+    const maxDepth = Math.min(3, slides.length);
+
+    // Same height for every card; width/rotation/radius vary by depth + shape seed.
+    const depthLayout = (depth, shape, dragX = 0) => {
+      const side = shape === 1 ? 1 : shape === 2 ? -1 : depth % 2 === 0 ? 1 : -1;
+      if (depth === 0) {
+        const rot = Math.max(-11, Math.min(11, dragX / 28));
+        const lift = Math.min(12, Math.abs(dragX) * 0.04);
+        return {
+          widthPct: 90,
+          x: dragX,
+          y: -lift,
+          rot,
+          radius: 18 + shape * 2,
+          opacity: 1,
+        };
+      }
+      if (depth === 1) {
+        return {
+          widthPct: 76,
+          x: side * 22,
+          y: 18,
+          rot: side * 7.5,
+          radius: 14 + shape * 6,
+          opacity: 0.98,
+        };
+      }
+      return {
+        widthPct: 68,
+        x: side * -30,
+        y: 34,
+        rot: side * -9,
+        radius: 20 + ((shape + 1) % 3) * 4,
+        opacity: 0.94,
+      };
+    };
 
     const syncFrame = () => {
-      const images = slides
-        .map((slide) => slide.querySelector("img"))
-        .filter((img) => img && img.naturalWidth > 0);
-      if (!images.length) return;
-
-      let best = images[0];
-      let bestArea = best.naturalWidth * best.naturalHeight;
-      images.forEach((img) => {
-        const area = img.naturalWidth * img.naturalHeight;
-        if (area > bestArea) {
-          best = img;
-          bestArea = area;
-        }
-      });
-
-      // Explicit pixel height is more reliable on iPad Safari than
-      // aspect-ratio + max-height (which can crop or ignore the cap).
-      const maxH = Math.min(Math.round(window.innerHeight * 0.7), 420);
       const width = Math.max(viewport.clientWidth || 0, 1);
-      const height = Math.max(
-        160,
-        Math.min(
-          maxH,
-          Math.round(width * (best.naturalHeight / best.naturalWidth)),
-        ),
-      );
-      viewport.style.aspectRatio = "auto";
-      viewport.style.height = `${height}px`;
+      const maxH = Math.min(Math.round(window.innerHeight * 0.48), 340);
+      const height = Math.max(188, Math.min(maxH, Math.round(width * 0.92)));
+      const stackPad = 42;
+      viewport.style.height = `${height + stackPad}px`;
+      stack.style.height = `${height}px`;
     };
 
-    const stopProgress = () => {
-      if (!progress || !progressBar) return;
-      progress.classList.remove("is-running");
-      progressBar.style.animation = "none";
-      // Force reflow so the next animation can restart cleanly.
-      void progressBar.offsetWidth;
-      progressBar.style.animation = "";
-    };
+    const paintStack = ({ animate = true, dragX = 0 } = {}) => {
+      const ease =
+        animate && !reduceMotion && !dragging
+          ? "transform 0.72s cubic-bezier(0.16, 1, 0.3, 1), width 0.72s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.5s ease, border-radius 0.72s ease, box-shadow 0.5s ease"
+          : "none";
 
-    const startProgress = () => {
-      if (!progress || !progressBar || reduceMotion || pausedByUser) {
-        stopProgress();
-        return;
-      }
-      const details = carousel.closest("details.news-item");
-      if (details && !details.classList.contains("is-open")) {
-        stopProgress();
-        return;
-      }
-      progress.style.setProperty(
-        "--carousel-progress-ms",
-        `${NEWS_CAROUSEL_INTERVAL_MS}ms`,
-      );
-      stopProgress();
-      progress.classList.add("is-running");
-    };
-
-    const goTo = (nextIndex, { animate = true } = {}) => {
-      index = ((nextIndex % slides.length) + slides.length) % slides.length;
-      track.style.transition = animate && !reduceMotion ? "" : "none";
-      track.style.transform = `translate3d(-${index * 100}%, 0, 0)`;
       slides.forEach((slide, slideIndex) => {
-        const active = slideIndex === index;
+        const depth =
+          (slideIndex - index + slides.length) % slides.length;
+        const shape = Number(slide.dataset.cardShape) || 0;
+        const active = depth === 0;
+        const visible = depth < maxDepth;
+        const layout = visible
+          ? depthLayout(depth, shape, active ? dragX : 0)
+          : { widthPct: 60, x: 0, y: 48, rot: 0, radius: 16, opacity: 0 };
+
         slide.classList.toggle("is-active", active);
+        slide.classList.toggle("is-stacked", visible && !active);
         slide.setAttribute("aria-hidden", active ? "false" : "true");
+        slide.style.zIndex = String(maxDepth - depth + 1);
+        slide.style.opacity = String(layout.opacity);
+        slide.style.pointerEvents = active ? "auto" : "none";
+        slide.style.transition = ease;
+        slide.style.width = `${layout.widthPct}%`;
+        slide.style.left = `${(100 - layout.widthPct) / 2}%`;
+        slide.style.borderRadius = `${layout.radius}px`;
+        slide.style.transform = `translate3d(${layout.x}px, ${layout.y}px, 0) rotate(${layout.rot}deg)`;
       });
+
       dots.forEach((dot, dotIndex) => {
         const active = dotIndex === index;
         dot.classList.toggle("is-active", active);
@@ -2253,41 +2256,15 @@
         dot.tabIndex = active ? 0 : -1;
       });
       if (currentLabel) currentLabel.textContent = padTwoDigits(index + 1);
-      if (!animate) {
-        requestAnimationFrame(() => {
-          track.style.transition = "";
-        });
-      }
     };
 
-    const stopAutoplay = () => {
-      if (timer) {
-        window.clearInterval(timer);
-        timer = 0;
-      }
-      stopProgress();
-    };
-
-    const startAutoplay = () => {
-      stopAutoplay();
-      if (reduceMotion || slides.length < 2 || pausedByUser) return;
-      const details = carousel.closest("details.news-item");
-      if (details && !details.classList.contains("is-open")) return;
-      startProgress();
-      timer = window.setInterval(() => {
-        goTo(index + 1);
-        startProgress();
-      }, NEWS_CAROUSEL_INTERVAL_MS);
-    };
-
-    const restartAutoplay = () => {
-      stopAutoplay();
-      startAutoplay();
+    const goTo = (nextIndex, { animate = true } = {}) => {
+      index = ((nextIndex % slides.length) + slides.length) % slides.length;
+      paintStack({ animate, dragX: 0 });
     };
 
     const step = (direction) => {
       goTo(index + direction);
-      restartAutoplay();
     };
 
     dots.forEach((dot) => {
@@ -2295,7 +2272,6 @@
         event.preventDefault();
         event.stopPropagation();
         goTo(Number(dot.dataset.carouselDot) || 0);
-        restartAutoplay();
       });
     });
 
@@ -2309,22 +2285,6 @@
     dotsWrap?.addEventListener("keydown", onKeyNav);
     viewport.addEventListener("keydown", onKeyNav);
 
-    const pause = () => {
-      pausedByUser = true;
-      stopAutoplay();
-    };
-    const resume = () => {
-      pausedByUser = false;
-      startAutoplay();
-    };
-
-    carousel.addEventListener("mouseenter", pause);
-    carousel.addEventListener("mouseleave", resume);
-    carousel.addEventListener("focusin", pause);
-    carousel.addEventListener("focusout", (event) => {
-      if (!carousel.contains(event.relatedTarget)) resume();
-    });
-
     viewport.addEventListener("pointerdown", (event) => {
       if (event.button !== undefined && event.button !== 0) return;
       if (event.target.closest("button")) return;
@@ -2334,7 +2294,7 @@
       deltaX = 0;
       axis = null;
       dragging = true;
-      stopAutoplay();
+      didDrag = false;
     });
 
     viewport.addEventListener("pointermove", (event) => {
@@ -2348,45 +2308,52 @@
         if (axis === "y") {
           dragging = false;
           pointerId = null;
-          restartAutoplay();
           return;
         }
         viewport.setPointerCapture?.(pointerId);
         viewport.classList.add("is-dragging");
-        track.style.transition = "none";
+        didDrag = true;
       }
 
       if (axis !== "x") return;
-      deltaX = dx;
       const width = viewport.clientWidth || 1;
-      let drag = deltaX;
-      // Soft rubber-band at the ends.
-      if ((index === 0 && drag > 0) || (index === slides.length - 1 && drag < 0)) {
-        drag *= 0.35;
-      }
-      const offset = -index * 100 + (drag / width) * 100;
-      track.style.transform = `translate3d(${offset}%, 0, 0)`;
+      const maxDrag = Math.min(132, Math.round(width * 0.36));
+      deltaX = Math.max(-maxDrag, Math.min(maxDrag, dx));
+      paintStack({ animate: false, dragX: deltaX });
     });
 
     const endDrag = (event) => {
       if (event.pointerId !== pointerId) return;
       const wasHorizontal = axis === "x";
+      const committedDelta = deltaX;
+      const wasDrag = didDrag;
       viewport.classList.remove("is-dragging");
-      if (dragging && wasHorizontal) {
+      try {
         viewport.releasePointerCapture?.(pointerId);
-        const width = viewport.clientWidth || 1;
-        const threshold = Math.min(56, width * 0.18);
-        if (Math.abs(deltaX) > threshold) {
-          goTo(index + (deltaX < 0 ? 1 : -1));
-        } else {
-          goTo(index);
-        }
+      } catch (_) {
+        /* ignore */
       }
       dragging = false;
       pointerId = null;
       axis = null;
       deltaX = 0;
-      restartAutoplay();
+      didDrag = false;
+
+      if (wasHorizontal) {
+        const width = viewport.clientWidth || 1;
+        const threshold = Math.min(56, width * 0.16);
+        if (Math.abs(committedDelta) > threshold) {
+          goTo(index + (committedDelta < 0 ? 1 : -1));
+          return;
+        }
+        goTo(index);
+        return;
+      }
+
+      // Tap / click advances to the next photo (Jobr-like deck feel).
+      if (!wasDrag && event.type === "pointerup") {
+        goTo(index + 1);
+      }
     };
 
     viewport.addEventListener("pointerup", endDrag);
@@ -2395,18 +2362,16 @@
       if (dragging && event.pointerId === pointerId) endDrag(event);
     });
 
-    slides.forEach((slide) => {
-      const img = slide.querySelector("img");
-      if (!img) return;
-      if (img.complete) syncFrame();
-      else img.addEventListener("load", syncFrame, { once: true });
-    });
     window.addEventListener("resize", debounce(syncFrame, 120));
 
-    carousel._newsCarousel = { startAutoplay, stopAutoplay, goTo, syncFrame };
-    goTo(0, { animate: false });
+    carousel._newsCarousel = {
+      startAutoplay() {},
+      stopAutoplay() {},
+      goTo,
+      syncFrame,
+    };
     syncFrame();
-    startAutoplay();
+    goTo(0, { animate: false });
   }
 
   function initNewsCarousels(container = document) {
