@@ -1914,6 +1914,8 @@
           requestAnimationFrame(() => {
             el.classList.add("is-open");
             qsa("[data-news-carousel]", el).forEach((carousel) => {
+              // Recalc after open layout (esp. iPad / 2-col), then autoplay.
+              carousel._newsCarousel?.syncFrame?.();
               carousel._newsCarousel?.startAutoplay?.();
             });
           });
@@ -2091,9 +2093,19 @@
         }
       });
 
-      // Use the real photo ratio. CSS max-height keeps tall shots in check
-      // while object-fit: contain shows the full image (no cropping).
-      viewport.style.aspectRatio = `${best.naturalWidth} / ${best.naturalHeight}`;
+      // Explicit pixel height is more reliable on iPad Safari than
+      // aspect-ratio + max-height (which can crop or ignore the cap).
+      const maxH = Math.min(Math.round(window.innerHeight * 0.7), 420);
+      const width = Math.max(viewport.clientWidth || 0, 1);
+      const height = Math.max(
+        160,
+        Math.min(
+          maxH,
+          Math.round(width * (best.naturalHeight / best.naturalWidth)),
+        ),
+      );
+      viewport.style.aspectRatio = "auto";
+      viewport.style.height = `${height}px`;
     };
 
     const stopProgress = () => {
@@ -2289,7 +2301,7 @@
     });
     window.addEventListener("resize", debounce(syncFrame, 120));
 
-    carousel._newsCarousel = { startAutoplay, stopAutoplay, goTo };
+    carousel._newsCarousel = { startAutoplay, stopAutoplay, goTo, syncFrame };
     goTo(0, { animate: false });
     syncFrame();
     startAutoplay();
