@@ -579,11 +579,12 @@
                     <div><h2>Maandplanning</h2></div>
                 </div>
                 <div class="document-add-box document-planning-box ${value ? "document-planning-box--active" : ""}">
+                    <input type="hidden" data-planning-title="${branch}" value="${escapeHtml(title)}">
                     <div class="document-add-fields">
-                        <input type="hidden" data-planning-title="${branch}" value="${escapeHtml(title)}">
                         ${
                           value
-                            ? `<span class="document-static-title planning-saved-title">${escapeHtml(formatPlanningLabel(title))}</span>`
+                            ? `<span class="document-static-title planning-saved-title">${escapeHtml(formatPlanningLabel(title))}</span>
+                        <button type="button" class="document-remove document-remove--planning" data-planning-remove="${branch}" aria-label="Maandplanning verwijderen">Weg</button>`
                             : `<details class="planning-month-dropdown" data-planning-month-dropdown="${branch}">
                           <summary><span data-planning-month-label="${branch}">${selectedMonthsLabel}</span></summary>
                           <div class="planning-month-options">
@@ -598,7 +599,6 @@
                           <input type="file" accept="application/pdf,.pdf" data-planning-upload="${branch}" ${title ? "" : "disabled"}>
                         </label>`
                         }
-                        ${value ? `<button type="button" class="document-remove" data-planning-remove="${branch}">Verwijderen</button>` : ""}
                     </div>
                 </div>
             </section>

@@ -885,21 +885,35 @@ html:has(body.admin-page) {
 }
 
 .planning-saved-title {
-    display: flex;
-    align-items: center;
+    display: block;
+    box-sizing: border-box;
+    min-width: 0;
     min-height: 42px;
-    padding: 0 12px;
+    padding: 10px 12px;
     border: 1px solid rgba(29, 109, 74, 0.18);
     border-radius: 10px;
     background: rgba(29, 109, 74, 0.07);
     color: #1d6d4a;
     font-weight: 800;
-    min-width: 0;
+    line-height: 1.35;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .document-planning-box--active .document-add-fields {
-    grid-template-columns: minmax(0, 320px) auto;
+    grid-template-columns: minmax(0, 1fr) auto;
     justify-content: start;
+    align-items: center;
+    gap: 8px;
+}
+
+.document-remove--planning {
+    flex: 0 0 auto;
+    align-self: center;
+    width: auto;
+    min-width: 0;
+    white-space: nowrap;
 }
 
 .document-title-field {
@@ -1072,9 +1086,28 @@ html:has(body.admin-page) {
 }
 
 @media (max-width: 640px) {
-    .document-planning-box .document-add-fields {
+    .document-planning-box:not(.document-planning-box--active) .document-add-fields {
         grid-template-columns: minmax(0, 1fr);
         gap: 10px;
+    }
+
+    .document-planning-box--active .document-add-fields {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 8px;
+        flex-direction: row;
+    }
+
+    .document-planning-box--active .planning-saved-title {
+        width: auto;
+        max-width: 100%;
+    }
+
+    .document-planning-box--active .document-remove--planning {
+        width: auto;
+        min-height: 42px;
+        padding-inline: 12px;
     }
 
     .planning-month-dropdown summary {
@@ -1095,7 +1128,7 @@ html:has(body.admin-page) {
         padding: 6px 4px;
     }
 
-    .document-planning-box .document-upload-button {
+    .document-planning-box:not(.document-planning-box--active) .document-upload-button {
         width: 100%;
     }
 }
@@ -3273,20 +3306,29 @@ html:has(body.admin-page) {
     }
 
     .admin-collapsible-item .admin-item-head {
-        flex-wrap: wrap;
-        align-items: flex-start;
+        flex-wrap: nowrap;
+        align-items: center;
         gap: 8px;
         padding: 10px 12px;
     }
 
     .admin-collapse-toggle {
-        flex: 1 1 100%;
-        width: 100%;
+        flex: 1 1 auto;
+        width: auto;
+        min-width: 0;
+    }
+
+    .admin-collapse-toggle strong {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
 
     .admin-item-actions {
-        width: 100%;
-        justify-content: space-between;
+        flex: 0 0 auto;
+        width: auto;
+        justify-content: flex-end;
+        gap: 6px;
     }
 
     .admin-action-full {
@@ -3345,15 +3387,33 @@ html:has(body.admin-page) {
 
     .document-current,
     .document-actions,
-    .document-add-fields {
+    .document-add-box:not(.document-planning-box--active) .document-add-fields {
         align-items: stretch;
         flex-direction: column;
     }
 
     .document-current .document-link,
     .document-actions > *,
-    .document-add-fields > * {
+    .document-add-box:not(.document-planning-box--active) .document-add-fields > * {
         width: 100%;
+    }
+
+    .document-planning-box--active .document-add-fields {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+        flex-direction: row;
+        gap: 8px;
+    }
+
+    .document-planning-box--active .document-add-fields > .planning-saved-title {
+        width: auto;
+        min-width: 0;
+        max-width: 100%;
+    }
+
+    .document-planning-box--active .document-add-fields > .document-remove--planning {
+        width: auto;
     }
 
     .document-list-item .admin-item-head {
