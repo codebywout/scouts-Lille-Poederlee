@@ -529,6 +529,25 @@
   function openNewsFromHash() {
     const raw = window.location.hash.replace(/^#/, "").trim();
     if (!raw) return;
+
+    // Shared article links (/nieuws#slug) must land on the page that holds the item.
+    if (
+      document.body.classList.contains("news-page") &&
+      newsArchiveItemsCache.length &&
+      typeof renderNewsArchivePage === "function"
+    ) {
+      const pageForItem = findNewsArchivePageForId(
+        newsArchiveItemsCache,
+        raw,
+      );
+      if (pageForItem && pageForItem !== newsArchiveCurrentPage) {
+        renderNewsArchivePage(pageForItem, {
+          replaceUrl: true,
+          scrollToList: false,
+        });
+      }
+    }
+
     const target =
       document.getElementById(raw) ||
       document.getElementById(decodeURIComponent(raw));
@@ -1932,8 +1951,72 @@
   }
 
   const NEWS_HOME_LIMIT = 3;
+  const NEWS_ARCHIVE_PAGE_SIZE = 6;
   const NEWS_IMAGES_MAX = 8;
   const NEWS_CAROUSEL_INTERVAL_MS = 5000;
+
+  let newsArchiveItemsCache = [];
+  let newsArchiveCurrentPage = 1;
+  let renderNewsArchivePage = null;
+
+  function getNewsArchivePageFromUrl() {
+    try {
+      const raw = Number.parseInt(
+        new URLSearchParams(window.location.search).get("page") || "1",
+        10,
+      );
+      return Number.isFinite(raw) && raw > 0 ? raw : 1;
+    } catch {
+      return 1;
+    }
+  }
+
+  function setNewsArchivePageInUrl(page, { replace = false } = {}) {
+    try {
+      const url = new URL(window.location.href);
+      if (page <= 1) url.searchParams.delete("page");
+      else url.searchParams.set("page", String(page));
+      const next = `${url.pathname}${url.search}${url.hash}`;
+      window.history[replace ? "replaceState" : "pushState"]({}, "", next);
+    } catch {
+      /* ignore URL sync failures */
+    }
+  }
+
+  function findNewsArchivePageForId(items, rawId) {
+    const id = String(rawId || "")
+      .replace(/^#/, "")
+      .trim();
+    if (!id || !Array.isArray(items) || !items.length) return null;
+    let decoded = id;
+    try {
+      decoded = decodeURIComponent(id);
+    } catch {
+      decoded = id;
+    }
+    const index = items.findIndex((item, i) => {
+      const anchor = newsItemAnchorId(item, i);
+      return anchor === id || anchor === decoded;
+    });
+    if (index < 0) return null;
+    return Math.floor(index / NEWS_ARCHIVE_PAGE_SIZE) + 1;
+  }
+
+  function buildNewsPaginationHtml(page, totalPages) {
+    if (totalPages <= 1) return "";
+    const pageButtons = Array.from({ length: totalPages }, (_, i) => {
+      const n = i + 1;
+      const current = n === page;
+      return `<button type="button" class="news-pagination-page${current ? " is-active" : ""}" data-news-page="${n}" aria-label="Pagina ${n}"${current ? ' aria-current="page"' : ""}>${n}</button>`;
+    }).join("");
+    return `
+      <nav class="news-pagination" aria-label="Nieuwsberichten pagina's">
+        <button type="button" class="news-pagination-btn" data-news-page="${page - 1}" aria-label="Vorige pagina"${page <= 1 ? " disabled" : ""}>Vorige</button>
+        <div class="news-pagination-pages">${pageButtons}</div>
+        <button type="button" class="news-pagination-btn" data-news-page="${page + 1}" aria-label="Volgende pagina"${page >= totalPages ? " disabled" : ""}>Volgende</button>
+      </nav>
+    `;
+  }
 
   function getNewsImages(item) {
     if (!item || typeof item !== "object") return [];
@@ -3131,11 +3214,33 @@
       if (newsEl) {
         const newsItems = getPublishedNewsItems(data.news);
         const isNewsArchive = document.body.classList.contains("news-page");
-        const visibleItems = isNewsArchive
-          ? newsItems
-          : newsItems.slice(0, NEWS_HOME_LIMIT);
+
+        const paintNewsItems = (items, indexOffset = 0) => {
+          newsEl.innerHTML = items
+            .map((item, index) =>
+              buildNewsItemHtml(item, indexOffset + index),
+            )
+            .join("");
+          setupNewsAccordion(newsEl);
+          initNewsCarousels(newsEl);
+          setupNewsShareLinks(newsEl);
+        };
+
+        const ensureNewsPaginationHost = () => {
+          if (!newsSection) return null;
+          let host = qs(".news-pagination-host", newsSection);
+          if (!host) {
+            host = document.createElement("div");
+            host.className = "news-pagination-host";
+            newsSection.appendChild(host);
+          }
+          return host;
+        };
 
         if (!newsItems.length) {
+          newsArchiveItemsCache = [];
+          newsArchiveCurrentPage = 1;
+          renderNewsArchivePage = null;
           if (isNewsArchive) newsSection?.removeAttribute("hidden");
           else newsSection?.setAttribute("hidden", "");
           newsEl.innerHTML = isNewsArchive
@@ -3144,18 +3249,92 @@
                     <p>Neem later zeker nog eens een kijkje!</p>
                 </div>`
             : "";
+          const emptyPager = ensureNewsPaginationHost();
+          if (emptyPager) emptyPager.innerHTML = "";
           if (newsMore) newsMore.hidden = true;
-        } else {
+        } else if (!isNewsArchive) {
+          newsArchiveItemsCache = [];
+          renderNewsArchivePage = null;
           newsSection?.removeAttribute("hidden");
-          newsEl.innerHTML = visibleItems
-            .map((item, index) => buildNewsItemHtml(item, index))
-            .join("");
-          setupNewsAccordion(newsEl);
-          initNewsCarousels(newsEl);
-          setupNewsShareLinks(newsEl);
+          paintNewsItems(newsItems.slice(0, NEWS_HOME_LIMIT), 0);
           if (newsMore) {
-            newsMore.hidden = isNewsArchive || newsItems.length <= NEWS_HOME_LIMIT;
+            newsMore.hidden = newsItems.length <= NEWS_HOME_LIMIT;
           }
+          openNewsFromHash();
+        } else {
+          newsArchiveItemsCache = newsItems;
+          const totalPages = Math.max(
+            1,
+            Math.ceil(newsItems.length / NEWS_ARCHIVE_PAGE_SIZE),
+          );
+
+          renderNewsArchivePage = (
+            requestedPage,
+            { replaceUrl = false, scrollToList = false } = {},
+          ) => {
+            const page = Math.min(
+              totalPages,
+              Math.max(1, Number(requestedPage) || 1),
+            );
+            newsArchiveCurrentPage = page;
+            setNewsArchivePageInUrl(page, { replace: replaceUrl });
+
+            const start = (page - 1) * NEWS_ARCHIVE_PAGE_SIZE;
+            paintNewsItems(
+              newsItems.slice(start, start + NEWS_ARCHIVE_PAGE_SIZE),
+              start,
+            );
+
+            const pagerHost = ensureNewsPaginationHost();
+            if (pagerHost) {
+              pagerHost.innerHTML = buildNewsPaginationHtml(page, totalPages);
+            }
+
+            if (scrollToList) {
+              newsSection?.scrollIntoView({
+                behavior: "smooth",
+                block: "start",
+              });
+            }
+          };
+
+          if (!newsSection?._newsPaginationBound) {
+            newsSection._newsPaginationBound = true;
+            newsSection.addEventListener("click", (event) => {
+              const trigger = event.target.closest("[data-news-page]");
+              if (!trigger || !newsSection.contains(trigger)) return;
+              if (trigger.hasAttribute("disabled")) return;
+              const nextPage = Number.parseInt(
+                trigger.getAttribute("data-news-page") || "",
+                10,
+              );
+              if (!Number.isFinite(nextPage) || nextPage < 1) return;
+              if (nextPage === newsArchiveCurrentPage) return;
+              event.preventDefault();
+              renderNewsArchivePage?.(nextPage, {
+                replaceUrl: false,
+                scrollToList: true,
+              });
+            });
+            window.addEventListener("popstate", () => {
+              if (!document.body.classList.contains("news-page")) return;
+              renderNewsArchivePage?.(getNewsArchivePageFromUrl(), {
+                replaceUrl: true,
+                scrollToList: false,
+              });
+              openNewsFromHash();
+            });
+          }
+
+          newsSection?.removeAttribute("hidden");
+          if (newsMore) newsMore.hidden = true;
+
+          const hashId = window.location.hash.replace(/^#/, "").trim();
+          const hashPage = hashId
+            ? findNewsArchivePageForId(newsItems, hashId)
+            : null;
+          const initialPage = hashPage || getNewsArchivePageFromUrl();
+          renderNewsArchivePage(initialPage, { replaceUrl: true });
           openNewsFromHash();
         }
       }
@@ -3508,6 +3687,7 @@
     setNewsImages,
     NEWS_IMAGES_MAX,
     NEWS_HOME_LIMIT,
+    NEWS_ARCHIVE_PAGE_SIZE,
     PLANNING_MONTHS,
     getMonthlyPlanning,
     setMonthlyPlanning,
