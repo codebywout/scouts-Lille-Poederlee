@@ -506,6 +506,7 @@
   }
 
   function newsItemAnchorId(item, index = 0) {
+    // normalizeNewsItems() keeps item.id in sync with the title slug.
     if (item && typeof item.id === "string" && item.id.trim()) {
       return item.id.trim().replace(/^#/, "");
     }
@@ -513,11 +514,16 @@
   }
 
   function newsSharePath(anchorId) {
-    return `/nieuws#${anchorId}`;
+    const id = String(anchorId || "").replace(/^#/, "").trim();
+    return id ? `/nieuws#${id}` : "/nieuws";
   }
 
   function newsShareUrl(anchorId) {
-    return `${window.location.origin}${newsSharePath(anchorId)}`;
+    try {
+      return new URL(newsSharePath(anchorId), window.location.origin).href;
+    } catch {
+      return `${window.location.origin}${newsSharePath(anchorId)}`;
+    }
   }
 
   function openNewsFromHash() {
@@ -537,33 +543,42 @@
     });
   }
 
+  function formatNewsBodyHtml(text) {
+    const raw = String(text || "").trim();
+    if (!raw) return "";
+    return raw
+      .split(/\n{2,}/)
+      .map((part) => part.trim())
+      .filter(Boolean)
+      .map(
+        (part) =>
+          `<p>${escapeHtml(part).replace(/\n/g, "<br>")}</p>`,
+      )
+      .join("");
+  }
+
   function setupNewsShareLinks(container) {
     if (!container || container._newsShareBound) return;
     container._newsShareBound = true;
     container.addEventListener("click", async (event) => {
-      const button = event.target.closest("[data-news-share]");
-      if (!button || !container.contains(button)) return;
+      const trigger = event.target.closest("[data-news-share]");
+      if (!trigger || !container.contains(trigger)) return;
       event.preventDefault();
       event.stopPropagation();
-      const id = button.getAttribute("data-news-share") || "";
+      const id = trigger.getAttribute("data-news-share") || "";
       if (!id) return;
 
       const url = newsShareUrl(id);
-      const row = button.closest(".news-share-box");
-      const label = button.querySelector(".news-share-label");
-      const idleText = "Kopieer";
+      const label = trigger.querySelector(".news-share-label") || null;
+      const idleText = "Deel bericht";
       const doneText = "Gekopieerd";
 
       const showCopied = () => {
-        button.classList.add("is-copied");
-        row?.classList.add("is-copied");
+        trigger.classList.add("is-copied");
         if (label) label.textContent = doneText;
-        else button.textContent = doneText;
         window.setTimeout(() => {
-          button.classList.remove("is-copied");
-          row?.classList.remove("is-copied");
+          trigger.classList.remove("is-copied");
           if (label) label.textContent = idleText;
-          else button.textContent = idleText;
         }, 2200);
       };
 
@@ -1577,29 +1592,26 @@
       const content = getSmoothDetailsContent(item);
       if (!summary || !content) return;
 
-      summary.addEventListener("click", (event) => {
-        event.preventDefault();
+      bindAccordionCardToggle(item, {
+        isOpen: (el) => el.classList.contains("open-anim"),
+        openItem: (el) => {
+          const closing = scrollOnOpen
+            ? collectOtherOpenAccordions(el)
+            : exclusive
+              ? items.filter(
+                  (other) =>
+                    other !== el && other.classList.contains("open-anim"),
+                )
+              : [];
 
-        if (item.classList.contains("open-anim")) {
-          closeSmoothDetailsItem(item);
-          return;
-        }
+          closeOtherOpenAccordions(el, closing);
+          openSmoothDetailsItem(el);
 
-        const closing = scrollOnOpen
-          ? collectOtherOpenAccordions(item)
-          : exclusive
-            ? items.filter(
-                (other) =>
-                  other !== item && other.classList.contains("open-anim"),
-              )
-            : [];
-
-        closeOtherOpenAccordions(item, closing);
-        openSmoothDetailsItem(item);
-
-        if (scrollOnOpen) {
-          revealOpenedAccordion(item);
-        }
+          if (scrollOnOpen) {
+            revealOpenedAccordion(el);
+          }
+        },
+        closeItem: closeSmoothDetailsItem,
       });
     });
   }
@@ -1688,6 +1700,27 @@
       ...qsa(".agenda-item.is-open"),
       ...qsa(".faq-item.open-anim"),
     ].filter((item) => item !== currentItem);
+  }
+
+  function isAccordionInteractiveTarget(target) {
+    return Boolean(
+      target?.closest?.(
+        "a[href], button, input, textarea, select, label, [data-news-share]",
+      ),
+    );
+  }
+
+  // Whole card toggles open/close (incl. padding), except real controls/links.
+  function bindAccordionCardToggle(item, { isOpen, openItem, closeItem }) {
+    item.addEventListener("click", (event) => {
+      if (isAccordionInteractiveTarget(event.target)) return;
+      event.preventDefault();
+      if (isOpen(item)) {
+        closeItem(item);
+        return;
+      }
+      openItem(item);
+    });
   }
 
   // html { scroll-behavior: smooth } would also animate compensation jumps;
@@ -1795,20 +1828,17 @@
       const summary = item.querySelector(".agenda-summary");
       if (!summary) return;
 
-      summary.addEventListener("click", (event) => {
-        event.preventDefault();
+      bindAccordionCardToggle(item, {
+        isOpen: (el) => el.classList.contains("is-open"),
+        openItem: (el) => {
+          const closing = collectOtherOpenAccordions(el);
+          closeOtherOpenAccordions(el, closing);
 
-        if (item.classList.contains("is-open")) {
-          closeAgendaItem(item);
-          return;
-        }
-
-        const closing = collectOtherOpenAccordions(item);
-        closeOtherOpenAccordions(item, closing);
-
-        item.setAttribute("open", "");
-        requestAnimationFrame(() => item.classList.add("is-open"));
-        revealOpenedAccordion(item);
+          el.setAttribute("open", "");
+          requestAnimationFrame(() => el.classList.add("is-open"));
+          revealOpenedAccordion(el);
+        },
+        closeItem: closeAgendaItem,
       });
     });
   }
@@ -1840,28 +1870,27 @@
       const summary = item.querySelector(".news-summary");
       if (!summary || !item.querySelector(".news-details")) return;
 
-      summary.addEventListener("click", (event) => {
-        event.preventDefault();
+      bindAccordionCardToggle(item, {
+        isOpen: (el) => el.classList.contains("is-open"),
+        openItem: (el) => {
+          const closing = collectOtherOpenAccordions(el);
+          closeOtherOpenAccordions(el, closing);
 
-        if (item.classList.contains("is-open")) {
-          qsa("[data-news-carousel]", item).forEach((carousel) => {
+          el.setAttribute("open", "");
+          requestAnimationFrame(() => {
+            el.classList.add("is-open");
+            qsa("[data-news-carousel]", el).forEach((carousel) => {
+              carousel._newsCarousel?.startAutoplay?.();
+            });
+          });
+          revealOpenedAccordion(el);
+        },
+        closeItem: (el) => {
+          qsa("[data-news-carousel]", el).forEach((carousel) => {
             carousel._newsCarousel?.stopAutoplay?.();
           });
-          closeNewsItem(item);
-          return;
-        }
-
-        const closing = collectOtherOpenAccordions(item);
-        closeOtherOpenAccordions(item, closing);
-
-        item.setAttribute("open", "");
-        requestAnimationFrame(() => {
-          item.classList.add("is-open");
-          qsa("[data-news-carousel]", item).forEach((carousel) => {
-            carousel._newsCarousel?.startAutoplay?.();
-          });
-        });
-        revealOpenedAccordion(item);
+          closeNewsItem(el);
+        },
       });
     });
   }
@@ -1907,12 +1936,12 @@
       }
       setNewsImages(item, getNewsImages(item));
 
-      let id =
-        typeof item.id === "string" ? item.id.trim().replace(/^#/, "") : "";
-      if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/i.test(id)) {
-        id = slugifyNewsTitle(item.title, index);
+      // Always derive the public anchor from the current title so share links
+      // stay meaningful after the default "Nieuw bericht" placeholder.
+      let id = slugifyNewsTitle(item.title, index).toLowerCase();
+      if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(id)) {
+        id = `bericht-${index + 1}`;
       }
-      id = id.toLowerCase();
       let unique = id;
       let suffix = 2;
       while (usedIds.has(unique)) {
@@ -2236,6 +2265,8 @@
   function buildNewsItemHtml(item, index = 0) {
     const images = getNewsImages(item);
     const date = typeof item.date === "string" ? item.date.trim() : "";
+    const category =
+      typeof item.category === "string" ? item.category.trim() : "";
     const title = typeof item.title === "string" ? item.title.trim() : "";
     const summary =
       typeof item.summary === "string" ? item.summary.trim() : "";
@@ -2250,23 +2281,35 @@
     const anchorId = newsItemAnchorId(item, index);
     const hasDetails = Boolean(text || images.length || (link && linkText));
     const teaser = summary || (!hasDetails && text ? text : "");
-    const sharePath = newsSharePath(anchorId);
+    const shareUrl = newsShareUrl(anchorId);
+    const metaParts = [];
+    if (date) {
+      metaParts.push(
+        `<span class="news-meta-date">${escapeHtml(date)}</span>`,
+      );
+    }
+    if (category) {
+      metaParts.push(
+        `<span class="news-meta-category">${escapeHtml(category)}</span>`,
+      );
+    }
+    const metaHtml = metaParts.length
+      ? `<p class="news-meta">${metaParts.join('<span class="news-meta-sep" aria-hidden="true">·</span>')}</p>`
+      : "";
+    const bodyHtml = formatNewsBodyHtml(text);
     const shareHtml = `
                       <div class="news-share-row">
-                        <p class="news-share-caption">Deel dit bericht</p>
-                        <div class="news-share-box">
-                          <code class="news-share-url" title="${escapeHtml(sharePath)}">${escapeHtml(sharePath)}</code>
-                          <button type="button" class="news-share" data-news-share="${escapeHtml(anchorId)}" aria-label="Kopieer deelbare link ${escapeHtml(sharePath)}">
-                            <span class="news-share-label">Kopieer</span>
-                          </button>
-                        </div>
+                        <button type="button" class="news-share" data-news-share="${escapeHtml(anchorId)}" title="${escapeHtml(shareUrl)}" aria-label="Deel bericht: ${escapeHtml(shareUrl)}">
+                          <span class="icon-share" aria-hidden="true"></span>
+                          <span class="news-share-label">Deel bericht</span>
+                        </button>
                       </div>`;
     const detailsHtml = hasDetails
       ? `
                   <div class="news-details">
                     <div class="news-details-inner">
                       <div class="news-details-copy">
-                        ${text ? `<p>${escapeHtml(text)}</p>` : ""}
+                        ${bodyHtml}
                         ${
                           link && linkText
                             ? `<a class="news-link" href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer">${escapeHtml(linkText)} <span class="icon-arrow-external" aria-hidden="true"></span></a>`
@@ -2289,7 +2332,7 @@
                   <summary class="news-summary">
                     ${thumb}
                     <div class="news-copy">
-                      ${date ? `<span class="news-date">${escapeHtml(date)}</span>` : ""}
+                      ${metaHtml}
                       <h3>${escapeHtml(title || "Nieuws")}</h3>
                       ${teaser ? `<p class="news-teaser">${escapeHtml(teaser)}</p>` : ""}
                     </div>
@@ -3086,6 +3129,7 @@
                 const thumb = image
                   ? `<span class="agenda-thumb" aria-hidden="true">${thumbImageHtml(image)}</span>`
                   : "";
+                const bodyHtml = formatNewsBodyHtml(item.text);
                 return `
                 <details class="agenda-item ${image ? "has-agenda-image" : ""}">
                   <summary class="agenda-summary">
@@ -3097,16 +3141,18 @@
                   </summary>
                   <div class="agenda-details">
                     <div class="agenda-details-inner">
-                      <p>${escapeHtml(item.text)}</p>
-                      ${link && linkText ? `<a class="agenda-link" href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer">${escapeHtml(linkText)} <span class="icon-arrow-external" aria-hidden="true"></span></a>` : ""}
+                      <div class="agenda-details-copy">
+                        ${bodyHtml}
+                        ${link && linkText ? `<a class="agenda-link" href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer">${escapeHtml(linkText)} <span class="icon-arrow-external" aria-hidden="true"></span></a>` : ""}
+                      </div>
                       ${
                         image
-                          ? responsivePictureHtml(image, {
+                          ? `<figure class="agenda-media">${responsivePictureHtml(image, {
                               alt: item.title || "",
                               sizes: "(max-width: 700px) 90vw, 360px",
                               widths: RESPONSIVE_WIDTHS.card,
                               loading: "lazy",
-                            })
+                            })}</figure>`
                           : ""
                       }
                     </div>

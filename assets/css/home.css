@@ -358,13 +358,14 @@ body.home-page .hero {
 
 .agenda-item {
     display: block;
-    padding: 14px 16px;
+    padding: 12px 14px;
     border: 1px solid rgba(78, 43, 26, 0.08);
     border-radius: 18px;
     background: rgba(255, 255, 255, 0.42);
     position: relative;
     overflow-anchor: none;
     scroll-margin-top: 24px;
+    cursor: pointer;
     transition:
         background 0.2s ease,
         border-color 0.2s ease,
@@ -376,15 +377,15 @@ body.home-page .hero {
     z-index: 1;
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
-    gap: 14px 16px;
+    gap: 12px 14px;
     align-items: center;
     cursor: pointer;
     list-style: none;
-    padding-right: 34px;
+    padding-right: 28px;
 }
 
 .agenda-summary:has(.agenda-thumb) {
-    grid-template-columns: auto minmax(0, 1fr) 84px;
+    grid-template-columns: auto minmax(0, 1fr) 96px;
 }
 
 .agenda-summary::-webkit-details-marker {
@@ -399,24 +400,36 @@ body.home-page .hero {
     z-index: 2;
     display: grid;
     place-items: center;
-    width: 1.15em;
-    height: 1.15em;
-    color: var(--scout-orange);
+    width: 1em;
+    height: 1em;
+    color: rgba(78, 43, 26, 0.38);
     font-family: "Montserrat", sans-serif;
-    font-size: 22px;
-    font-weight: 700;
+    font-size: 18px;
+    font-weight: 600;
     line-height: 1;
     transform: translateY(-50%);
-    transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition:
+        transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1),
+        color 0.2s ease;
     pointer-events: none;
+}
+
+.agenda-item:hover .agenda-summary::after,
+.agenda-item.is-open .agenda-summary::after {
+    color: rgba(211, 138, 45, 0.72);
 }
 
 .agenda-item.is-open .agenda-summary::after {
     transform: translateY(-50%) rotate(45deg);
 }
 
-.agenda-item:hover,
-.agenda-item:focus-within {
+.agenda-item:hover {
+    background: rgba(255, 255, 255, 0.72);
+    border-color: rgba(211, 138, 45, 0.28);
+    box-shadow: 0 8px 22px rgba(28, 18, 12, 0.05);
+}
+
+.agenda-item.is-open {
     background: rgba(255, 255, 255, 0.72);
     border-color: rgba(211, 138, 45, 0.28);
     box-shadow: 0 8px 22px rgba(28, 18, 12, 0.05);
@@ -428,10 +441,10 @@ body.home-page .hero {
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    width: 88px;
-    height: 88px;
+    width: 76px;
+    height: 76px;
     aspect-ratio: 1;
-    padding: 10px 8px;
+    padding: 8px 6px;
     background: #fff;
     border: 1px solid rgba(78, 43, 26, 0.1);
     border-radius: 14px;
@@ -439,15 +452,15 @@ body.home-page .hero {
 }
 
 .agenda-date.is-range {
-    width: 108px;
-    min-width: 108px;
-    max-width: 108px;
-    height: 88px;
-    min-height: 88px;
-    max-height: 88px;
+    width: 96px;
+    min-width: 96px;
+    max-width: 96px;
+    height: 76px;
+    min-height: 76px;
+    max-height: 76px;
     aspect-ratio: auto;
-    padding: 8px 8px;
-    gap: 5px;
+    padding: 7px 6px;
+    gap: 4px;
 }
 
 .agenda-date-range {
@@ -492,22 +505,23 @@ body.home-page .hero {
 .agenda-date strong {
     display: block;
     font-family: "Montserrat", sans-serif;
-    font-size: 26px;
+    font-size: 24px;
+    font-weight: 800;
     line-height: 0.9;
     color: var(--scout-brown);
 }
 
 .agenda-date.is-range strong {
-    font-size: 22px;
+    font-size: 20px;
     line-height: 1;
 }
 
 .agenda-date > span,
 .agenda-date-side > span {
-    margin-top: 6px;
-    font-size: 11px;
+    margin-top: 5px;
+    font-size: 10px;
     font-weight: 800;
-    letter-spacing: 1.5px;
+    letter-spacing: 1.2px;
     color: var(--scout-orange);
     text-transform: uppercase;
 }
@@ -537,8 +551,10 @@ body.home-page .hero {
 .agenda-body h3 {
     margin: 0;
     font-family: "Montserrat", sans-serif;
-    font-size: clamp(18px, 1.8vw, 24px);
-    line-height: 1.2;
+    font-size: clamp(19px, 2vw, 26px);
+    font-weight: 800;
+    line-height: 1.18;
+    letter-spacing: -0.01em;
     color: var(--scout-brown);
     overflow-wrap: anywhere;
     word-break: break-word;
@@ -547,8 +563,8 @@ body.home-page .hero {
 .agenda-thumb {
     display: block;
     overflow: hidden;
-    width: 84px;
-    aspect-ratio: 1;
+    width: 96px;
+    aspect-ratio: 4 / 3;
     border-radius: 14px;
     background: rgba(78, 43, 26, 0.06);
     border: 1px solid rgba(78, 43, 26, 0.08);
@@ -566,7 +582,7 @@ body.home-page .hero {
     display: block;
     width: 100%;
     height: 100%;
-    object-fit: contain;
+    object-fit: cover;
     object-position: center;
     background: rgba(78, 43, 26, 0.04);
 }
@@ -609,15 +625,26 @@ body.home-page .hero {
 }
 
 .agenda-item.is-open .agenda-details-inner {
-    padding-top: 14px;
+    padding-top: 12px;
 }
 
-.agenda-details-inner p {
+.agenda-details-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-width: 0;
+}
+
+.agenda-details-inner p,
+.agenda-details-copy > p {
     margin: 0;
     max-width: 62ch;
     font-size: 15px;
-    line-height: 1.65;
-    white-space: pre-line;
+    line-height: 1.7;
+}
+
+.agenda-details-copy > p + p {
+    margin-top: 2px;
 }
 
 .agenda-details-inner .agenda-link {
@@ -626,8 +653,13 @@ body.home-page .hero {
     gap: 8px;
     width: fit-content;
     color: var(--scout-orange);
-    font-size: 13px;
-    font-weight: 800;
+    font-size: 14px;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.agenda-details-inner .agenda-link:hover,
+.agenda-details-inner .agenda-link:focus-visible {
     text-decoration: underline;
     text-underline-offset: 3px;
 }
@@ -640,51 +672,53 @@ body.home-page .hero {
     line-height: 1.6;
 }
 
-.agenda-details-inner .responsive-full-link,
-.agenda-details-inner picture {
-    display: block;
-    width: min(100%, 360px);
-    max-width: 100%;
-    height: auto;
+.agenda-media {
+    margin: 0;
+    overflow: hidden;
+    width: 100%;
+    max-width: 420px;
+    aspect-ratio: 4 / 3;
+    border-radius: 16px;
+    border: 1px solid rgba(78, 43, 26, 0.1);
+    background: #1a1410;
+    box-shadow: 0 8px 22px rgba(28, 18, 12, 0.07);
     justify-self: start;
 }
 
+.agenda-media > picture,
+.agenda-media > img,
+.agenda-details-inner .responsive-full-link,
+.agenda-details-inner > picture {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.agenda-media img,
 .agenda-details-inner img,
 .agenda-details-inner picture img {
     display: block;
     width: 100%;
-    max-width: 360px;
-    height: auto;
-    max-height: none;
-    object-fit: contain;
+    height: 100%;
+    object-fit: cover;
     object-position: center;
     background: rgba(78, 43, 26, 0.04);
-    border-radius: 14px;
-    border: 1px solid rgba(78, 43, 26, 0.08);
 }
 
 .agenda-item.has-agenda-image.is-open .agenda-details-inner {
-    grid-template-columns: minmax(0, 1fr) minmax(160px, 360px);
+    grid-template-columns: minmax(0, 1.05fr) minmax(180px, 0.95fr);
     align-items: start;
+    gap: 16px;
 }
 
+.agenda-item.has-agenda-image.is-open .agenda-details-inner .agenda-media,
 .agenda-item.has-agenda-image.is-open .agenda-details-inner .responsive-full-link,
-.agenda-item.has-agenda-image.is-open .agenda-details-inner picture {
+.agenda-item.has-agenda-image.is-open .agenda-details-inner > picture {
     grid-column: 2;
     grid-row: 1 / span 3;
     width: 100%;
-    justify-self: stretch;
-}
-
-.agenda-item.has-agenda-image.is-open .agenda-details-inner img,
-.agenda-item.has-agenda-image.is-open .agenda-details-inner picture img {
-    grid-column: unset;
-    grid-row: unset;
-    width: 100%;
     max-width: none;
-    height: auto;
-    max-height: none;
-    object-fit: contain;
+    justify-self: stretch;
 }
 
 .practical {
@@ -775,14 +809,22 @@ body.home-page .hero {
     flex-shrink: 0;
     display: grid;
     place-items: center;
-    width: 1.15em;
-    height: 1.15em;
-    color: var(--scout-brown);
+    width: 1em;
+    height: 1em;
+    color: rgba(78, 43, 26, 0.38);
     font-family: "Montserrat", sans-serif;
-    font-size: 22px;
-    font-weight: 700;
+    font-size: 18px;
+    font-weight: 600;
     line-height: 1;
-    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition:
+        transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+        color 0.2s ease;
+}
+
+.faq-item summary:hover::after,
+.faq-item.open-anim summary::after,
+.faq-item[open] summary::after {
+    color: rgba(211, 138, 45, 0.72);
 }
 
 .faq-item.open-anim summary::after {
@@ -1103,12 +1145,16 @@ body.home-page .hero {
 
     .agenda-summary {
         grid-template-columns: auto minmax(0, 1fr);
-        gap: 12px;
-        padding-right: 28px;
+        gap: 10px 12px;
+        padding-right: 24px;
+    }
+
+    .agenda-summary::after {
+        font-size: 16px;
     }
 
     .agenda-summary:has(.agenda-thumb) {
-        grid-template-columns: auto minmax(0, 1fr) 56px;
+        grid-template-columns: auto minmax(0, 1fr) 72px;
     }
 
     .agenda-date {
@@ -1165,21 +1211,25 @@ body.home-page .hero {
 
     .agenda-body h3,
     .news-copy h3 {
-        font-size: clamp(16px, 4.4vw, 19px);
-        line-height: 1.28;
+        font-size: clamp(17px, 4.6vw, 21px);
+        line-height: 1.25;
         overflow-wrap: break-word;
         word-break: normal;
         hyphens: manual;
     }
 
-    .agenda-thumb,
+    .agenda-thumb {
+        width: 72px;
+        border-radius: 12px;
+    }
+
     .news-thumb {
-        width: 56px;
+        width: 72px;
         border-radius: 12px;
     }
 
     .news-summary:has(.news-thumb) {
-        grid-template-columns: 56px minmax(0, 1fr);
+        grid-template-columns: 72px minmax(0, 1fr);
     }
 
     .news-teaser {
@@ -1199,25 +1249,19 @@ body.home-page .hero {
         gap: 12px;
     }
 
+    .agenda-item.has-agenda-image.is-open .agenda-details-inner .agenda-media,
     .agenda-item.has-agenda-image.is-open .agenda-details-inner .responsive-full-link,
-    .agenda-item.has-agenda-image.is-open .agenda-details-inner picture {
-        grid-column: auto;
-        grid-row: auto;
-        order: -1;
-        width: min(100%, 360px);
-        justify-self: start;
-    }
-
-    .agenda-item.has-agenda-image.is-open .agenda-details-inner img,
-    .agenda-item.has-agenda-image.is-open .agenda-details-inner picture img {
+    .agenda-item.has-agenda-image.is-open .agenda-details-inner > picture {
         grid-column: auto;
         grid-row: auto;
         order: -1;
         width: 100%;
-        max-width: 360px;
-        max-height: none;
-        height: auto;
-        object-fit: contain;
+        max-width: none;
+        justify-self: stretch;
+    }
+
+    .agenda-item.has-agenda-image.is-open .agenda-details-inner .agenda-details-copy {
+        order: 1;
     }
 
     .news-item.has-news-image.is-open .news-details-inner .news-media {
@@ -1251,6 +1295,10 @@ body.home-page .hero {
         width: 100%;
         max-width: none;
         border-radius: 14px;
+    }
+
+    .news-media:not(.news-carousel) {
+        aspect-ratio: 4 / 3;
     }
 
 
@@ -2340,7 +2388,7 @@ html {
 
 .news-item {
     display: block;
-    padding: 14px 16px;
+    padding: 12px 14px;
     border: 1px solid rgba(78, 43, 26, 0.08);
     border-radius: 18px;
     background: rgba(255, 255, 255, 0.42);
@@ -2353,8 +2401,18 @@ html {
         box-shadow 0.2s ease;
 }
 
-.news-item:not(.is-static):hover,
-.news-item:not(.is-static):focus-within {
+.news-item:not(.is-static) {
+    cursor: pointer;
+}
+
+.news-item:not(.is-static):hover {
+    background: rgba(255, 255, 255, 0.72);
+    border-color: rgba(211, 138, 45, 0.28);
+    box-shadow: 0 8px 22px rgba(28, 18, 12, 0.05);
+}
+
+/* Elevated look only while open — not via :focus-within, which stuck after close. */
+.news-item.is-open {
     background: rgba(255, 255, 255, 0.72);
     border-color: rgba(211, 138, 45, 0.28);
     box-shadow: 0 8px 22px rgba(28, 18, 12, 0.05);
@@ -2365,15 +2423,15 @@ html {
     z-index: 1;
     display: grid;
     grid-template-columns: minmax(0, 1fr);
-    gap: 12px 16px;
+    gap: 10px 14px;
     align-items: center;
     cursor: pointer;
     list-style: none;
-    padding-right: 34px;
+    padding-right: 28px;
 }
 
 .news-summary:has(.news-thumb) {
-    grid-template-columns: 84px minmax(0, 1fr);
+    grid-template-columns: 96px minmax(0, 1fr);
 }
 
 .news-item.is-static .news-summary {
@@ -2393,16 +2451,23 @@ html {
     z-index: 2;
     display: grid;
     place-items: center;
-    width: 1.15em;
-    height: 1.15em;
-    color: var(--scout-orange);
+    width: 1em;
+    height: 1em;
+    color: rgba(78, 43, 26, 0.38);
     font-family: "Montserrat", sans-serif;
-    font-size: 22px;
-    font-weight: 700;
+    font-size: 18px;
+    font-weight: 600;
     line-height: 1;
     transform: translateY(-50%);
-    transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition:
+        transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1),
+        color 0.2s ease;
     pointer-events: none;
+}
+
+.news-item:not(.is-static):hover .news-summary::after,
+.news-item.is-open .news-summary::after {
+    color: rgba(211, 138, 45, 0.72);
 }
 
 .news-item.is-static .news-summary::after {
@@ -2411,13 +2476,14 @@ html {
 
 .news-item.is-open .news-summary::after {
     transform: translateY(-50%) rotate(45deg);
+    color: rgba(78, 43, 26, 0.42);
 }
 
 .news-thumb {
     display: block;
     overflow: hidden;
-    width: 84px;
-    aspect-ratio: 1;
+    width: 96px;
+    aspect-ratio: 4 / 3;
     border-radius: 14px;
     background: rgba(78, 43, 26, 0.06);
     border: 1px solid rgba(78, 43, 26, 0.08);
@@ -2438,23 +2504,47 @@ html {
 
 .news-copy {
     display: grid;
-    gap: 6px;
+    gap: 5px;
     min-width: 0;
 }
 
-.news-date {
-    color: var(--scout-orange);
+.news-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    color: rgba(78, 43, 26, 0.55);
     font-size: 11px;
-    font-weight: 800;
-    letter-spacing: 1.4px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
+    line-height: 1.3;
+}
+
+.news-meta-date {
+    color: var(--scout-orange);
+    font-weight: 800;
+    letter-spacing: 1.2px;
+}
+
+.news-meta-category {
+    color: rgba(78, 43, 26, 0.52);
+    font-weight: 700;
+}
+
+.news-meta-sep {
+    color: rgba(78, 43, 26, 0.28);
+    font-weight: 700;
 }
 
 .news-copy h3 {
     margin: 0;
     font-family: "Montserrat", sans-serif;
-    font-size: clamp(18px, 1.8vw, 24px);
-    line-height: 1.2;
+    font-size: clamp(19px, 2vw, 26px);
+    font-weight: 800;
+    line-height: 1.18;
+    letter-spacing: -0.01em;
     color: var(--scout-brown);
 }
 
@@ -2479,13 +2569,13 @@ html {
     .news-summary {
         align-items: start;
         gap: 10px 12px;
-        padding-right: 28px;
+        padding-right: 24px;
     }
 
     .news-summary::after {
-        top: 0.35em;
+        top: 0.2em;
         transform: none;
-        font-size: 20px;
+        font-size: 16px;
     }
 
     .news-item.is-open .news-summary::after {
@@ -2493,21 +2583,30 @@ html {
     }
 
     .news-summary:has(.news-thumb) {
-        grid-template-columns: 56px minmax(0, 1fr);
+        grid-template-columns: 72px minmax(0, 1fr);
+    }
+
+    .news-thumb {
+        width: 72px;
+        border-radius: 12px;
     }
 
     .news-copy {
+        gap: 4px;
+    }
+
+    .news-meta {
+        font-size: 10px;
         gap: 5px;
     }
 
-    .news-date {
-        font-size: 10px;
-        letter-spacing: 1.1px;
+    .news-meta-date {
+        letter-spacing: 1px;
     }
 
     .news-copy h3 {
-        font-size: clamp(17px, 4.6vw, 20px);
-        line-height: 1.3;
+        font-size: clamp(18px, 4.8vw, 21px);
+        line-height: 1.25;
         overflow-wrap: break-word;
         word-break: normal;
     }
@@ -2521,7 +2620,7 @@ html {
     }
 
     .news-item.is-open .news-details-inner {
-        padding-top: 12px;
+        padding-top: 10px;
         gap: 12px;
     }
 
@@ -2529,12 +2628,15 @@ html {
     .news-details-copy > p {
         max-width: none;
         font-size: 15px;
-        line-height: 1.6;
+        line-height: 1.65;
+    }
+
+    .news-details-copy {
+        gap: 12px;
     }
 
     .news-share-row {
-        flex-wrap: wrap;
-        gap: 8px;
+        margin-top: 2px;
     }
 }
 
@@ -2551,16 +2653,16 @@ html {
     }
 
     .news-summary {
-        padding-right: 26px;
+        padding-right: 22px;
     }
 
     .news-item {
-        padding: 14px 14px 13px;
+        padding: 12px 12px 11px;
     }
 
     .news-copy h3 {
-        font-size: 17px;
-        line-height: 1.32;
+        font-size: 18px;
+        line-height: 1.28;
     }
 
     .news-teaser {
@@ -2593,7 +2695,7 @@ html {
     min-height: 0;
     overflow: hidden;
     display: grid;
-    gap: 14px;
+    gap: 12px;
     padding-top: 0;
 }
 
@@ -2605,13 +2707,13 @@ html {
 }
 
 .news-item.has-news-image.is-open .news-details-inner {
-    grid-template-columns: minmax(0, 1.2fr) minmax(180px, 0.8fr);
-    align-items: stretch;
+    grid-template-columns: minmax(0, 1.05fr) minmax(200px, 0.95fr);
+    align-items: start;
+    gap: 16px;
 }
 
 .news-item.has-news-image.is-open .news-details-inner .news-details-copy {
     grid-column: 1;
-    min-height: 100%;
 }
 
 .news-item.has-news-image.is-open .news-details-inner .news-media {
@@ -2622,7 +2724,7 @@ html {
 }
 
 .news-item.has-news-image.is-open .news-details-copy .news-share-row {
-    margin-top: auto;
+    margin-top: 2px;
 }
 
 /* Stack open news copy + media on phones; must follow desktop 2-col rules above. */
@@ -2650,14 +2752,14 @@ html {
     }
 
     .news-item.has-news-image.is-open .news-details-copy .news-share-row {
-        margin-top: 4px;
+        margin-top: 0;
     }
 
     .news-details-inner p,
     .news-details-copy > p {
         max-width: none;
         font-size: 15px;
-        line-height: 1.6;
+        line-height: 1.65;
     }
 }
 
@@ -2667,7 +2769,7 @@ html {
 }
 
 .news-item.is-open .news-details-inner {
-    padding-top: 14px;
+    padding-top: 12px;
 }
 
 .news-details-inner p,
@@ -2676,8 +2778,11 @@ html {
     max-width: 62ch;
     color: var(--gray);
     font-size: 15px;
-    line-height: 1.65;
-    white-space: pre-line;
+    line-height: 1.7;
+}
+
+.news-details-copy > p + p {
+    margin-top: 2px;
 }
 
 .news-link {
@@ -2703,64 +2808,21 @@ html {
 }
 
 .news-share-row {
-    display: grid;
-    gap: 8px;
-    margin-top: 2px;
-    max-width: min(100%, 640px);
-}
-
-.news-share-caption {
-    margin: 0;
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: 0.02em;
-    text-transform: uppercase;
-    color: rgba(78, 43, 26, 0.55);
-}
-
-.news-share-box {
     display: flex;
-    align-items: stretch;
-    min-width: 0;
-    border: 1px solid rgba(78, 43, 26, 0.14);
-    border-radius: 12px;
-    background: rgba(255, 252, 247, 0.95);
-    overflow: hidden;
-    transition:
-        border-color 0.2s ease,
-        background 0.2s ease;
-}
-
-.news-share-box.is-copied {
-    border-color: rgba(46, 125, 50, 0.4);
-    background: rgba(46, 125, 50, 0.08);
-}
-
-.news-share-url {
-    flex: 1 1 auto;
-    min-width: 0;
-    margin: 0;
-    padding: 10px 12px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    font-size: 12.5px;
-    font-weight: 600;
-    color: var(--scout-brown, #4e2b1a);
-    line-height: 1.35;
+    align-items: center;
+    margin-top: 2px;
 }
 
 .news-share {
-    flex: 0 0 auto;
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    gap: 8px;
     margin: 0;
-    padding: 0 14px;
-    border: 0;
-    border-left: 1px solid rgba(78, 43, 26, 0.12);
-    background: rgba(211, 138, 45, 0.12);
+    padding: 8px 14px;
+    border: 1px solid rgba(78, 43, 26, 0.12);
+    border-radius: 999px;
+    background: rgba(255, 252, 247, 0.92);
     color: var(--scout-brown, #4e2b1a);
     font: inherit;
     font-size: 13px;
@@ -2769,17 +2831,25 @@ html {
     cursor: pointer;
     transition:
         background 0.2s ease,
+        border-color 0.2s ease,
         color 0.2s ease;
+}
+
+.news-share .icon-share {
+    font-size: 14px !important;
 }
 
 .news-share:hover,
 .news-share:focus-visible {
-    background: rgba(211, 138, 45, 0.22);
+    background: rgba(211, 138, 45, 0.14);
+    border-color: rgba(211, 138, 45, 0.35);
     color: var(--scout-orange);
+    outline: none;
 }
 
 .news-share.is-copied {
-    background: rgba(46, 125, 50, 0.16);
+    background: rgba(46, 125, 50, 0.12);
+    border-color: rgba(46, 125, 50, 0.35);
     color: #2e7d32;
 }
 
@@ -2790,19 +2860,30 @@ html {
 .news-media {
     margin: 0;
     overflow: hidden;
-    width: min(100%, 640px);
+    width: 100%;
+    max-width: 520px;
     border: 1px solid rgba(78, 43, 26, 0.1);
-    border-radius: 18px;
+    border-radius: 16px;
     background: #1a1410;
-    box-shadow: 0 10px 28px rgba(28, 18, 12, 0.08);
+    box-shadow: 0 8px 22px rgba(28, 18, 12, 0.07);
+}
+
+.news-media:not(.news-carousel) {
+    aspect-ratio: 4 / 3;
+}
+
+.news-media:not(.news-carousel) > picture,
+.news-media:not(.news-carousel) > img {
+    display: block;
+    width: 100%;
+    height: 100%;
 }
 
 .news-media img {
     display: block;
     width: 100%;
-    height: auto;
-    max-height: none;
-    object-fit: contain;
+    height: 100%;
+    object-fit: cover;
     object-position: center;
     user-select: none;
     -webkit-user-drag: none;
@@ -2858,7 +2939,7 @@ html {
     height: 100%;
     max-width: 100%;
     max-height: 100%;
-    object-fit: contain;
+    object-fit: cover;
     object-position: center;
     pointer-events: none;
 }

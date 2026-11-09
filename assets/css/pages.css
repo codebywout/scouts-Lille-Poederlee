@@ -1641,8 +1641,11 @@ body.privacy-page {
     border-color: rgba(78, 43, 26, 0.1);
 }
 
-.news-page .news-archive .news-item:not(.is-static):hover,
-.news-page .news-archive .news-item:not(.is-static):focus-within {
+.news-page .news-archive .news-item:not(.is-static):hover {
+    background: rgba(255, 255, 255, 0.82);
+}
+
+.news-page .news-archive .news-item.is-open {
     background: rgba(255, 255, 255, 0.82);
 }
 
