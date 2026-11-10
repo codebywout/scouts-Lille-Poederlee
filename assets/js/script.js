@@ -131,7 +131,7 @@
       });
   }
 
-  const IMAGE_ASSET_VERSION = "20261110-assets-sync";
+  const IMAGE_ASSET_VERSION = "20261110-expand-guard";
 
   function formatLidgeldLabel(amount) {
     const amountNumber = Number(String(amount || "").replace(",", ".").replace(/[^\d.]/g, ""));
@@ -2547,26 +2547,102 @@
     return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   }
 
-  // Tak + nieuws: hide expand when the on-page frame is already near lightbox size.
+  // Tak + nieuws (+ about): only show expand when lightbox would clearly enlarge.
   const PHOTO_EXPAND_SIZE_CHECK_HOSTS =
     ".branch-photo, .about-hero, .news-media--single, .news-carousel-slide";
+  const PHOTO_EXPAND_MIN_GAIN = 1.18;
 
-  function isPhotoExpandHostLarge(host) {
-    if (!host?.matches?.(PHOTO_EXPAND_SIZE_CHECK_HOSTS)) return false;
+  function photoExpandNeedsSizeCheck(host) {
+    return Boolean(host?.matches?.(PHOTO_EXPAND_SIZE_CHECK_HOSTS));
+  }
+
+  /** Whether expand is useful; not ready → treat as hide (never flash a dead control). */
+  function getPhotoExpandMetrics(host) {
+    if (!photoExpandNeedsSizeCheck(host)) {
+      return { applies: false, ready: true, useful: true };
+    }
     const img = host.querySelector("img");
-    if (!img || img.hasAttribute("hidden")) return false;
-    const rect = img.getBoundingClientRect();
-    if (rect.width < 2 || rect.height < 2) return false;
+    if (!img || img.hasAttribute("hidden")) {
+      return { applies: true, ready: true, useful: false };
+    }
+    const fromRect = getPhotoContentRect(img);
+    if (fromRect.width < 2 || fromRect.height < 2) {
+      return { applies: true, ready: false, useful: false };
+    }
+    const fullSrc = img.getAttribute("data-full-src") || "";
+    const hasNatural =
+      (img.complete && img.naturalWidth > 0 && img.naturalHeight > 0) ||
+      Boolean(readCachedNaturalSize(fullSrc));
+    if (!hasNatural) {
+      return { applies: true, ready: false, useful: false };
+    }
+
     const margin = 32;
     const maxW = Math.max(120, window.innerWidth - margin);
     const maxH = Math.max(
       120,
       (window.visualViewport?.height || window.innerHeight) - margin,
     );
-    return (
-      rect.width >= maxW * 0.82 ||
-      (rect.width >= maxW * 0.72 && rect.height >= maxH * 0.48)
+    const natural = resolveLightboxNaturalSize(img);
+    const nw = Math.max(1, natural.width);
+    const nh = Math.max(1, natural.height);
+    // True contain size — no force-fill — so gain matches what the user would notice.
+    const scale = Math.min(maxW / nw, maxH / nh, 1);
+    const containW = nw * scale;
+    const containH = nh * scale;
+    const gain = Math.min(
+      containW / Math.max(1, fromRect.width),
+      containH / Math.max(1, fromRect.height),
     );
+    const nearlyFullBleed =
+      fromRect.width >= maxW * 0.88 ||
+      (fromRect.width >= maxW * 0.78 && fromRect.height >= maxH * 0.55);
+
+    return {
+      applies: true,
+      ready: true,
+      useful: gain >= PHOTO_EXPAND_MIN_GAIN && !nearlyFullBleed,
+      gain,
+    };
+  }
+
+  function shouldHidePhotoExpand(host) {
+    const metrics = getPhotoExpandMetrics(host);
+    if (!metrics.applies) return false;
+    return !metrics.useful;
+  }
+
+  function applyPhotoExpandVisibility(host, hide) {
+    const button = host.querySelector(":scope > .photo-expand");
+    if (!button) return;
+    host.classList.toggle("is-photo-expand-hidden", hide);
+    button.hidden = hide;
+    button.tabIndex = hide ? -1 : 0;
+    button.setAttribute("aria-hidden", hide ? "true" : "false");
+  }
+
+  function bindPhotoExpandImageWatch(host) {
+    const img = host.querySelector("img");
+    if (!img || img.dataset.photoExpandBound === "1") return;
+    img.dataset.photoExpandBound = "1";
+    const sync = () => syncPhotoExpandAvailability(host);
+    if (!img.complete || img.naturalWidth < 1) {
+      img.addEventListener("load", sync, { once: true });
+    }
+    img.addEventListener("error", sync, { once: true });
+  }
+
+  function watchPhotoExpandHost(host) {
+    if (!photoExpandNeedsSizeCheck(host)) return;
+    bindPhotoExpandImageWatch(host);
+    if (host.dataset.photoExpandRo === "1") return;
+    host.dataset.photoExpandRo = "1";
+    if (typeof ResizeObserver === "function") {
+      const ro = new ResizeObserver(
+        debounce(() => syncPhotoExpandAvailability(host), 80),
+      );
+      ro.observe(host);
+    }
   }
 
   function syncPhotoExpandAvailability(root = document) {
@@ -2574,13 +2650,9 @@
       ? [root]
       : qsa(PHOTO_EXPAND_HOSTS, root);
     hosts.forEach((host) => {
-      const button = host.querySelector(":scope > .photo-expand");
-      if (!button) return;
-      const hide = isPhotoExpandHostLarge(host);
-      host.classList.toggle("is-photo-expand-hidden", hide);
-      button.hidden = hide;
-      button.tabIndex = hide ? -1 : 0;
-      button.setAttribute("aria-hidden", hide ? "true" : "false");
+      if (!host.querySelector(":scope > .photo-expand")) return;
+      bindPhotoExpandImageWatch(host);
+      applyPhotoExpandVisibility(host, shouldHidePhotoExpand(host));
     });
   }
 
@@ -2588,10 +2660,9 @@
   function ensurePhotoExpandSync() {
     if (photoExpandSyncBound) return;
     photoExpandSyncBound = true;
-    window.addEventListener(
-      "resize",
-      debounce(() => syncPhotoExpandAvailability(document), 120),
-    );
+    const syncAll = debounce(() => syncPhotoExpandAvailability(document), 120);
+    window.addEventListener("resize", syncAll);
+    window.visualViewport?.addEventListener("resize", syncAll);
   }
 
   function createPhotoExpandButton() {
@@ -2608,7 +2679,10 @@
     button.addEventListener("click", (event) => {
       stop(event);
       const host = button.closest(PHOTO_EXPAND_HOSTS);
-      if (host && isPhotoExpandHostLarge(host)) return;
+      if (host && shouldHidePhotoExpand(host)) {
+        applyPhotoExpandVisibility(host, true);
+        return;
+      }
       const img = host?.querySelector("img");
       if (img) openPhotoLightbox(img, button);
     });
@@ -2617,17 +2691,29 @@
 
   function enhancePhotoExpandTargets(root = document) {
     qsa(PHOTO_EXPAND_HOSTS, root).forEach((host) => {
-      if (host.dataset.photoExpandReady === "true") return;
       if (host.closest(".news-thumb, .agenda-thumb")) return;
       const img = host.querySelector("img");
       if (!img) return;
-      host.dataset.photoExpandReady = "true";
-      host.appendChild(createPhotoExpandButton());
+      if (host.dataset.photoExpandReady !== "true") {
+        host.dataset.photoExpandReady = "true";
+        const button = createPhotoExpandButton();
+        // Size-checked hosts stay hidden until metrics prove expand helps.
+        if (photoExpandNeedsSizeCheck(host)) {
+          button.hidden = true;
+          button.tabIndex = -1;
+          button.setAttribute("aria-hidden", "true");
+          host.classList.add("is-photo-expand-hidden");
+        }
+        host.appendChild(button);
+      }
+      watchPhotoExpandHost(host);
     });
     ensurePhotoExpandSync();
-    // Layout may still be settling (accordion open, responsive picture).
     syncPhotoExpandAvailability(root);
-    requestAnimationFrame(() => syncPhotoExpandAvailability(root));
+    requestAnimationFrame(() => {
+      syncPhotoExpandAvailability(root);
+      requestAnimationFrame(() => syncPhotoExpandAvailability(root));
+    });
   }
 
   let photoLightbox = null;
@@ -3279,7 +3365,10 @@
   function openPhotoLightbox(sourceImg, trigger) {
     if (!sourceImg || photoLightboxState?.busy) return;
     const host = sourceImg.closest(PHOTO_EXPAND_HOSTS);
-    if (host && isPhotoExpandHostLarge(host)) return;
+    if (host && shouldHidePhotoExpand(host)) {
+      applyPhotoExpandVisibility(host, true);
+      return;
+    }
     const lb = ensurePhotoLightbox();
 
     lockPhotoLightboxScroll();
