@@ -1166,6 +1166,52 @@
         display: grid;
         grid-template-columns: 1fr;
         gap: 10px;
+        overflow: visible;
+    }
+
+    body.home-page .branches .branch-peeker-host {
+        width: 100%;
+        flex: none;
+        overflow: visible;
+        isolation: isolate;
+    }
+
+    /* Solid card face so the peeker never shows through mobile photo/gradient washes */
+    body.home-page .branches .branch-peeker-host > .branch {
+        background: #fffaf4;
+        -webkit-backface-visibility: hidden;
+        backface-visibility: hidden;
+    }
+
+    /*
+     * Mobile: peek from ABOVE the card (not the left gutter).
+     * Horizontal space is too tight (section pad + overflow-x:clip),
+     * so a left peek is either invisible or clipped.
+     */
+    body.home-page .branches .branch-peeker {
+        top: -52px;
+        left: 10px;
+        width: 64px;
+        height: 92px;
+        transform-origin: 50% 100%;
+        --peeker-hidden-x: 8px;
+        --peeker-hidden-y: 58px;
+        --peeker-hidden-r: 6deg;
+        --peeker-head-x: 4px;
+        --peeker-head-y: 28px;
+        --peeker-head-r: 2deg;
+        --peeker-peek-x: 0px;
+        --peeker-peek-y: 8px;
+        --peeker-peek-r: -4deg;
+        --peeker-full-x: 0px;
+        --peeker-full-y: 2px;
+        --peeker-full-r: -6deg;
+        --peeker-lean-x: 6px;
+        --peeker-lean-y: 14px;
+        --peeker-lean-r: -8deg;
+        --peeker-side-x: 18px;
+        --peeker-side-y: 20px;
+        --peeker-side-r: 4deg;
     }
 
     body.home-page .branches .branch {
@@ -1297,6 +1343,16 @@
         box-shadow: 0 10px 24px rgba(46, 26, 18, 0.1);
     }
 
+    body.home-page .branches .branch-peeker-host > .branch:hover,
+    body.home-page .branches .branch-peeker-host > .branch:focus-visible {
+        background: #fffaf4;
+    }
+
+    body.home-page .branches .branch-peeker-host:has(> .branch:hover) .branch-peeker,
+    body.home-page .branches .branch-peeker-host:has(> .branch:focus-visible) .branch-peeker {
+        translate: none;
+    }
+
     body.home-page .branches .branch:hover .branch-kenteken,
     body.home-page .branches .branch:focus-visible .branch-kenteken {
         transform: none;
@@ -1305,6 +1361,12 @@
 
     body.home-page .branches .branch:active {
         transform: scale(0.985);
+    }
+
+    /* Keep peeker locked to the card while it scales on tap */
+    body.home-page .branches .branch-peeker-host:has(> .branch:active) .branch-peeker {
+        scale: 0.985;
+        transform-origin: 50% 120%;
     }
 }
 
@@ -1341,7 +1403,30 @@
         transform: none;
     }
 
+    body.home-page .branches .branch-peeker-host:has(> .branch:hover) .branch-peeker,
+    body.home-page .branches .branch-peeker-host:has(> .branch:focus-visible) .branch-peeker {
+        translate: none;
+    }
+
     body.home-page .branches .branch:active {
         transform: scale(0.985);
+    }
+
+    body.home-page .branches .branch-peeker-host:has(> .branch:active) .branch-peeker {
+        scale: 0.985;
+        transform-origin: 50% 120%;
+    }
+}
+
+@media (max-width: 760px) and (prefers-reduced-motion: reduce) {
+    body.home-page .branches .branch-peeker:not([data-pose="hidden"]) {
+        transform: translate3d(0, 8px, 0) rotate(-4deg);
+        opacity: 1;
+        visibility: visible;
+    }
+
+    body.home-page .branches .branch-peeker[data-pose="hidden"] {
+        opacity: 0;
+        visibility: hidden;
     }
 }

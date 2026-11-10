@@ -131,7 +131,7 @@
       });
   }
 
-  const IMAGE_ASSET_VERSION = "20261109-news-photo-drag-clamp";
+  const IMAGE_ASSET_VERSION = "20261109-tak-peeker-mobile2";
 
   function formatLidgeldLabel(amount) {
     const amountNumber = Number(String(amount || "").replace(",", ".").replace(/[^\d.]/g, ""));
@@ -2460,8 +2460,9 @@
        Scroll-reveal animations
        ========================================================== */
 
+  // Reveal the peeker host as one unit (peeker + Kapoenen), other branches alone.
   const revealSelector =
-    ".section-top, .practical-heading, .branch, .news-item, .agenda-item, .faq-item";
+    ".section-top, .practical-heading, .branch-peeker-host, .branch-list > .branch, .news-item, .agenda-item, .faq-item";
   let revealObserver = null;
 
   function initRevealAnimations() {
@@ -2503,6 +2504,380 @@
     }
 
     elements.forEach((element) => revealObserver.observe(element));
+  }
+
+  /* ==========================================================
+       Branch mascot peeker (articulated SVG behind Kapoenen)
+       ========================================================== */
+
+  function initBranchPeeker() {
+    const peeker = qs("[data-branch-peeker]");
+    const host = peeker?.closest(".branch-peeker-host");
+    const branchList = host?.closest(".branch-list");
+    if (!peeker || !host || !branchList) return;
+
+    const reduceMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    if (reduceMotion) {
+      peeker.dataset.pose = "peek";
+      return;
+    }
+
+    const ACTS = [
+      {
+        name: "curious",
+        weight: 2.2,
+        moods: ["", ""],
+        speed: "slow",
+        steps: [
+          { pose: "head", at: 0 },
+          { pose: "peek", at: 900 },
+          { pose: "lean", at: 2800 },
+          { pose: "hidden", at: 4000 },
+        ],
+        duration: 4300,
+      },
+      {
+        name: "shy",
+        weight: 2,
+        moods: ["", "surprise", "nervous"],
+        speed: "fast",
+        steps: [
+          { pose: "peek", at: 0, mood: "surprise" },
+          { pose: "head", at: 700, mood: "nervous" },
+          { pose: "hidden", at: 1400, mood: "nervous", fast: true },
+        ],
+        duration: 2000,
+      },
+      {
+        name: "excited",
+        weight: 1.6,
+        moods: [""],
+        speed: "fast",
+        steps: [
+          { pose: "full", at: 0 },
+          { pose: "peek", at: 2600 },
+          { pose: "hidden", at: 3400 },
+        ],
+        duration: 3600,
+      },
+      {
+        name: "naughty",
+        weight: 1.5,
+        moods: ["", "surprise"],
+        speed: "",
+        // On narrow screens "side" is still a top-corner variant via CSS vars.
+        steps: [
+          { pose: "head", at: 0 },
+          { pose: "hidden", at: 1100, fast: true },
+          { pose: "side", at: 1800 },
+          { pose: "peek", at: 2800 },
+          { pose: "hidden", at: 4600 },
+        ],
+        duration: 5000,
+      },
+      {
+        name: "relaxed",
+        weight: 2,
+        moods: [""],
+        speed: "slow",
+        steps: [
+          { pose: "lean", at: 0 },
+          { pose: "peek", at: 4200 },
+          { pose: "hidden", at: 5200 },
+        ],
+        duration: 5500,
+      },
+      {
+        name: "playful",
+        weight: 1.7,
+        moods: [""],
+        speed: "",
+        steps: [
+          { pose: "peek", at: 0 },
+          { pose: "head", at: 2200 },
+          { pose: "hidden", at: 3000 },
+        ],
+        duration: 3200,
+      },
+      {
+        name: "cheerful",
+        weight: 1.6,
+        moods: [""],
+        speed: "",
+        steps: [
+          { pose: "full", at: 0 },
+          { pose: "peek", at: 2100 },
+          { pose: "hidden", at: 2800 },
+        ],
+        duration: 3000,
+      },
+      {
+        name: "idle",
+        weight: 2.1,
+        moods: [""],
+        speed: "slow",
+        steps: [
+          { pose: "head", at: 0 },
+          { pose: "peek", at: 800 },
+          { pose: "head", at: 2200 },
+          { pose: "hidden", at: 3000 },
+        ],
+        duration: 3200,
+      },
+      {
+        name: "away",
+        weight: 1.8,
+        moods: [""],
+        speed: "",
+        steps: [{ pose: "hidden", at: 0 }],
+        duration: 0,
+        waitOnly: true,
+      },
+    ];
+
+    let busy = false;
+    let inView = false;
+    let lastAct = "";
+    let waitTimer = 0;
+    let actTimers = [];
+    let reactTimer = 0;
+    let lookClearTimer = 0;
+
+    const rand = (min, max) => min + Math.random() * (max - min);
+    const pickWeighted = (items) => {
+      const pool = items.filter((item) => item.name !== lastAct || items.length < 2);
+      const total = pool.reduce((sum, item) => sum + item.weight, 0);
+      let roll = Math.random() * total;
+      for (const item of pool) {
+        roll -= item.weight;
+        if (roll <= 0) return item;
+      }
+      return pool[pool.length - 1];
+    };
+
+    const clearWait = () => {
+      if (waitTimer) {
+        window.clearTimeout(waitTimer);
+        waitTimer = 0;
+      }
+    };
+
+    const clearActTimers = () => {
+      actTimers.forEach((id) => window.clearTimeout(id));
+      actTimers = [];
+    };
+
+    const setPose = (pose, { fast = false, slow = false } = {}) => {
+      peeker.classList.toggle("is-fast", !!fast);
+      peeker.classList.toggle("is-slow", !!slow);
+      peeker.dataset.pose = pose;
+    };
+
+    const setMood = (mood) => {
+      if (mood) peeker.dataset.mood = mood;
+      else delete peeker.dataset.mood;
+    };
+
+    const setAct = (name) => {
+      if (name) peeker.dataset.act = name;
+      else delete peeker.dataset.act;
+    };
+
+    const setLook = (dir) => {
+      if (dir) peeker.dataset.look = dir;
+      else delete peeker.dataset.look;
+    };
+
+    const finishAct = () => {
+      clearActTimers();
+      setAct("");
+      setMood("");
+      peeker.classList.remove("is-fast", "is-slow", "is-reacting");
+      setPose("hidden");
+      busy = false;
+      scheduleNext();
+    };
+
+    const runAct = (act) => {
+      if (!inView || document.hidden) {
+        scheduleNext();
+        return;
+      }
+      busy = true;
+      lastAct = act.name;
+      clearActTimers();
+      peeker.classList.remove("is-reacting");
+      setLook("");
+
+      if (act.waitOnly) {
+        busy = false;
+        const awayWait = rand(5000, 12000);
+        waitTimer = window.setTimeout(() => {
+          waitTimer = 0;
+          scheduleNext();
+        }, awayWait);
+        return;
+      }
+
+      setAct(act.name);
+      setMood(act.moods[0] || "");
+      peeker.classList.toggle("is-slow", act.speed === "slow");
+      peeker.classList.toggle("is-fast", act.speed === "fast");
+
+      // Retrigger CSS act animations.
+      void peeker.offsetWidth;
+
+      act.steps.forEach((step) => {
+        const id = window.setTimeout(() => {
+          setPose(step.pose, {
+            fast: !!step.fast,
+            slow: act.speed === "slow" && !step.fast,
+          });
+          if (step.mood !== undefined) setMood(step.mood);
+          else if (act.moods[0] !== undefined) setMood(act.moods[0]);
+        }, step.at);
+        actTimers.push(id);
+      });
+
+      const doneId = window.setTimeout(finishAct, act.duration);
+      actTimers.push(doneId);
+    };
+
+    const scheduleNext = () => {
+      clearWait();
+      if (!inView || busy || document.hidden) return;
+      // Varied pauses: quick return, normal gap, or long absence.
+      const roll = Math.random();
+      let wait;
+      if (roll < 0.18) wait = rand(1200, 2500);
+      else if (roll < 0.7) wait = rand(2800, 6500);
+      else wait = rand(7000, 12000);
+
+      waitTimer = window.setTimeout(() => {
+        waitTimer = 0;
+        if (!inView || busy || document.hidden) return;
+        runAct(pickWeighted(ACTS));
+      }, wait);
+    };
+
+    const playReact = (kind = "wave") => {
+      if (document.hidden) return;
+      if (!inView) setInView(true);
+
+      if (peeker.dataset.pose === "hidden" || !peeker.dataset.pose) {
+        // Soft interrupt: curious peek instead of invisible wave.
+        if (!busy) runAct(ACTS.find((a) => a.name === "curious") || ACTS[0]);
+        return;
+      }
+
+      if (kind === "click") {
+        // Brief excited pulse without cancelling the whole act.
+        peeker.classList.remove("is-reacting");
+        void peeker.offsetWidth;
+        peeker.classList.add("is-reacting");
+        setMood("surprise");
+        if (reactTimer) window.clearTimeout(reactTimer);
+        reactTimer = window.setTimeout(() => {
+          peeker.classList.remove("is-reacting");
+          setMood("");
+          reactTimer = 0;
+        }, 900);
+        return;
+      }
+
+      peeker.classList.remove("is-reacting");
+      void peeker.offsetWidth;
+      peeker.classList.add("is-reacting");
+      if (reactTimer) window.clearTimeout(reactTimer);
+      reactTimer = window.setTimeout(() => {
+        peeker.classList.remove("is-reacting");
+        reactTimer = 0;
+      }, 850);
+    };
+
+    const lookAtBranch = (branch) => {
+      if (peeker.dataset.pose === "hidden") return;
+      const peekerBox = peeker.getBoundingClientRect();
+      const branchBox = branch.getBoundingClientRect();
+      const peekerMid = peekerBox.left + peekerBox.width * 0.5;
+      const branchMid = branchBox.left + branchBox.width * 0.5;
+      const dx = branchMid - peekerMid;
+      let dir = "down";
+      if (dx < -40) dir = "left";
+      else if (dx > 60) dir = "right";
+      setLook(dir);
+      if (lookClearTimer) window.clearTimeout(lookClearTimer);
+      lookClearTimer = window.setTimeout(() => {
+        setLook("");
+        lookClearTimer = 0;
+      }, 1600);
+    };
+
+    const setInView = (next) => {
+      const wasInView = inView;
+      inView = next;
+      if (inView && !wasInView) {
+        clearWait();
+        // First appearance fairly soon, then the controller takes over pacing.
+        waitTimer = window.setTimeout(() => {
+          waitTimer = 0;
+          if (!busy) {
+            const openers = ACTS.filter(
+              (a) => !a.waitOnly && ["curious", "idle", "playful", "cheerful"].includes(a.name),
+            );
+            runAct(pickWeighted(openers));
+          }
+        }, rand(280, 700));
+      } else if (!inView) {
+        clearWait();
+        clearActTimers();
+        busy = false;
+        setAct("");
+        setMood("");
+        setLook("");
+        peeker.classList.remove("is-reacting", "is-fast", "is-slow");
+        setPose("hidden");
+      }
+    };
+
+    if ("IntersectionObserver" in window) {
+      const observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            setInView(entry.isIntersecting);
+          });
+        },
+        { threshold: [0, 0.05, 0.15], rootMargin: "40px 0px 40px 0px" },
+      );
+      observer.observe(host);
+      const rect = host.getBoundingClientRect();
+      if (rect.bottom > 40 && rect.top < window.innerHeight - 40) {
+        setInView(true);
+      }
+    } else {
+      setInView(true);
+    }
+
+    branchList.querySelectorAll(".branch").forEach((branch) => {
+      branch.addEventListener("pointerenter", () => {
+        // Look only when already visible — never start a peek from under the card on hover.
+        if (peeker.dataset.pose !== "hidden") lookAtBranch(branch);
+      });
+      branch.addEventListener("click", () => {
+        lookAtBranch(branch);
+        playReact("click");
+      });
+    });
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) {
+        clearWait();
+        return;
+      }
+      if (inView && !busy) scheduleNext();
+    });
   }
 
   /* ==========================================================
@@ -3709,6 +4084,7 @@
     setupFaqAccordion(document);
     setupRegistrationBankInfo();
     initRevealAnimations();
+    initBranchPeeker();
     setupSecondhandScroll();
 
     window.addEventListener("hashchange", openNewsFromHash);

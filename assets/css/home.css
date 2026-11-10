@@ -249,8 +249,8 @@ body.home-page .hero {
 
 .branch:hover,
 .branch:focus-visible {
+    /* Fully opaque — a translucent hover wash would reveal the peeker underneath */
     background: #fff;
-    background: linear-gradient(180deg, rgba(255,255,255,0.95), rgba(255,255,255,0.78));
     border-color: rgba(211, 138, 45, 0.42);
     transform: translateY(-5px);
     box-shadow: 0 20px 34px rgba(46, 26, 18, 0.1);
@@ -1125,6 +1125,11 @@ body.home-page .hero {
             0 10px 24px rgba(46,26,18,0.07);
     }
 
+    .branch-peeker-host:has(> .branch:hover) .branch-peeker,
+    .branch-peeker-host:has(> .branch:focus-visible) .branch-peeker {
+        translate: 0 -1px;
+    }
+
     .branch::before {
         display: none;
     }
@@ -1984,11 +1989,13 @@ html {
 
 /* Final branch-card layout */
 .branch-list {
+    position: relative;
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
     gap: 16px;
     border-top: 0;
+    overflow: visible;
 }
 
 .branches h2 {
@@ -1996,7 +2003,23 @@ html {
     width: fit-content;
 }
 
+.branch-peeker-host {
+    position: relative;
+    z-index: 1;
+    flex: 0 1 calc((100% - 32px) / 3);
+    min-width: 0;
+    overflow: visible;
+}
+
+.branch-peeker-host > .branch {
+    width: 100%;
+    flex: none;
+    min-height: 268px;
+}
+
 .branch {
+    position: relative;
+    z-index: 1;
     display: flex;
     flex: 0 1 calc((100% - 32px) / 3);
     min-height: 268px;
@@ -2009,6 +2032,824 @@ html {
     background: #fff8f1;
     box-shadow: 0 14px 28px rgba(46, 26, 18, 0.06);
     transition: background 0.25s ease, transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+}
+
+/* Articulated SVG mascot — behavior-driven peeks behind Kapoenen */
+
+.branch-peeker {
+    --peeker-ease: cubic-bezier(0.4, 0.12, 0.2, 1);
+    --peeker-hidden-x: 86px;
+    --peeker-hidden-y: 32px;
+    --peeker-hidden-r: 12deg;
+    --peeker-head-x: 52px;
+    --peeker-head-y: 6px;
+    --peeker-head-r: 4deg;
+    --peeker-peek-x: -4px;
+    --peeker-peek-y: -6px;
+    --peeker-peek-r: -9deg;
+    --peeker-full-x: -12px;
+    --peeker-full-y: -10px;
+    --peeker-full-r: -12deg;
+    --peeker-lean-x: 14px;
+    --peeker-lean-y: -2px;
+    --peeker-lean-r: -11deg;
+    --peeker-side-x: 10px;
+    --peeker-side-y: 40px;
+    --peeker-side-r: -3deg;
+    position: absolute;
+    top: -10px;
+    left: -78px;
+    z-index: 0;
+    width: 124px;
+    height: 176px;
+    pointer-events: none;
+    transform: translate3d(var(--peeker-hidden-x), var(--peeker-hidden-y), 0) rotate(var(--peeker-hidden-r));
+    transform-origin: 85% 60%;
+    opacity: 0;
+    will-change: transform, opacity;
+    transition:
+        transform 0.55s var(--peeker-ease),
+        opacity 0.25s ease,
+        translate 0.25s ease;
+}
+
+.branch-peeker[data-pose="head"] {
+    transform: translate3d(var(--peeker-head-x), var(--peeker-head-y), 0) rotate(var(--peeker-head-r));
+    transition-duration: 0.7s;
+}
+
+.branch-peeker[data-pose="peek"] {
+    transform: translate3d(var(--peeker-peek-x), var(--peeker-peek-y), 0) rotate(var(--peeker-peek-r));
+}
+
+.branch-peeker[data-pose="full"] {
+    transform: translate3d(var(--peeker-full-x), var(--peeker-full-y), 0) rotate(var(--peeker-full-r));
+    transition-duration: 0.4s;
+}
+
+.branch-peeker[data-pose="lean"] {
+    transform: translate3d(var(--peeker-lean-x), var(--peeker-lean-y), 0) rotate(var(--peeker-lean-r));
+    transition-duration: 0.85s;
+}
+
+.branch-peeker[data-pose="side"] {
+    transform: translate3d(var(--peeker-side-x), var(--peeker-side-y), 0) rotate(var(--peeker-side-r));
+    transition-duration: 0.5s;
+}
+
+.branch-peeker[data-pose="hidden"] {
+    /* Fully invisible while tucked — never show through a fading/lifted card */
+    opacity: 0;
+    visibility: hidden;
+    transition:
+        transform 0.45s var(--peeker-ease),
+        opacity 0.2s ease,
+        translate 0.25s ease,
+        visibility 0s linear 0.2s;
+}
+
+.branch-peeker:not([data-pose="hidden"]) {
+    opacity: 1;
+    visibility: visible;
+    transition:
+        transform 0.55s var(--peeker-ease),
+        opacity 0.25s ease,
+        translate 0.25s ease,
+        visibility 0s linear 0s;
+}
+
+/* Keep peeker glued behind Kapoenen when the card lifts on hover */
+.branch-peeker-host:has(> .branch:is(:hover, :focus-visible)) .branch-peeker {
+    translate: 0 -5px;
+}
+
+.branch-peeker.is-fast {
+    transition-duration: 0.28s;
+    transition-timing-function: cubic-bezier(0.55, 0.05, 0.7, 0.2);
+}
+
+.branch-peeker.is-slow {
+    transition-duration: 1.05s;
+    transition-timing-function: cubic-bezier(0.33, 0.1, 0.25, 1);
+}
+
+.branch-peeker-svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    filter: drop-shadow(0 8px 12px rgba(30, 58, 95, 0.14));
+}
+
+/* Anatomical pivots in SVG user space (viewBox 0 0 140 200) */
+.branch-peeker .peeker-torso,
+.branch-peeker .peeker-head,
+.branch-peeker .peeker-arm-wave .peeker-upper-arm,
+.branch-peeker .peeker-arm-wave .peeker-forearm,
+.branch-peeker .peeker-arm-hold .peeker-upper-arm,
+.branch-peeker .peeker-arm-hold .peeker-forearm,
+.branch-peeker .peeker-pupil,
+.branch-peeker .peeker-brow-left,
+.branch-peeker .peeker-brow-right,
+.branch-peeker .peeker-leg-left,
+.branch-peeker .peeker-leg-right {
+    transform-box: view-box;
+}
+
+.branch-peeker .peeker-torso {
+    transform-origin: 70px 118px;
+}
+
+.branch-peeker .peeker-head {
+    transform-origin: 70px 70px;
+}
+
+.branch-peeker .peeker-arm-wave .peeker-upper-arm {
+    transform-origin: 88px 84px;
+}
+
+.branch-peeker .peeker-arm-wave .peeker-forearm {
+    transform-origin: 102px 104px;
+}
+
+.branch-peeker .peeker-arm-hold .peeker-upper-arm {
+    transform-origin: 52px 84px;
+}
+
+.branch-peeker .peeker-arm-hold .peeker-forearm {
+    transform-origin: 38px 72px;
+}
+
+.branch-peeker .peeker-leg-left {
+    transform-origin: 60px 118px;
+}
+
+.branch-peeker .peeker-leg-right {
+    transform-origin: 80px 118px;
+}
+
+.branch-peeker .peeker-brow-left {
+    transform-origin: 59px 29px;
+}
+
+.branch-peeker .peeker-brow-right {
+    transform-origin: 81px 29px;
+}
+
+.branch-peeker .peeker-joint {
+    /* Cover limb seams so rotations never show gaps */
+    pointer-events: none;
+}
+
+.branch-peeker .peeker-mouth-o,
+.branch-peeker .peeker-mouth-flat {
+    opacity: 0;
+}
+
+.branch-peeker .peeker-mouth-smile {
+    opacity: 1;
+}
+
+.branch-peeker .peeker-lid {
+    opacity: 0;
+    stroke-width: 3.6;
+}
+
+/* Continuous blink while visible — opacity only, no scale distortion */
+.branch-peeker:not([data-pose="hidden"]) .peeker-lid {
+    animation: peeker-blink 5.2s ease-in-out infinite;
+}
+
+.branch-peeker:not([data-pose="hidden"]) .peeker-torso {
+    animation: peeker-breathe 4.2s ease-in-out infinite;
+}
+
+/* Face mood helpers */
+.branch-peeker[data-mood="surprise"] .peeker-mouth-smile,
+.branch-peeker[data-mood="nervous"] .peeker-mouth-smile {
+    opacity: 0;
+}
+
+.branch-peeker[data-mood="surprise"] .peeker-mouth-o {
+    opacity: 1;
+}
+
+.branch-peeker[data-mood="nervous"] .peeker-mouth-flat {
+    opacity: 1;
+}
+
+.branch-peeker[data-mood="surprise"] .peeker-brow-left,
+.branch-peeker[data-mood="surprise"] .peeker-brow-right {
+    transform: translateY(-1.5px);
+}
+
+.branch-peeker[data-mood="nervous"] .peeker-brow-left {
+    transform: rotate(8deg);
+}
+
+.branch-peeker[data-mood="nervous"] .peeker-brow-right {
+    transform: rotate(-8deg);
+}
+
+/* —— Acts —— */
+.branch-peeker[data-act="curious"] .peeker-head {
+    animation: peeker-act-curious-head 4.2s var(--peeker-ease) both;
+}
+
+.branch-peeker[data-act="curious"] .peeker-pupil {
+    animation: peeker-act-curious-pupils 4.2s ease-in-out both;
+}
+
+.branch-peeker[data-act="curious"] .peeker-arm-hold .peeker-upper-arm {
+    animation: peeker-act-curious-hold-u 4.2s var(--peeker-ease) both;
+}
+
+.branch-peeker[data-act="curious"] .peeker-arm-hold .peeker-forearm {
+    animation: peeker-act-curious-hold-f 4.2s var(--peeker-ease) both;
+}
+
+.branch-peeker[data-act="shy"] .peeker-head {
+    animation: peeker-act-shy-head 2.2s var(--peeker-ease) both;
+}
+
+.branch-peeker[data-act="shy"] .peeker-pupil {
+    animation: peeker-act-shy-pupils 2.2s ease-out both;
+}
+
+.branch-peeker[data-act="excited"] .peeker-head {
+    animation: peeker-act-excited-head 3.6s var(--peeker-ease) both;
+}
+
+.branch-peeker[data-act="excited"] .peeker-arm-wave .peeker-upper-arm {
+    animation: peeker-act-excited-wave-u 3.6s var(--peeker-ease) both;
+}
+
+.branch-peeker[data-act="excited"] .peeker-arm-wave .peeker-forearm {
+    animation: peeker-act-excited-wave-f 3.6s var(--peeker-ease) 0.04s both;
+}
+
+.branch-peeker[data-act="excited"] .peeker-arm-hold .peeker-upper-arm {
+    animation: peeker-act-excited-hold-u 3.6s var(--peeker-ease) both;
+}
+
+.branch-peeker[data-act="excited"] .peeker-arm-hold .peeker-forearm {
+    animation: peeker-act-excited-hold-f 3.6s var(--peeker-ease) both;
+}
+
+.branch-peeker[data-act="naughty"] .peeker-head {
+    animation: peeker-act-naughty-head 5s var(--peeker-ease) both;
+}
+
+.branch-peeker[data-act="naughty"] .peeker-pupil {
+    animation: peeker-act-naughty-pupils 5s ease-in-out both;
+}
+
+.branch-peeker[data-act="relaxed"] .peeker-head {
+    animation: peeker-act-relaxed-head 5.4s ease-in-out both;
+}
+
+.branch-peeker[data-act="relaxed"] .peeker-pupil {
+    animation: peeker-act-relaxed-pupils 5.4s ease-in-out both;
+}
+
+.branch-peeker[data-act="relaxed"] .peeker-arm-hold .peeker-upper-arm {
+    animation: peeker-act-relaxed-hold-u 5.4s var(--peeker-ease) both;
+}
+
+.branch-peeker[data-act="relaxed"] .peeker-arm-hold .peeker-forearm {
+    animation: peeker-act-relaxed-hold-f 5.4s var(--peeker-ease) both;
+}
+
+.branch-peeker[data-act="playful"] .peeker-head {
+    animation: peeker-act-playful-head 3.2s var(--peeker-ease) both;
+}
+
+.branch-peeker[data-act="playful"] .peeker-arm-hold .peeker-forearm {
+    animation: peeker-act-playful-tap 3.2s var(--peeker-ease) both;
+}
+
+.branch-peeker[data-act="playful"] .peeker-pupil {
+    animation: peeker-act-playful-pupils 3.2s ease-in-out both;
+}
+
+.branch-peeker[data-act="cheerful"] .peeker-head {
+    animation: peeker-act-cheerful-head 3s var(--peeker-ease) both;
+}
+
+.branch-peeker[data-act="cheerful"] .peeker-arm-wave .peeker-upper-arm {
+    animation: peeker-act-cheerful-wave-u 3s var(--peeker-ease) both;
+}
+
+.branch-peeker[data-act="cheerful"] .peeker-arm-wave .peeker-forearm {
+    animation: peeker-act-cheerful-wave-f 3s var(--peeker-ease) 0.05s both;
+}
+
+.branch-peeker[data-act="idle"] .peeker-head {
+    animation: peeker-act-idle-head 3s ease-in-out both;
+}
+
+.branch-peeker[data-act="idle"] .peeker-pupil {
+    animation: peeker-act-idle-pupils 3s ease-in-out both;
+}
+
+/* Look toward hovered branch cards — small head turns only */
+.branch-peeker[data-look="left"] .peeker-head {
+    transform: rotate(7deg);
+    transition: transform 0.35s var(--peeker-ease);
+}
+
+.branch-peeker[data-look="right"] .peeker-head {
+    transform: rotate(-8deg);
+    transition: transform 0.35s var(--peeker-ease);
+}
+
+.branch-peeker[data-look="left"] .peeker-pupil {
+    transform: translate(-1.6px, 0);
+    transition: transform 0.3s ease;
+}
+
+.branch-peeker[data-look="right"] .peeker-pupil {
+    transform: translate(1.8px, 0);
+    transition: transform 0.3s ease;
+}
+
+.branch-peeker[data-look="down"] .peeker-pupil {
+    transform: translate(0, 1.4px);
+    transition: transform 0.3s ease;
+}
+
+/* Click / hover reaction overlay */
+.branch-peeker.is-reacting .peeker-arm-wave .peeker-upper-arm {
+    animation: peeker-react-wave-u 0.85s var(--peeker-ease) both;
+}
+
+.branch-peeker.is-reacting .peeker-arm-wave .peeker-forearm {
+    animation: peeker-react-wave-f 0.85s var(--peeker-ease) both;
+}
+
+.branch-peeker.is-reacting .peeker-head {
+    animation: peeker-react-head 0.85s var(--peeker-ease) both;
+}
+
+@keyframes peeker-blink {
+    0%,
+    44%,
+    52%,
+    82%,
+    100% {
+        opacity: 0;
+    }
+    46%,
+    50%,
+    84%,
+    88% {
+        opacity: 1;
+    }
+}
+
+@keyframes peeker-breathe {
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-1px);
+    }
+}
+
+/* Keep joint angles modest so limbs stay coherent */
+@keyframes peeker-act-curious-head {
+    0%,
+    12% {
+        transform: rotate(3deg);
+    }
+    30% {
+        transform: rotate(-8deg);
+    }
+    52% {
+        transform: rotate(7deg);
+    }
+    72% {
+        transform: rotate(-4deg);
+    }
+    100% {
+        transform: rotate(2deg);
+    }
+}
+
+@keyframes peeker-act-curious-pupils {
+    0%,
+    14% {
+        transform: translate(0, 0);
+    }
+    32% {
+        transform: translate(1.8px, 0);
+    }
+    54% {
+        transform: translate(-1.6px, 0.4px);
+    }
+    74% {
+        transform: translate(1.2px, 0);
+    }
+    100% {
+        transform: translate(0, 0);
+    }
+}
+
+@keyframes peeker-act-curious-hold-u {
+    0%,
+    100% {
+        transform: rotate(0deg);
+    }
+    40%,
+    70% {
+        transform: rotate(-6deg);
+    }
+}
+
+@keyframes peeker-act-curious-hold-f {
+    0%,
+    100% {
+        transform: rotate(0deg);
+    }
+    40%,
+    70% {
+        transform: rotate(8deg);
+    }
+}
+
+@keyframes peeker-act-shy-head {
+    0% {
+        transform: rotate(-2deg);
+    }
+    35% {
+        transform: rotate(5deg);
+    }
+    55% {
+        transform: rotate(-8deg);
+    }
+    100% {
+        transform: rotate(4deg);
+    }
+}
+
+@keyframes peeker-act-shy-pupils {
+    0%,
+    30% {
+        transform: translate(0.8px, 0);
+    }
+    50% {
+        transform: translate(-0.6px, 1px);
+    }
+    100% {
+        transform: translate(0, 0.6px);
+    }
+}
+
+@keyframes peeker-act-excited-head {
+    0%,
+    18% {
+        transform: rotate(-3deg);
+    }
+    32%,
+    48% {
+        transform: rotate(6deg);
+    }
+    40% {
+        transform: rotate(-6deg);
+    }
+    100% {
+        transform: rotate(2deg);
+    }
+}
+
+@keyframes peeker-act-excited-wave-u {
+    0%,
+    18% {
+        transform: rotate(2deg);
+    }
+    30% {
+        transform: rotate(-18deg);
+    }
+    40% {
+        transform: rotate(8deg);
+    }
+    50% {
+        transform: rotate(-14deg);
+    }
+    60% {
+        transform: rotate(6deg);
+    }
+    100% {
+        transform: rotate(0deg);
+    }
+}
+
+@keyframes peeker-act-excited-wave-f {
+    0%,
+    18% {
+        transform: rotate(0deg);
+    }
+    30% {
+        transform: rotate(-10deg);
+    }
+    40% {
+        transform: rotate(12deg);
+    }
+    50% {
+        transform: rotate(-8deg);
+    }
+    60% {
+        transform: rotate(8deg);
+    }
+    100% {
+        transform: rotate(0deg);
+    }
+}
+
+@keyframes peeker-act-excited-hold-u {
+    0%,
+    20%,
+    100% {
+        transform: rotate(0deg);
+    }
+    40%,
+    55% {
+        transform: rotate(10deg);
+    }
+}
+
+@keyframes peeker-act-excited-hold-f {
+    0%,
+    20%,
+    100% {
+        transform: rotate(0deg);
+    }
+    40%,
+    55% {
+        transform: rotate(-12deg);
+    }
+}
+
+@keyframes peeker-act-naughty-head {
+    0%,
+    18% {
+        transform: rotate(4deg);
+    }
+    30% {
+        transform: rotate(-4deg);
+    }
+    55%,
+    68% {
+        transform: rotate(6deg);
+    }
+    80% {
+        transform: rotate(-5deg);
+    }
+    100% {
+        transform: rotate(1deg);
+    }
+}
+
+@keyframes peeker-act-naughty-pupils {
+    0%,
+    22% {
+        transform: translate(1.2px, 0);
+    }
+    45% {
+        transform: translate(0, 0);
+    }
+    65% {
+        transform: translate(-1.2px, 0.5px);
+    }
+    100% {
+        transform: translate(0.6px, 0);
+    }
+}
+
+@keyframes peeker-act-relaxed-head {
+    0%,
+    100% {
+        transform: rotate(-8deg);
+    }
+    35% {
+        transform: rotate(-4deg);
+    }
+    65% {
+        transform: rotate(-10deg);
+    }
+}
+
+@keyframes peeker-act-relaxed-pupils {
+    0%,
+    100% {
+        transform: translate(0.8px, 0.6px);
+    }
+    40% {
+        transform: translate(-0.8px, 0.8px);
+    }
+    70% {
+        transform: translate(1.2px, 0.3px);
+    }
+}
+
+@keyframes peeker-act-relaxed-hold-u {
+    0%,
+    100% {
+        transform: rotate(-8deg);
+    }
+}
+
+@keyframes peeker-act-relaxed-hold-f {
+    0%,
+    100% {
+        transform: rotate(10deg);
+    }
+}
+
+@keyframes peeker-act-playful-head {
+    0%,
+    20% {
+        transform: rotate(2deg);
+    }
+    40% {
+        transform: rotate(-8deg);
+    }
+    60% {
+        transform: rotate(7deg);
+    }
+    100% {
+        transform: rotate(1deg);
+    }
+}
+
+@keyframes peeker-act-playful-tap {
+    0%,
+    28%,
+    100% {
+        transform: rotate(0deg);
+    }
+    36% {
+        transform: rotate(10deg);
+    }
+    44% {
+        transform: rotate(-2deg);
+    }
+    52% {
+        transform: rotate(8deg);
+    }
+    60% {
+        transform: rotate(0deg);
+    }
+}
+
+@keyframes peeker-act-playful-pupils {
+    0%,
+    100% {
+        transform: translate(0, 0);
+    }
+    40% {
+        transform: translate(0, 1.2px);
+    }
+    65% {
+        transform: translate(1.2px, 0);
+    }
+}
+
+@keyframes peeker-act-cheerful-head {
+    0%,
+    22% {
+        transform: rotate(-2deg);
+    }
+    42% {
+        transform: rotate(6deg);
+    }
+    62% {
+        transform: rotate(-4deg);
+    }
+    100% {
+        transform: rotate(1deg);
+    }
+}
+
+@keyframes peeker-act-cheerful-wave-u {
+    0%,
+    24% {
+        transform: rotate(2deg);
+    }
+    36% {
+        transform: rotate(-16deg);
+    }
+    48% {
+        transform: rotate(8deg);
+    }
+    60% {
+        transform: rotate(-12deg);
+    }
+    100% {
+        transform: rotate(0deg);
+    }
+}
+
+@keyframes peeker-act-cheerful-wave-f {
+    0%,
+    24% {
+        transform: rotate(0deg);
+    }
+    36% {
+        transform: rotate(-8deg);
+    }
+    48% {
+        transform: rotate(10deg);
+    }
+    60% {
+        transform: rotate(-6deg);
+    }
+    100% {
+        transform: rotate(0deg);
+    }
+}
+
+@keyframes peeker-act-idle-head {
+    0%,
+    100% {
+        transform: rotate(1deg);
+    }
+    45% {
+        transform: rotate(-4deg);
+    }
+    70% {
+        transform: rotate(3deg);
+    }
+}
+
+@keyframes peeker-act-idle-pupils {
+    0%,
+    100% {
+        transform: translate(0, 0);
+    }
+    45% {
+        transform: translate(1px, 0);
+    }
+}
+
+@keyframes peeker-react-wave-u {
+    0%,
+    100% {
+        transform: rotate(0deg);
+    }
+    40% {
+        transform: rotate(-16deg);
+    }
+    70% {
+        transform: rotate(6deg);
+    }
+}
+
+@keyframes peeker-react-wave-f {
+    0%,
+    100% {
+        transform: rotate(0deg);
+    }
+    40% {
+        transform: rotate(-8deg);
+    }
+    70% {
+        transform: rotate(10deg);
+    }
+}
+
+@keyframes peeker-react-head {
+    0%,
+    100% {
+        transform: rotate(0deg);
+    }
+    40% {
+        transform: rotate(-6deg);
+    }
+    70% {
+        transform: rotate(4deg);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .branch-peeker,
+    .branch-peeker .peeker-torso,
+    .branch-peeker .peeker-head,
+    .branch-peeker .peeker-pupil,
+    .branch-peeker .peeker-lid,
+    .branch-peeker .peeker-arm-wave .peeker-upper-arm,
+    .branch-peeker .peeker-arm-wave .peeker-forearm,
+    .branch-peeker .peeker-arm-hold .peeker-upper-arm,
+    .branch-peeker .peeker-arm-hold .peeker-forearm {
+        animation: none !important;
+        transition: none !important;
+    }
+
+    .branch-peeker {
+        transform: translate3d(0, -2px, 0) rotate(-8deg);
+        opacity: 1;
+    }
 }
 
 .branch-bg-picture,
