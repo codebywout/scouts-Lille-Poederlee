@@ -131,7 +131,7 @@
       });
   }
 
-  const IMAGE_ASSET_VERSION = "20261109-tak-peeker-mobile2";
+  const IMAGE_ASSET_VERSION = "20261110-tak-peeker-sheet5";
 
   function formatLidgeldLabel(amount) {
     const amountNumber = Number(String(amount || "").replace(",", ".").replace(/[^\d.]/g, ""));
@@ -2530,11 +2530,12 @@
         weight: 2.2,
         moods: ["", ""],
         speed: "slow",
+        // Head first, torso follows, one hand settles on the card edge.
         steps: [
-          { pose: "head", at: 0 },
-          { pose: "peek", at: 900 },
-          { pose: "lean", at: 2800 },
-          { pose: "hidden", at: 4000 },
+          { pose: "head", at: 0, g: "" },
+          { pose: "peek", at: 900, g: "wall" },
+          { pose: "lean", at: 2800, g: "wall" },
+          { pose: "hidden", at: 4000, g: "" },
         ],
         duration: 4300,
       },
@@ -2543,10 +2544,11 @@
         weight: 2,
         moods: ["", "surprise", "nervous"],
         speed: "fast",
+        // Appears, startles, pulls back with hands clasped at the chest.
         steps: [
-          { pose: "peek", at: 0, mood: "surprise" },
-          { pose: "head", at: 700, mood: "nervous" },
-          { pose: "hidden", at: 1400, mood: "nervous", fast: true },
+          { pose: "peek", at: 0, mood: "surprise", g: "" },
+          { pose: "head", at: 700, mood: "nervous", g: "clasp" },
+          { pose: "hidden", at: 1400, mood: "nervous", fast: true, g: "clasp" },
         ],
         duration: 2000,
       },
@@ -2555,10 +2557,11 @@
         weight: 1.6,
         moods: [""],
         speed: "fast",
+        // Pops out with both arms up, then settles into a wave.
         steps: [
-          { pose: "full", at: 0 },
-          { pose: "peek", at: 2600 },
-          { pose: "hidden", at: 3400 },
+          { pose: "full", at: 0, g: "cheer" },
+          { pose: "peek", at: 2600, g: "wave" },
+          { pose: "hidden", at: 3400, g: "" },
         ],
         duration: 3600,
       },
@@ -2568,12 +2571,13 @@
         moods: ["", "surprise"],
         speed: "",
         // On narrow screens "side" is still a top-corner variant via CSS vars.
+        // Eyes + head only, ducks away, then a giggle behind the hand.
         steps: [
-          { pose: "head", at: 0 },
-          { pose: "hidden", at: 1100, fast: true },
-          { pose: "side", at: 1800 },
-          { pose: "peek", at: 2800 },
-          { pose: "hidden", at: 4600 },
+          { pose: "head", at: 0, g: "" },
+          { pose: "hidden", at: 1100, fast: true, g: "" },
+          { pose: "side", at: 1800, g: "mouth" },
+          { pose: "peek", at: 2800, g: "wall" },
+          { pose: "hidden", at: 4600, g: "" },
         ],
         duration: 5000,
       },
@@ -2582,10 +2586,12 @@
         weight: 2,
         moods: [""],
         speed: "slow",
+        // Leans back on the card edge, hand to the head, then eases away.
         steps: [
-          { pose: "lean", at: 0 },
-          { pose: "peek", at: 4200 },
-          { pose: "hidden", at: 5200 },
+          { pose: "lean", at: 0, g: "" },
+          { pose: "lean", at: 1800, g: "scratch" },
+          { pose: "peek", at: 4200, g: "wall" },
+          { pose: "hidden", at: 5200, g: "" },
         ],
         duration: 5500,
       },
@@ -2594,10 +2600,12 @@
         weight: 1.7,
         moods: [""],
         speed: "",
+        // Tilts the head, drums fingers on the edge, shifts position with a wave.
         steps: [
-          { pose: "peek", at: 0 },
-          { pose: "head", at: 2200 },
-          { pose: "hidden", at: 3000 },
+          { pose: "peek", at: 0, g: "wall" },
+          { pose: "full", at: 1400, g: "wave" },
+          { pose: "head", at: 2200, g: "" },
+          { pose: "hidden", at: 3000, g: "" },
         ],
         duration: 3200,
       },
@@ -2607,9 +2615,9 @@
         moods: [""],
         speed: "",
         steps: [
-          { pose: "full", at: 0 },
-          { pose: "peek", at: 2100 },
-          { pose: "hidden", at: 2800 },
+          { pose: "full", at: 0, g: "wave" },
+          { pose: "peek", at: 2100, g: "wall" },
+          { pose: "hidden", at: 2800, g: "" },
         ],
         duration: 3000,
       },
@@ -2619,10 +2627,10 @@
         moods: [""],
         speed: "slow",
         steps: [
-          { pose: "head", at: 0 },
-          { pose: "peek", at: 800 },
-          { pose: "head", at: 2200 },
-          { pose: "hidden", at: 3000 },
+          { pose: "head", at: 0, g: "" },
+          { pose: "peek", at: 800, g: "" },
+          { pose: "head", at: 2200, g: "" },
+          { pose: "hidden", at: 3000, g: "" },
         ],
         duration: 3200,
       },
@@ -2690,11 +2698,29 @@
       else delete peeker.dataset.look;
     };
 
-    const finishAct = () => {
-      clearActTimers();
+    // Arm / head / torso posture (CSS eases between gestures, so nothing snaps).
+    const setGesture = (name) => {
+      if (name) peeker.dataset.g = name;
+      else delete peeker.dataset.g;
+    };
+
+    const clearLimbAnimState = () => {
+      peeker.classList.remove("is-fast", "is-slow", "is-reacting");
       setAct("");
       setMood("");
-      peeker.classList.remove("is-fast", "is-slow", "is-reacting");
+      setLook("");
+      setGesture("");
+      // Force CSS animation teardown so the next act starts cleanly.
+      void peeker.offsetWidth;
+    };
+
+    const finishAct = () => {
+      clearActTimers();
+      if (reactTimer) {
+        window.clearTimeout(reactTimer);
+        reactTimer = 0;
+      }
+      clearLimbAnimState();
       setPose("hidden");
       busy = false;
       scheduleNext();
@@ -2708,11 +2734,17 @@
       busy = true;
       lastAct = act.name;
       clearActTimers();
+      if (reactTimer) {
+        window.clearTimeout(reactTimer);
+        reactTimer = 0;
+      }
       peeker.classList.remove("is-reacting");
       setLook("");
 
       if (act.waitOnly) {
         busy = false;
+        clearLimbAnimState();
+        setPose("hidden");
         const awayWait = rand(5000, 12000);
         waitTimer = window.setTimeout(() => {
           waitTimer = 0;
@@ -2721,13 +2753,13 @@
         return;
       }
 
+      // Act attributes are swapped without a forced reset of the gesture:
+      // the previous posture eases into the new one instead of snapping.
       setAct(act.name);
       setMood(act.moods[0] || "");
+      setGesture(act.steps[0] && act.steps[0].g ? act.steps[0].g : "");
       peeker.classList.toggle("is-slow", act.speed === "slow");
       peeker.classList.toggle("is-fast", act.speed === "fast");
-
-      // Retrigger CSS act animations.
-      void peeker.offsetWidth;
 
       act.steps.forEach((step) => {
         const id = window.setTimeout(() => {
@@ -2735,6 +2767,7 @@
             fast: !!step.fast,
             slow: act.speed === "slow" && !step.fast,
           });
+          if (step.g !== undefined) setGesture(step.g);
           if (step.mood !== undefined) setMood(step.mood);
           else if (act.moods[0] !== undefined) setMood(act.moods[0]);
         }, step.at);
@@ -2833,11 +2866,12 @@
       } else if (!inView) {
         clearWait();
         clearActTimers();
+        if (reactTimer) {
+          window.clearTimeout(reactTimer);
+          reactTimer = 0;
+        }
         busy = false;
-        setAct("");
-        setMood("");
-        setLook("");
-        peeker.classList.remove("is-reacting", "is-fast", "is-slow");
+        clearLimbAnimState();
         setPose("hidden");
       }
     };

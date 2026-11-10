@@ -109,68 +109,70 @@
             <div class="branch-peeker-host">
                 <div class="branch-peeker" data-branch-peeker data-pose="hidden" aria-hidden="true">
                     <svg class="branch-peeker-svg" viewBox="0 0 140 200" xmlns="http://www.w3.org/2000/svg" focusable="false">
-                        <g class="peeker-body" fill="#fffaf4" stroke="#1e3a5f" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
+                        <!-- Hand-drawn sheet style: round head, bean body, single-stroke limbs (same line weight everywhere) -->
+                        <g class="peeker-body" fill="#fffaf4" stroke="#1e3a5f" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
                             <g class="peeker-torso">
-                                <!-- Legs inside torso so breath / lean never opens a hip seam -->
                                 <g class="peeker-leg peeker-leg-left">
-                                    <path class="peeker-limb" d="M60 118c-2 14-4 28-2 40"/>
-                                    <path class="peeker-foot" d="M48 158c4 6 14 6 18 0"/>
-                                    <circle class="peeker-joint peeker-hip" cx="60" cy="118" r="2.8"/>
+                                    <path class="peeker-limb" fill="none" d="M61 128c-1 14-2 28-3 40"/>
+                                    <ellipse class="peeker-foot" cx="54" cy="172.5" rx="7.5" ry="3.7"/>
                                 </g>
                                 <g class="peeker-leg peeker-leg-right">
-                                    <path class="peeker-limb" d="M80 118c3 14 6 28 4 40"/>
-                                    <path class="peeker-foot" d="M74 158c4 6 14 6 18 0"/>
-                                    <circle class="peeker-joint peeker-hip" cx="80" cy="118" r="2.8"/>
+                                    <path class="peeker-limb" fill="none" d="M79 128c1 14 2 28 3 40"/>
+                                    <ellipse class="peeker-foot" cx="86" cy="172.5" rx="7.5" ry="3.7"/>
                                 </g>
 
-                                <path class="peeker-torso-shape" d="M54 74c-2 12-1 26 2 38c8 4 20 4 28-1c2-12 1-26-2-38c-6-5-18-5-28 1z"/>
+                                <path class="peeker-torso-shape" d="M58 60C50 76 46 100 50 118C52 128 62 134 70 134C78 134 88 128 90 118C94 100 90 76 82 60Z"/>
 
-                                <!-- Right arm (wave): shoulder → elbow → hand -->
+                                <!-- Head sits over the body top; arms are drawn last so hands can cross the face -->
+                                <g class="peeker-head">
+                                    <g class="peeker-head-sway">
+                                        <ellipse class="peeker-skull" cx="70" cy="44" rx="27" ry="25"/>
+                                        <path class="peeker-brow peeker-brow-left" fill="none" d="M53 33q6-3 12-1"/>
+                                        <path class="peeker-brow peeker-brow-right" fill="none" d="M75 32q6-2 12 1"/>
+                                        <g class="peeker-face">
+                                            <g class="peeker-gaze">
+                                                <g class="peeker-eye peeker-eye-left">
+                                                    <circle class="peeker-pupil" cx="60" cy="45" r="2.5" fill="#1e3a5f" stroke="none"/>
+                                                </g>
+                                                <g class="peeker-eye peeker-eye-right">
+                                                    <circle class="peeker-pupil" cx="80" cy="45" r="2.5" fill="#1e3a5f" stroke="none"/>
+                                                </g>
+                                            </g>
+                                            <path class="peeker-mouth peeker-mouth-smile" fill="none" d="M63 56c3 4.5 11 4.5 14 0"/>
+                                            <ellipse class="peeker-mouth peeker-mouth-o" cx="70" cy="57.5" rx="2.8" ry="3.4" fill="#1e3a5f" stroke="none" opacity="0"/>
+                                            <path class="peeker-mouth peeker-mouth-flat" fill="none" d="M64 58h12" opacity="0"/>
+                                        </g>
+                                        <g class="peeker-sparks" fill="none">
+                                            <path d="M56 13l-4-7"/>
+                                            <path d="M70 10V1"/>
+                                            <path d="M84 13l4-7"/>
+                                        </g>
+                                    </g>
+                                </g>
+
+                                <!-- Free arm (viewer-left): shoulder -> elbow -> wrist -> hand -->
                                 <g class="peeker-arm peeker-arm-wave">
                                     <g class="peeker-upper-arm">
-                                        <path class="peeker-limb" d="M88 84l14 20"/>
-                                        <circle class="peeker-joint peeker-shoulder" cx="88" cy="84" r="2.9"/>
+                                        <path class="peeker-limb" fill="none" d="M51 82C45 88 41 96 41 106"/>
                                         <g class="peeker-forearm">
-                                            <path class="peeker-limb" d="M102 104l2 24"/>
-                                            <circle class="peeker-joint peeker-elbow" cx="102" cy="104" r="2.6"/>
-                                            <circle class="peeker-hand" cx="104" cy="132" r="5"/>
+                                            <path class="peeker-limb" fill="none" d="M41 106C40 113 40 119 41 125"/>
+                                            <g class="peeker-hand">
+                                                <ellipse class="peeker-hand-shape" cx="41.5" cy="130.5" rx="3.6" ry="5.8"/>
+                                            </g>
                                         </g>
                                     </g>
                                 </g>
 
-                                <!-- Left arm (hold): shoulder → elbow → hand on card edge -->
+                                <!-- Wall arm (viewer-right, toward the card edge) -->
                                 <g class="peeker-arm peeker-arm-hold">
                                     <g class="peeker-upper-arm">
-                                        <path class="peeker-limb" d="M52 84l-14-12"/>
-                                        <circle class="peeker-joint peeker-shoulder" cx="52" cy="84" r="2.9"/>
+                                        <path class="peeker-limb" fill="none" d="M89 82C95 88 99 96 99 106"/>
                                         <g class="peeker-forearm">
-                                            <path class="peeker-limb" d="M38 72l-2-16"/>
-                                            <circle class="peeker-joint peeker-elbow" cx="38" cy="72" r="2.6"/>
-                                            <circle class="peeker-hand" cx="36" cy="52" r="5"/>
+                                            <path class="peeker-limb" fill="none" d="M99 106C100 113 100 119 99 125"/>
+                                            <g class="peeker-hand">
+                                                <ellipse class="peeker-hand-shape" cx="98.5" cy="130.5" rx="3.6" ry="5.8"/>
+                                            </g>
                                         </g>
-                                    </g>
-                                </g>
-
-                                <g class="peeker-head">
-                                    <!-- Neck rotates with head and overlaps torso top -->
-                                    <path class="peeker-neck" d="M70 66v10" fill="none"/>
-                                    <ellipse class="peeker-skull" cx="70" cy="42" rx="23" ry="25"/>
-                                    <path class="peeker-brow peeker-brow-left" d="M53 29c3-2 9-2 12 0" fill="none"/>
-                                    <path class="peeker-brow peeker-brow-right" d="M75 29c3-2 9-2 12 0" fill="none"/>
-                                    <g class="peeker-face">
-                                        <g class="peeker-eye peeker-eye-left">
-                                            <circle class="peeker-sclera" cx="60" cy="40" r="4.8"/>
-                                            <circle class="peeker-pupil" cx="60" cy="40" r="2.2" fill="#1e3a5f" stroke="none"/>
-                                            <path class="peeker-lid" d="M55 36h10" fill="none" opacity="0"/>
-                                        </g>
-                                        <g class="peeker-eye peeker-eye-right">
-                                            <circle class="peeker-sclera" cx="74" cy="40" r="4.8"/>
-                                            <circle class="peeker-pupil" cx="74" cy="40" r="2.2" fill="#1e3a5f" stroke="none"/>
-                                            <path class="peeker-lid" d="M69 36h10" fill="none" opacity="0"/>
-                                        </g>
-                                        <path class="peeker-mouth peeker-mouth-smile" d="M61 50c3 4 11 4 14 0" fill="none"/>
-                                        <circle class="peeker-mouth peeker-mouth-o" cx="68" cy="50" r="3.2" opacity="0"/>
-                                        <path class="peeker-mouth peeker-mouth-flat" d="M62 51h12" fill="none" opacity="0"/>
                                     </g>
                                 </g>
                             </g>

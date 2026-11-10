@@ -2034,28 +2034,92 @@ html {
     transition: background 0.25s ease, transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
 }
 
-/* Articulated SVG mascot — behavior-driven peeks behind Kapoenen */
+/* Hand-drawn peeker (reference-sheet style): round head, bean body, single-stroke limbs.
+   Posture lives in registered CSS variables that ease between values, so gestures never snap.
+   Loops (wave, cheer, tap) use a phase variable with a fading amplitude, so they start and
+   stop at the current angle instead of jumping. */
 
+@property --a-torso { syntax: "<angle>"; inherits: true; initial-value: 0deg; }
+@property --a-head { syntax: "<angle>"; inherits: true; initial-value: 0deg; }
+@property --g-torso { syntax: "<angle>"; inherits: true; initial-value: 0deg; }
+@property --g-head { syntax: "<angle>"; inherits: true; initial-value: 0deg; }
+@property --look-head { syntax: "<angle>"; inherits: true; initial-value: 0deg; }
+@property --wu { syntax: "<angle>"; inherits: true; initial-value: 0deg; }
+@property --wf { syntax: "<angle>"; inherits: true; initial-value: 0deg; }
+@property --wh { syntax: "<angle>"; inherits: true; initial-value: 0deg; }
+@property --hu { syntax: "<angle>"; inherits: true; initial-value: 0deg; }
+@property --hf { syntax: "<angle>"; inherits: true; initial-value: 0deg; }
+@property --hh { syntax: "<angle>"; inherits: true; initial-value: 0deg; }
+@property --amp-wave { syntax: "<angle>"; inherits: true; initial-value: 0deg; }
+@property --amp-cheer { syntax: "<angle>"; inherits: true; initial-value: 0deg; }
+@property --amp-tap { syntax: "<angle>"; inherits: true; initial-value: 0deg; }
+@property --hop { syntax: "<length>"; inherits: true; initial-value: 0px; }
+@property --gx { syntax: "<length>"; inherits: true; initial-value: 0px; }
+@property --gy { syntax: "<length>"; inherits: true; initial-value: 0px; }
+@property --px { syntax: "<length>"; inherits: true; initial-value: 0px; }
+@property --py { syntax: "<length>"; inherits: true; initial-value: 0px; }
+@property --gaze-amp { syntax: "<length>"; inherits: true; initial-value: 0px; }
+@property --sway-slow { syntax: "<angle>"; inherits: true; initial-value: 0deg; }
+@property --sway-fast { syntax: "<angle>"; inherits: true; initial-value: 0deg; }
+@property --ph-gaze { syntax: "<number>"; inherits: true; initial-value: 0; }
+@property --ph-slow { syntax: "<number>"; inherits: true; initial-value: 0; }
+@property --ph-fast { syntax: "<number>"; inherits: true; initial-value: 0; }
+@property --ph-wave { syntax: "<number>"; inherits: true; initial-value: 0; }
+@property --ph-cheer { syntax: "<number>"; inherits: true; initial-value: 0; }
+@property --ph-tap { syntax: "<number>"; inherits: true; initial-value: 0; }
 .branch-peeker {
-    --peeker-ease: cubic-bezier(0.4, 0.12, 0.2, 1);
+    --peeker-ease: cubic-bezier(0.37, 0.1, 0.2, 1);
+    --peeker-ease-soft: cubic-bezier(0.34, 1.12, 0.5, 1);
+    --peeker-ease-out: cubic-bezier(0.22, 0.9, 0.28, 1);
+    --peeker-ease-in: cubic-bezier(0.55, 0.05, 0.65, 0.3);
+    --g-dur: 0.7s;
+    --sway-slow: 1.4deg;
+    --peeker-limb-ease: cubic-bezier(0.45, 0.05, 0.3, 1);
+
+    /* Registered posture variables ease with staggered delays (follow-through):
+       torso first, head slightly behind, then upper arm, forearm and hand. */
+    --tv:
+        --a-torso var(--g-dur) var(--peeker-ease),
+        --g-torso var(--g-dur) var(--peeker-ease),
+        --a-head var(--g-dur) var(--peeker-ease-soft) 0.05s,
+        --g-head var(--g-dur) var(--peeker-ease-soft) 0.05s,
+        --look-head 0.4s var(--peeker-ease),
+        --wu var(--g-dur) var(--peeker-limb-ease) 0.08s,
+        --wf var(--g-dur) var(--peeker-limb-ease) 0.14s,
+        --wh var(--g-dur) var(--peeker-limb-ease) 0.2s,
+        --hu var(--g-dur) var(--peeker-limb-ease) 0.08s,
+        --hf var(--g-dur) var(--peeker-limb-ease) 0.14s,
+        --hh var(--g-dur) var(--peeker-limb-ease) 0.2s,
+        --amp-wave 0.7s ease,
+        --amp-cheer 0.7s ease,
+        --amp-tap 0.7s ease,
+        --hop 0.5s ease,
+        --gx 0.5s var(--peeker-ease),
+        --gy 0.5s var(--peeker-ease),
+        --px 0.3s var(--peeker-ease),
+        --py 0.3s var(--peeker-ease),
+        --gaze-amp 0.8s ease,
+        --sway-slow 0.8s ease,
+        --sway-fast 0.8s ease;
+
     --peeker-hidden-x: 86px;
     --peeker-hidden-y: 32px;
     --peeker-hidden-r: 12deg;
-    --peeker-head-x: 52px;
-    --peeker-head-y: 6px;
-    --peeker-head-r: 4deg;
-    --peeker-peek-x: -4px;
-    --peeker-peek-y: -6px;
-    --peeker-peek-r: -9deg;
-    --peeker-full-x: -12px;
-    --peeker-full-y: -10px;
-    --peeker-full-r: -12deg;
-    --peeker-lean-x: 14px;
-    --peeker-lean-y: -2px;
-    --peeker-lean-r: -11deg;
-    --peeker-side-x: 10px;
-    --peeker-side-y: 40px;
-    --peeker-side-r: -3deg;
+    --peeker-head-x: 17px;
+    --peeker-head-y: 2px;
+    --peeker-head-r: 3deg;
+    --peeker-peek-x: -14px;
+    --peeker-peek-y: -8px;
+    --peeker-peek-r: -3deg;
+    --peeker-full-x: -22px;
+    --peeker-full-y: -12px;
+    --peeker-full-r: -4deg;
+    --peeker-lean-x: -4px;
+    --peeker-lean-y: -6px;
+    --peeker-lean-r: 3deg;
+    --peeker-side-x: 12px;
+    --peeker-side-y: 36px;
+    --peeker-side-r: -2deg;
     position: absolute;
     top: -10px;
     left: -78px;
@@ -2068,69 +2132,75 @@ html {
     opacity: 0;
     will-change: transform, opacity;
     transition:
-        transform 0.55s var(--peeker-ease),
-        opacity 0.25s ease,
-        translate 0.25s ease;
+        transform 0.62s var(--peeker-ease),
+        opacity 0.28s ease,
+        translate 0.28s ease,
+        var(--tv);
 }
 
 .branch-peeker[data-pose="head"] {
     transform: translate3d(var(--peeker-head-x), var(--peeker-head-y), 0) rotate(var(--peeker-head-r));
-    transition-duration: 0.7s;
+    transition-duration: 0.78s;
+    transition-timing-function: var(--peeker-ease-out);
 }
 
 .branch-peeker[data-pose="peek"] {
     transform: translate3d(var(--peeker-peek-x), var(--peeker-peek-y), 0) rotate(var(--peeker-peek-r));
+    transition-duration: 0.6s;
 }
 
 .branch-peeker[data-pose="full"] {
     transform: translate3d(var(--peeker-full-x), var(--peeker-full-y), 0) rotate(var(--peeker-full-r));
-    transition-duration: 0.4s;
+    transition-duration: 0.48s;
+    transition-timing-function: var(--peeker-ease-out);
 }
 
 .branch-peeker[data-pose="lean"] {
     transform: translate3d(var(--peeker-lean-x), var(--peeker-lean-y), 0) rotate(var(--peeker-lean-r));
-    transition-duration: 0.85s;
+    transition-duration: 0.95s;
 }
 
 .branch-peeker[data-pose="side"] {
     transform: translate3d(var(--peeker-side-x), var(--peeker-side-y), 0) rotate(var(--peeker-side-r));
-    transition-duration: 0.5s;
+    transition-duration: 0.55s;
 }
 
+/* Slides back behind the opaque card fully drawn; only hidden once it is out of sight */
 .branch-peeker[data-pose="hidden"] {
-    /* Fully invisible while tucked — never show through a fading/lifted card */
-    opacity: 0;
+    opacity: 1;
     visibility: hidden;
     transition:
-        transform 0.45s var(--peeker-ease),
-        opacity 0.2s ease,
-        translate 0.25s ease,
-        visibility 0s linear 0.2s;
+        transform 0.52s var(--peeker-ease-in),
+        opacity 0.22s ease,
+        translate 0.28s ease,
+        visibility 0s linear 0.6s,
+        var(--tv);
 }
 
 .branch-peeker:not([data-pose="hidden"]) {
     opacity: 1;
     visibility: visible;
     transition:
-        transform 0.55s var(--peeker-ease),
-        opacity 0.25s ease,
-        translate 0.25s ease,
-        visibility 0s linear 0s;
+        transform 0.62s var(--peeker-ease),
+        opacity 0.28s ease,
+        translate 0.28s ease,
+        visibility 0s linear 0s,
+        var(--tv);
 }
 
-/* Keep peeker glued behind Kapoenen when the card lifts on hover */
 .branch-peeker-host:has(> .branch:is(:hover, :focus-visible)) .branch-peeker {
     translate: 0 -5px;
 }
 
 .branch-peeker.is-fast {
-    transition-duration: 0.28s;
-    transition-timing-function: cubic-bezier(0.55, 0.05, 0.7, 0.2);
+    --g-dur: 0.34s;
+    transition-duration: 0.3s;
+    transition-timing-function: var(--peeker-ease-in);
 }
 
 .branch-peeker.is-slow {
-    transition-duration: 1.05s;
-    transition-timing-function: cubic-bezier(0.33, 0.1, 0.25, 1);
+    --g-dur: 1s;
+    transition-duration: 1.12s;
 }
 
 .branch-peeker-svg {
@@ -2138,93 +2208,135 @@ html {
     width: 100%;
     height: 100%;
     overflow: visible;
-    filter: drop-shadow(0 8px 12px rgba(30, 58, 95, 0.14));
+    filter: drop-shadow(0 5px 8px rgba(30, 58, 95, 0.1));
 }
 
-/* Anatomical pivots in SVG user space (viewBox 0 0 140 200) */
+/* —— Rig pivots (viewBox 0 0 140 200); every part reads its angle from a variable —— */
+.branch-peeker .peeker-body,
 .branch-peeker .peeker-torso,
 .branch-peeker .peeker-head,
-.branch-peeker .peeker-arm-wave .peeker-upper-arm,
-.branch-peeker .peeker-arm-wave .peeker-forearm,
-.branch-peeker .peeker-arm-hold .peeker-upper-arm,
-.branch-peeker .peeker-arm-hold .peeker-forearm,
-.branch-peeker .peeker-pupil,
-.branch-peeker .peeker-brow-left,
-.branch-peeker .peeker-brow-right,
-.branch-peeker .peeker-leg-left,
-.branch-peeker .peeker-leg-right {
+.branch-peeker .peeker-head-sway,
+.branch-peeker .peeker-gaze,
+.branch-peeker .peeker-eye,
+.branch-peeker .peeker-brow,
+.branch-peeker .peeker-sparks,
+.branch-peeker .peeker-upper-arm,
+.branch-peeker .peeker-forearm,
+.branch-peeker .peeker-hand {
     transform-box: view-box;
 }
 
+/* Lean around the feet so the character keeps its weight on the ground.
+   Hop (cheer) lifts the torso; breathing scales the body group. */
+.branch-peeker .peeker-body {
+    transform-origin: 70px 172px;
+}
+
 .branch-peeker .peeker-torso {
-    transform-origin: 70px 118px;
+    transform-origin: 70px 172px;
+    transform: translateY(calc(var(--hop) * -0.5 * (1 - cos(var(--ph-cheer) * 1rad))))
+        rotate(calc(var(--a-torso) + var(--g-torso)));
 }
 
 .branch-peeker .peeker-head {
-    transform-origin: 70px 70px;
+    transform-origin: 70px 66px;
+    transform: rotate(calc(var(--a-head) + var(--g-head) + var(--look-head)));
 }
 
+.branch-peeker .peeker-head-sway {
+    transform-origin: 70px 66px;
+    transform: rotate(
+        calc(0.5deg + var(--sway-slow) * sin(var(--ph-slow) * 1rad) + var(--sway-fast) * sin(var(--ph-fast) * 1rad))
+    );
+}
+
+/* Eyes: gaze wander (all vars ease, no animation on the same property) */
+.branch-peeker .peeker-gaze {
+    transform: translate(
+        calc(var(--gx) + var(--gaze-amp) * sin(var(--ph-gaze) * 1rad)),
+        calc(var(--gy) + var(--gaze-amp) * 0.25 * sin(var(--ph-gaze) * 2rad))
+    );
+}
+
+.branch-peeker .peeker-pupil {
+    transform-box: view-box;
+    transform: translate(var(--px), var(--py));
+}
+
+.branch-peeker .peeker-eye-left {
+    transform-origin: 60px 45px;
+}
+
+.branch-peeker .peeker-eye-right {
+    transform-origin: 80px 45px;
+}
+
+/* Free arm: each segment reads its own variable; wave/cheer loops ride on the phase variables */
 .branch-peeker .peeker-arm-wave .peeker-upper-arm {
-    transform-origin: 88px 84px;
+    transform-origin: 51px 82px;
+    transform: rotate(var(--wu));
 }
 
 .branch-peeker .peeker-arm-wave .peeker-forearm {
-    transform-origin: 102px 104px;
+    transform-origin: 41px 106px;
+    transform: rotate(
+        calc(
+            var(--wf) + var(--amp-wave) * sin(var(--ph-wave) * 1rad) + var(--amp-cheer) *
+                sin(var(--ph-cheer) * 1rad)
+        )
+    );
 }
 
+.branch-peeker .peeker-arm-wave .peeker-hand {
+    transform-origin: 41px 125px;
+    transform: rotate(calc(var(--wh) + var(--amp-wave) * 0.9 * sin(var(--ph-wave) * 1rad - 0.9rad)));
+}
+
+/* Wall arm */
 .branch-peeker .peeker-arm-hold .peeker-upper-arm {
-    transform-origin: 52px 84px;
+    transform-origin: 89px 82px;
+    transform: rotate(var(--hu));
 }
 
 .branch-peeker .peeker-arm-hold .peeker-forearm {
-    transform-origin: 38px 72px;
+    transform-origin: 99px 106px;
+    transform: rotate(calc(var(--hf) - var(--amp-cheer) * sin(var(--ph-cheer) * 1rad)));
 }
 
-.branch-peeker .peeker-leg-left {
-    transform-origin: 60px 118px;
+.branch-peeker .peeker-arm-hold .peeker-hand {
+    transform-origin: 99px 125px;
+    transform: rotate(calc(var(--hh) + var(--amp-tap) * sin(var(--ph-tap) * 1rad)));
 }
-
-.branch-peeker .peeker-leg-right {
-    transform-origin: 80px 118px;
+/* —— Face —— */
+.branch-peeker .peeker-brow,
+.branch-peeker .peeker-sparks {
+    opacity: 0;
+    transition: opacity 0.2s ease, transform 0.22s var(--peeker-ease);
 }
 
 .branch-peeker .peeker-brow-left {
-    transform-origin: 59px 29px;
+    transform-origin: 59px 33px;
 }
 
 .branch-peeker .peeker-brow-right {
-    transform-origin: 81px 29px;
+    transform-origin: 81px 32px;
 }
 
-.branch-peeker .peeker-joint {
-    /* Cover limb seams so rotations never show gaps */
-    pointer-events: none;
+.branch-peeker .peeker-sparks {
+    transform-origin: 70px 44px;
 }
 
 .branch-peeker .peeker-mouth-o,
 .branch-peeker .peeker-mouth-flat {
     opacity: 0;
+    transition: opacity 0.2s ease;
 }
 
 .branch-peeker .peeker-mouth-smile {
     opacity: 1;
+    transition: opacity 0.2s ease;
 }
 
-.branch-peeker .peeker-lid {
-    opacity: 0;
-    stroke-width: 3.6;
-}
-
-/* Continuous blink while visible — opacity only, no scale distortion */
-.branch-peeker:not([data-pose="hidden"]) .peeker-lid {
-    animation: peeker-blink 5.2s ease-in-out infinite;
-}
-
-.branch-peeker:not([data-pose="hidden"]) .peeker-torso {
-    animation: peeker-breathe 4.2s ease-in-out infinite;
-}
-
-/* Face mood helpers */
 .branch-peeker[data-mood="surprise"] .peeker-mouth-smile,
 .branch-peeker[data-mood="nervous"] .peeker-mouth-smile {
     opacity: 0;
@@ -2238,616 +2350,289 @@ html {
     opacity: 1;
 }
 
-.branch-peeker[data-mood="surprise"] .peeker-brow-left,
-.branch-peeker[data-mood="surprise"] .peeker-brow-right {
-    transform: translateY(-1.5px);
+.branch-peeker[data-mood="surprise"] .peeker-brow,
+.branch-peeker[data-mood="surprise"] .peeker-sparks,
+.branch-peeker[data-mood="nervous"] .peeker-brow {
+    opacity: 1;
+}
+
+.branch-peeker[data-mood="surprise"] .peeker-brow {
+    transform: translateY(-2.5px);
 }
 
 .branch-peeker[data-mood="nervous"] .peeker-brow-left {
-    transform: rotate(8deg);
+    transform: rotate(9deg) translateY(1px);
 }
 
 .branch-peeker[data-mood="nervous"] .peeker-brow-right {
-    transform: rotate(-8deg);
+    transform: rotate(-9deg) translateY(1px);
 }
 
-/* —— Acts —— */
-.branch-peeker[data-act="curious"] .peeker-head {
-    animation: peeker-act-curious-head 4.2s var(--peeker-ease) both;
+/* —— Always-on life (each loop owns its own element or its own variable) —— */
+.branch-peeker .peeker-body {
+    animation: peeker-breathe 4.6s ease-in-out infinite;
 }
 
-.branch-peeker[data-act="curious"] .peeker-pupil {
-    animation: peeker-act-curious-pupils 4.2s ease-in-out both;
+.branch-peeker .peeker-eye {
+    animation: peeker-blink 5.6s ease-in-out infinite;
 }
 
-.branch-peeker[data-act="curious"] .peeker-arm-hold .peeker-upper-arm {
-    animation: peeker-act-curious-hold-u 4.2s var(--peeker-ease) both;
+.branch-peeker .peeker-eye-right {
+    animation-delay: 0.02s;
 }
 
-.branch-peeker[data-act="curious"] .peeker-arm-hold .peeker-forearm {
-    animation: peeker-act-curious-hold-f 4.2s var(--peeker-ease) both;
+/* Phase clocks: amplitudes ease in/out through registered variables, so loops start and stop smoothly */
+.branch-peeker {
+    animation:
+        peeker-ph-wave 1.1s linear infinite,
+        peeker-ph-cheer 0.8s linear infinite,
+        peeker-ph-tap 0.55s linear infinite,
+        peeker-ph-gaze 3.4s linear infinite,
+        peeker-ph-slow 7.2s linear infinite,
+        peeker-ph-fast 1.3s linear infinite;
 }
 
-.branch-peeker[data-act="shy"] .peeker-head {
-    animation: peeker-act-shy-head 2.2s var(--peeker-ease) both;
+/* Hidden: freeze (not reset) every loop so nothing jumps while the figure slides away */
+.branch-peeker[data-pose="hidden"],
+.branch-peeker[data-pose="hidden"] * {
+    animation-play-state: paused;
 }
 
-.branch-peeker[data-act="shy"] .peeker-pupil {
-    animation: peeker-act-shy-pupils 2.2s ease-out both;
+/* —— Gestures: arm / head / torso postures (set per step by the controller) —— */
+.branch-peeker[data-g="wave"] {
+    --wu: 118deg;
+    --wf: 48deg;
+    --wh: 6deg;
+    --g-head: 5deg;
+    --g-torso: -1.5deg;
+    --amp-wave: 15deg;
 }
 
-.branch-peeker[data-act="excited"] .peeker-head {
-    animation: peeker-act-excited-head 3.6s var(--peeker-ease) both;
+.branch-peeker[data-g="cheer"] {
+    --wu: 122deg;
+    --wf: 50deg;
+    --hu: -122deg;
+    --hf: -50deg;
+    --g-head: -3deg;
+    --amp-cheer: 8deg;
+    --hop: 4px;
 }
 
-.branch-peeker[data-act="excited"] .peeker-arm-wave .peeker-upper-arm {
-    animation: peeker-act-excited-wave-u 3.6s var(--peeker-ease) both;
+.branch-peeker[data-g="clasp"] {
+    --wu: -18deg;
+    --wf: -112deg;
+    --wh: 8deg;
+    --hu: 18deg;
+    --hf: 112deg;
+    --hh: -8deg;
+    --g-head: 4deg;
+    --g-torso: 1deg;
 }
 
-.branch-peeker[data-act="excited"] .peeker-arm-wave .peeker-forearm {
-    animation: peeker-act-excited-wave-f 3.6s var(--peeker-ease) 0.04s both;
+.branch-peeker[data-g="mouth"] {
+    --wu: -78deg;
+    --wf: -119deg;
+    --g-head: 6deg;
 }
 
-.branch-peeker[data-act="excited"] .peeker-arm-hold .peeker-upper-arm {
-    animation: peeker-act-excited-hold-u 3.6s var(--peeker-ease) both;
+.branch-peeker[data-g="wall"] {
+    --hu: -8deg;
+    --hf: -6deg;
+    --hh: -8deg;
+    --wu: 3deg;
 }
 
-.branch-peeker[data-act="excited"] .peeker-arm-hold .peeker-forearm {
-    animation: peeker-act-excited-hold-f 3.6s var(--peeker-ease) both;
+.branch-peeker[data-g="scratch"] {
+    --wu: 140deg;
+    --wf: 60deg;
+    --wh: 10deg;
+    --g-head: -4deg;
 }
 
-.branch-peeker[data-act="naughty"] .peeker-head {
-    animation: peeker-act-naughty-head 5s var(--peeker-ease) both;
+/* Click reaction: a short wave on top of whatever gesture is active */
+.branch-peeker.is-reacting {
+    --wu: 118deg;
+    --wf: 48deg;
+    --wh: 6deg;
+    --g-head: 5deg;
+    --amp-wave: 15deg;
 }
 
-.branch-peeker[data-act="naughty"] .peeker-pupil {
-    animation: peeker-act-naughty-pupils 5s ease-in-out both;
+.branch-peeker[data-g="cheer"] .peeker-sparks {
+    opacity: 1;
 }
 
-.branch-peeker[data-act="relaxed"] .peeker-head {
-    animation: peeker-act-relaxed-head 5.4s ease-in-out both;
+/* Playful tap: fingers drum on the card edge */
+.branch-peeker[data-act="playful"][data-g="wall"] {
+    --amp-tap: 8deg;
 }
 
-.branch-peeker[data-act="relaxed"] .peeker-pupil {
-    animation: peeker-act-relaxed-pupils 5.4s ease-in-out both;
+/* —— Acts: default lean/tilt, eye wandering, head sway rhythm —— */
+.branch-peeker[data-act="curious"] {
+    --a-torso: -3deg;
+    --a-head: -7deg;
+    --sway-slow: 5deg;
+    --gaze-amp: 1.9px;
 }
 
-.branch-peeker[data-act="relaxed"] .peeker-arm-hold .peeker-upper-arm {
-    animation: peeker-act-relaxed-hold-u 5.4s var(--peeker-ease) both;
+.branch-peeker[data-act="shy"] {
+    --a-torso: 0.5deg;
+    --a-head: 6deg;
+    --sway-slow: 0deg;
+    --sway-fast: 1.2deg;
+    --gx: 0.8px;
+    --gy: 1.2px;
 }
 
-.branch-peeker[data-act="relaxed"] .peeker-arm-hold .peeker-forearm {
-    animation: peeker-act-relaxed-hold-f 5.4s var(--peeker-ease) both;
+.branch-peeker[data-act="excited"] {
+    --a-torso: -1deg;
+    --a-head: -2deg;
+    --sway-slow: 0deg;
+    --sway-fast: 3deg;
 }
 
-.branch-peeker[data-act="playful"] .peeker-head {
-    animation: peeker-act-playful-head 3.2s var(--peeker-ease) both;
+.branch-peeker[data-act="naughty"] {
+    --a-torso: 2deg;
+    --a-head: 7deg;
+    --sway-slow: 3deg;
+    --gaze-amp: 2.2px;
 }
 
-.branch-peeker[data-act="playful"] .peeker-arm-hold .peeker-forearm {
-    animation: peeker-act-playful-tap 3.2s var(--peeker-ease) both;
+.branch-peeker[data-act="relaxed"] {
+    --a-torso: 4deg;
+    --a-head: 6deg;
+    --sway-slow: 2deg;
+    --gy: 0.8px;
 }
 
-.branch-peeker[data-act="playful"] .peeker-pupil {
-    animation: peeker-act-playful-pupils 3.2s ease-in-out both;
+.branch-peeker[data-act="playful"] {
+    --a-torso: -2deg;
+    --a-head: -9deg;
+    --sway-slow: 0deg;
+    --sway-fast: 3.5deg;
 }
 
-.branch-peeker[data-act="cheerful"] .peeker-head {
-    animation: peeker-act-cheerful-head 3s var(--peeker-ease) both;
+.branch-peeker[data-act="cheerful"] {
+    --a-torso: -1deg;
+    --a-head: 4deg;
+    --sway-slow: 0deg;
+    --sway-fast: 3deg;
 }
 
-.branch-peeker[data-act="cheerful"] .peeker-arm-wave .peeker-upper-arm {
-    animation: peeker-act-cheerful-wave-u 3s var(--peeker-ease) both;
+.branch-peeker[data-act="idle"] {
+    --a-torso: 0.5deg;
+    --a-head: -3deg;
+    --gaze-amp: 1.3px;
 }
 
-.branch-peeker[data-act="cheerful"] .peeker-arm-wave .peeker-forearm {
-    animation: peeker-act-cheerful-wave-f 3s var(--peeker-ease) 0.05s both;
+/* Hover look: eyes + head follow the hovered card (only while visible) */
+.branch-peeker[data-look="left"] {
+    --look-head: 5deg;
+    --px: -1.7px;
+    --py: 0.2px;
 }
 
-.branch-peeker[data-act="idle"] .peeker-head {
-    animation: peeker-act-idle-head 3s ease-in-out both;
+.branch-peeker[data-look="right"] {
+    --look-head: -6deg;
+    --px: 1.9px;
+    --py: 0.2px;
 }
 
-.branch-peeker[data-act="idle"] .peeker-pupil {
-    animation: peeker-act-idle-pupils 3s ease-in-out both;
+.branch-peeker[data-look="down"] {
+    --px: 0px;
+    --py: 1.5px;
 }
 
-/* Look toward hovered branch cards — small head turns only */
-.branch-peeker[data-look="left"] .peeker-head {
-    transform: rotate(7deg);
-    transition: transform 0.35s var(--peeker-ease);
-}
-
-.branch-peeker[data-look="right"] .peeker-head {
-    transform: rotate(-8deg);
-    transition: transform 0.35s var(--peeker-ease);
-}
-
-.branch-peeker[data-look="left"] .peeker-pupil {
-    transform: translate(-1.6px, 0);
-    transition: transform 0.3s ease;
-}
-
-.branch-peeker[data-look="right"] .peeker-pupil {
-    transform: translate(1.8px, 0);
-    transition: transform 0.3s ease;
-}
-
-.branch-peeker[data-look="down"] .peeker-pupil {
-    transform: translate(0, 1.4px);
-    transition: transform 0.3s ease;
-}
-
-/* Click / hover reaction overlay */
-.branch-peeker.is-reacting .peeker-arm-wave .peeker-upper-arm {
-    animation: peeker-react-wave-u 0.85s var(--peeker-ease) both;
-}
-
-.branch-peeker.is-reacting .peeker-arm-wave .peeker-forearm {
-    animation: peeker-react-wave-f 0.85s var(--peeker-ease) both;
-}
-
-.branch-peeker.is-reacting .peeker-head {
-    animation: peeker-react-head 0.85s var(--peeker-ease) both;
-}
-
-@keyframes peeker-blink {
-    0%,
-    44%,
-    52%,
-    82%,
-    100% {
-        opacity: 0;
+@keyframes peeker-ph-wave {
+    from {
+        --ph-wave: 0;
     }
-    46%,
-    50%,
-    84%,
-    88% {
-        opacity: 1;
+    to {
+        --ph-wave: 6.28319;
+    }
+}
+
+@keyframes peeker-ph-cheer {
+    from {
+        --ph-cheer: 0;
+    }
+    to {
+        --ph-cheer: 6.28319;
+    }
+}
+
+@keyframes peeker-ph-tap {
+    from {
+        --ph-tap: 0;
+    }
+    to {
+        --ph-tap: 6.28319;
+    }
+}
+
+@keyframes peeker-ph-gaze {
+    from {
+        --ph-gaze: 0;
+    }
+    to {
+        --ph-gaze: 6.28319;
+    }
+}
+
+@keyframes peeker-ph-slow {
+    from {
+        --ph-slow: 0;
+    }
+    to {
+        --ph-slow: 6.28319;
+    }
+}
+
+@keyframes peeker-ph-fast {
+    from {
+        --ph-fast: 0;
+    }
+    to {
+        --ph-fast: 6.28319;
     }
 }
 
 @keyframes peeker-breathe {
     0%,
     100% {
-        transform: translateY(0);
+        transform: translateY(0) scale(1, 1);
     }
     50% {
-        transform: translateY(-1px);
+        transform: translateY(-1px) scale(1.012, 0.988);
     }
 }
 
-/* Keep joint angles modest so limbs stay coherent */
-@keyframes peeker-act-curious-head {
+@keyframes peeker-blink {
     0%,
-    12% {
-        transform: rotate(3deg);
-    }
-    30% {
-        transform: rotate(-8deg);
-    }
-    52% {
-        transform: rotate(7deg);
-    }
-    72% {
-        transform: rotate(-4deg);
-    }
+    42%,
+    48%,
+    78%,
+    84%,
     100% {
-        transform: rotate(2deg);
-    }
-}
-
-@keyframes peeker-act-curious-pupils {
-    0%,
-    14% {
-        transform: translate(0, 0);
-    }
-    32% {
-        transform: translate(1.8px, 0);
-    }
-    54% {
-        transform: translate(-1.6px, 0.4px);
-    }
-    74% {
-        transform: translate(1.2px, 0);
-    }
-    100% {
-        transform: translate(0, 0);
-    }
-}
-
-@keyframes peeker-act-curious-hold-u {
-    0%,
-    100% {
-        transform: rotate(0deg);
-    }
-    40%,
-    70% {
-        transform: rotate(-6deg);
-    }
-}
-
-@keyframes peeker-act-curious-hold-f {
-    0%,
-    100% {
-        transform: rotate(0deg);
-    }
-    40%,
-    70% {
-        transform: rotate(8deg);
-    }
-}
-
-@keyframes peeker-act-shy-head {
-    0% {
-        transform: rotate(-2deg);
-    }
-    35% {
-        transform: rotate(5deg);
-    }
-    55% {
-        transform: rotate(-8deg);
-    }
-    100% {
-        transform: rotate(4deg);
-    }
-}
-
-@keyframes peeker-act-shy-pupils {
-    0%,
-    30% {
-        transform: translate(0.8px, 0);
-    }
-    50% {
-        transform: translate(-0.6px, 1px);
-    }
-    100% {
-        transform: translate(0, 0.6px);
-    }
-}
-
-@keyframes peeker-act-excited-head {
-    0%,
-    18% {
-        transform: rotate(-3deg);
-    }
-    32%,
-    48% {
-        transform: rotate(6deg);
-    }
-    40% {
-        transform: rotate(-6deg);
-    }
-    100% {
-        transform: rotate(2deg);
-    }
-}
-
-@keyframes peeker-act-excited-wave-u {
-    0%,
-    18% {
-        transform: rotate(2deg);
-    }
-    30% {
-        transform: rotate(-18deg);
-    }
-    40% {
-        transform: rotate(8deg);
-    }
-    50% {
-        transform: rotate(-14deg);
-    }
-    60% {
-        transform: rotate(6deg);
-    }
-    100% {
-        transform: rotate(0deg);
-    }
-}
-
-@keyframes peeker-act-excited-wave-f {
-    0%,
-    18% {
-        transform: rotate(0deg);
-    }
-    30% {
-        transform: rotate(-10deg);
-    }
-    40% {
-        transform: rotate(12deg);
-    }
-    50% {
-        transform: rotate(-8deg);
-    }
-    60% {
-        transform: rotate(8deg);
-    }
-    100% {
-        transform: rotate(0deg);
-    }
-}
-
-@keyframes peeker-act-excited-hold-u {
-    0%,
-    20%,
-    100% {
-        transform: rotate(0deg);
-    }
-    40%,
-    55% {
-        transform: rotate(10deg);
-    }
-}
-
-@keyframes peeker-act-excited-hold-f {
-    0%,
-    20%,
-    100% {
-        transform: rotate(0deg);
-    }
-    40%,
-    55% {
-        transform: rotate(-12deg);
-    }
-}
-
-@keyframes peeker-act-naughty-head {
-    0%,
-    18% {
-        transform: rotate(4deg);
-    }
-    30% {
-        transform: rotate(-4deg);
-    }
-    55%,
-    68% {
-        transform: rotate(6deg);
-    }
-    80% {
-        transform: rotate(-5deg);
-    }
-    100% {
-        transform: rotate(1deg);
-    }
-}
-
-@keyframes peeker-act-naughty-pupils {
-    0%,
-    22% {
-        transform: translate(1.2px, 0);
-    }
-    45% {
-        transform: translate(0, 0);
-    }
-    65% {
-        transform: translate(-1.2px, 0.5px);
-    }
-    100% {
-        transform: translate(0.6px, 0);
-    }
-}
-
-@keyframes peeker-act-relaxed-head {
-    0%,
-    100% {
-        transform: rotate(-8deg);
-    }
-    35% {
-        transform: rotate(-4deg);
-    }
-    65% {
-        transform: rotate(-10deg);
-    }
-}
-
-@keyframes peeker-act-relaxed-pupils {
-    0%,
-    100% {
-        transform: translate(0.8px, 0.6px);
-    }
-    40% {
-        transform: translate(-0.8px, 0.8px);
-    }
-    70% {
-        transform: translate(1.2px, 0.3px);
-    }
-}
-
-@keyframes peeker-act-relaxed-hold-u {
-    0%,
-    100% {
-        transform: rotate(-8deg);
-    }
-}
-
-@keyframes peeker-act-relaxed-hold-f {
-    0%,
-    100% {
-        transform: rotate(10deg);
-    }
-}
-
-@keyframes peeker-act-playful-head {
-    0%,
-    20% {
-        transform: rotate(2deg);
-    }
-    40% {
-        transform: rotate(-8deg);
-    }
-    60% {
-        transform: rotate(7deg);
-    }
-    100% {
-        transform: rotate(1deg);
-    }
-}
-
-@keyframes peeker-act-playful-tap {
-    0%,
-    28%,
-    100% {
-        transform: rotate(0deg);
-    }
-    36% {
-        transform: rotate(10deg);
-    }
-    44% {
-        transform: rotate(-2deg);
-    }
-    52% {
-        transform: rotate(8deg);
-    }
-    60% {
-        transform: rotate(0deg);
-    }
-}
-
-@keyframes peeker-act-playful-pupils {
-    0%,
-    100% {
-        transform: translate(0, 0);
-    }
-    40% {
-        transform: translate(0, 1.2px);
-    }
-    65% {
-        transform: translate(1.2px, 0);
-    }
-}
-
-@keyframes peeker-act-cheerful-head {
-    0%,
-    22% {
-        transform: rotate(-2deg);
-    }
-    42% {
-        transform: rotate(6deg);
-    }
-    62% {
-        transform: rotate(-4deg);
-    }
-    100% {
-        transform: rotate(1deg);
-    }
-}
-
-@keyframes peeker-act-cheerful-wave-u {
-    0%,
-    24% {
-        transform: rotate(2deg);
-    }
-    36% {
-        transform: rotate(-16deg);
-    }
-    48% {
-        transform: rotate(8deg);
-    }
-    60% {
-        transform: rotate(-12deg);
-    }
-    100% {
-        transform: rotate(0deg);
-    }
-}
-
-@keyframes peeker-act-cheerful-wave-f {
-    0%,
-    24% {
-        transform: rotate(0deg);
-    }
-    36% {
-        transform: rotate(-8deg);
-    }
-    48% {
-        transform: rotate(10deg);
-    }
-    60% {
-        transform: rotate(-6deg);
-    }
-    100% {
-        transform: rotate(0deg);
-    }
-}
-
-@keyframes peeker-act-idle-head {
-    0%,
-    100% {
-        transform: rotate(1deg);
-    }
-    45% {
-        transform: rotate(-4deg);
-    }
-    70% {
-        transform: rotate(3deg);
-    }
-}
-
-@keyframes peeker-act-idle-pupils {
-    0%,
-    100% {
-        transform: translate(0, 0);
-    }
-    45% {
-        transform: translate(1px, 0);
-    }
-}
-
-@keyframes peeker-react-wave-u {
-    0%,
-    100% {
-        transform: rotate(0deg);
-    }
-    40% {
-        transform: rotate(-16deg);
-    }
-    70% {
-        transform: rotate(6deg);
-    }
-}
-
-@keyframes peeker-react-wave-f {
-    0%,
-    100% {
-        transform: rotate(0deg);
-    }
-    40% {
-        transform: rotate(-8deg);
-    }
-    70% {
-        transform: rotate(10deg);
-    }
-}
-
-@keyframes peeker-react-head {
-    0%,
-    100% {
-        transform: rotate(0deg);
-    }
-    40% {
-        transform: rotate(-6deg);
-    }
-    70% {
-        transform: rotate(4deg);
+        transform: scaleY(1);
+    }
+    44%,
+    46%,
+    80%,
+    82% {
+        transform: scaleY(0.08);
     }
 }
 
 @media (prefers-reduced-motion: reduce) {
     .branch-peeker,
-    .branch-peeker .peeker-torso,
-    .branch-peeker .peeker-head,
-    .branch-peeker .peeker-pupil,
-    .branch-peeker .peeker-lid,
-    .branch-peeker .peeker-arm-wave .peeker-upper-arm,
-    .branch-peeker .peeker-arm-wave .peeker-forearm,
-    .branch-peeker .peeker-arm-hold .peeker-upper-arm,
-    .branch-peeker .peeker-arm-hold .peeker-forearm {
+    .branch-peeker * {
         animation: none !important;
         transition: none !important;
     }
 
     .branch-peeker {
-        transform: translate3d(0, -2px, 0) rotate(-8deg);
+        transform: translate3d(0, -2px, 0) rotate(-6deg);
         opacity: 1;
     }
 }
