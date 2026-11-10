@@ -321,6 +321,21 @@
         </div>
 
         <div class="agenda"></div>
+        <div class="agenda-overflow" id="agenda-overflow" hidden>
+            <div class="agenda-overflow-inner">
+                <div class="agenda agenda-overflow-list"></div>
+            </div>
+        </div>
+        <button
+            type="button"
+            class="agenda-expand-toggle"
+            hidden
+            aria-expanded="false"
+            aria-controls="agenda-overflow"
+        >
+            <span class="agenda-expand-toggle-label">Meer data</span>
+            <span class="icon-arrow-down agenda-expand-toggle-icon" aria-hidden="true"></span>
+        </button>
     </section>
 
 

@@ -359,10 +359,94 @@ body.home-page .hero {
     display: none;
 }
 
+.planning {
+    --agenda-gap: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+}
+
 .agenda {
     display: grid;
-    gap: 10px;
+    gap: var(--agenda-gap);
     border-top: none;
+}
+
+.agenda-overflow {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.agenda-overflow[hidden] {
+    display: none;
+}
+
+.agenda-overflow.is-expanded {
+    grid-template-rows: 1fr;
+}
+
+.agenda-overflow-inner {
+    overflow: hidden;
+    min-height: 0;
+}
+
+.agenda-overflow-list {
+    padding-top: var(--agenda-gap);
+}
+
+.agenda-expand-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 44px;
+    margin: 10px auto 0;
+    padding: 8px 14px;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--scout-orange);
+    cursor: pointer;
+    transition: color 0.2s ease, background 0.2s ease;
+}
+
+.agenda-expand-toggle[hidden] {
+    display: none;
+}
+
+.agenda-expand-toggle:hover,
+.agenda-expand-toggle:focus-visible {
+    color: var(--scout-brown);
+    background: rgba(78, 43, 26, 0.06);
+}
+
+.agenda-expand-toggle:focus-visible {
+    outline: 2px solid rgba(211, 138, 45, 0.55);
+    outline-offset: 2px;
+}
+
+.agenda-expand-toggle-label {
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    line-height: 1;
+}
+
+.agenda-expand-toggle-icon {
+    font-size: 16px !important;
+    width: 1em;
+    height: 1em;
+    transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.agenda-expand-toggle[aria-expanded="true"] .agenda-expand-toggle-icon {
+    transform: rotate(180deg);
+}
+
+.planning > .agenda-expand-toggle {
+    align-self: center;
 }
 
 .agenda-item {
@@ -1198,7 +1282,10 @@ body.home-page .hero {
         font-size: 12px;
     }
 
-    .agenda,
+    .planning {
+        --agenda-gap: 6px;
+    }
+
     .news-list {
         gap: 6px;
     }
@@ -3724,6 +3811,13 @@ html {
 @media (prefers-reduced-motion: reduce) {
     .news-summary::after,
     .news-details {
+        transition: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .agenda-overflow,
+    .agenda-expand-toggle-icon {
         transition: none;
     }
 }

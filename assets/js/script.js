@@ -131,7 +131,7 @@
       });
   }
 
-  const IMAGE_ASSET_VERSION = "20261110-news-mobile-spacing4";
+  const IMAGE_ASSET_VERSION = "20261110-agenda-expand-label";
 
   function formatLidgeldLabel(amount) {
     const amountNumber = Number(String(amount || "").replace(",", ".").replace(/[^\d.]/g, ""));
@@ -1915,6 +1915,145 @@
     });
   }
 
+  function buildAgendaItemHtml(item, { deferReveal = false } = {}) {
+    const image = typeof item.image === "string" ? item.image.trim() : "";
+    const link =
+      typeof item.link === "string" &&
+      /^(https?:\/\/|mailto:)/i.test(item.link.trim())
+        ? item.link.trim()
+        : "";
+    const linkText =
+      typeof item.linkText === "string" ? item.linkText.trim() : "";
+    const thumb = image
+      ? `<span class="agenda-thumb" aria-hidden="true">${thumbImageHtml(image)}</span>`
+      : "";
+    const text = typeof item.text === "string" ? item.text.trim() : "";
+    const hasCopy = Boolean(text || (link && linkText));
+    const hasDetails = Boolean(hasCopy || image);
+    const bodyHtml = formatNewsBodyHtml(text);
+    const detailsHtml = hasDetails
+      ? `
+                  <div class="agenda-details">
+                    <div class="agenda-details-inner${hasCopy ? "" : " is-media-only"}">
+                      ${
+                        hasCopy
+                          ? `<div class="agenda-details-copy">
+                        ${bodyHtml}
+                        ${link && linkText ? `<a class="agenda-link" href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer">${escapeHtml(linkText)} <span class="icon-arrow-external" aria-hidden="true"></span></a>` : ""}
+                      </div>`
+                          : ""
+                      }
+                      ${
+                        image
+                          ? `<figure class="agenda-media">${responsivePictureHtml(image, {
+                              alt: item.title || "",
+                              sizes: "(max-width: 700px) 90vw, 360px",
+                              widths: RESPONSIVE_WIDTHS.card,
+                              loading: "lazy",
+                            })}</figure>`
+                          : ""
+                      }
+                    </div>
+                  </div>`
+      : "";
+    const revealAttr = deferReveal ? ' data-reveal-ready="true"' : "";
+    return `
+                <details class="agenda-item${image ? " has-agenda-image" : ""}${hasDetails ? "" : " is-static"}"${revealAttr}>
+                  <summary class="agenda-summary">
+                    ${buildAgendaDateHtml(item)}
+                    <div class="agenda-body">
+                      <h3>${escapeHtml(item.title)}</h3>
+                    </div>
+                    ${thumb}
+                  </summary>
+                  ${detailsHtml}
+                </details>
+              `;
+  }
+
+  function setAgendaExpandState(expanded) {
+    const overflow = qs("#agenda-overflow");
+    const toggle = qs(".agenda-expand-toggle");
+    if (!overflow || !toggle || toggle.hidden) return;
+
+    const label = toggle.querySelector(".agenda-expand-toggle-label");
+    const reduceMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    const anchorTop = toggle.getBoundingClientRect().top;
+    const alreadyExpanded = overflow.classList.contains("is-expanded");
+
+    toggle.setAttribute("aria-expanded", expanded ? "true" : "false");
+    if (label) {
+      label.textContent = expanded ? "Minder data" : "Meer data";
+    }
+
+    if (expanded) {
+      overflow.inert = false;
+      overflow.removeAttribute("aria-hidden");
+      overflow.classList.add("is-expanded");
+      return;
+    }
+
+    if (!alreadyExpanded) {
+      overflow.inert = true;
+      overflow.setAttribute("aria-hidden", "true");
+      return;
+    }
+
+    const settleScroll = () => {
+      const delta = toggle.getBoundingClientRect().top - anchorTop;
+      if (Math.abs(delta) > 1) window.scrollBy(0, delta);
+    };
+
+    const concealOverflow = () => {
+      overflow.inert = true;
+      overflow.setAttribute("aria-hidden", "true");
+    };
+
+    if (reduceMotion) {
+      overflow.classList.remove("is-expanded");
+      concealOverflow();
+      settleScroll();
+      return;
+    }
+
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      overflow.removeEventListener("transitionend", onEnd);
+      window.clearTimeout(fallbackTimer);
+      concealOverflow();
+      settleScroll();
+    };
+
+    const onEnd = (event) => {
+      if (event.target !== overflow) return;
+      if (
+        event.propertyName &&
+        event.propertyName !== "grid-template-rows"
+      ) {
+        return;
+      }
+      finish();
+    };
+
+    overflow.addEventListener("transitionend", onEnd);
+    const fallbackTimer = window.setTimeout(finish, 500);
+    overflow.classList.remove("is-expanded");
+  }
+
+  function setupAgendaExpandToggle() {
+    const toggle = qs(".agenda-expand-toggle");
+    if (!toggle || toggle.dataset.bound === "true") return;
+    toggle.dataset.bound = "true";
+    toggle.addEventListener("click", () => {
+      const expanded = toggle.getAttribute("aria-expanded") === "true";
+      setAgendaExpandState(!expanded);
+    });
+  }
+
   function closeNewsItem(item, { instant = false } = {}) {
     if (item._newsCloseTimer) {
       clearTimeout(item._newsCloseTimer);
@@ -1972,6 +2111,7 @@
   const NEWS_HOME_LIMIT = 3;
   const NEWS_ARCHIVE_PAGE_SIZE = 6;
   const NEWS_IMAGES_MAX = 8;
+  const HOME_AGENDA_LIMIT = 5;
 
   let newsArchiveItemsCache = [];
   let newsArchiveCurrentPage = 1;
@@ -4539,71 +4679,52 @@
         }
       }
 
-      const agendaEl = qs(".agenda");
+      const agendaEl = qs(".planning > .agenda");
+      const agendaOverflow = qs("#agenda-overflow");
+      const agendaOverflowList = qs(
+        "#agenda-overflow .agenda-overflow-list",
+      );
+      const agendaExpandToggle = qs(".agenda-expand-toggle");
       if (agendaEl) {
         const upcomingAgenda = filterUpcomingAgendaItems(data.agenda);
+        const visibleAgenda = upcomingAgenda.slice(0, HOME_AGENDA_LIMIT);
+        const overflowAgenda = upcomingAgenda.slice(HOME_AGENDA_LIMIT);
+        const hasOverflow = overflowAgenda.length > 0;
+
         agendaEl.innerHTML = upcomingAgenda.length
-          ? upcomingAgenda
-              .map((item) => {
-                const image =
-                  typeof item.image === "string" ? item.image.trim() : "";
-                const link =
-                  typeof item.link === "string" &&
-                  /^(https?:\/\/|mailto:)/i.test(item.link.trim())
-                    ? item.link.trim()
-                    : "";
-                const linkText =
-                  typeof item.linkText === "string" ? item.linkText.trim() : "";
-                const thumb = image
-                  ? `<span class="agenda-thumb" aria-hidden="true">${thumbImageHtml(image)}</span>`
-                  : "";
-                const text =
-                  typeof item.text === "string" ? item.text.trim() : "";
-                const hasCopy = Boolean(text || (link && linkText));
-                const hasDetails = Boolean(hasCopy || image);
-                const bodyHtml = formatNewsBodyHtml(text);
-                const detailsHtml = hasDetails
-                  ? `
-                  <div class="agenda-details">
-                    <div class="agenda-details-inner${hasCopy ? "" : " is-media-only"}">
-                      ${
-                        hasCopy
-                          ? `<div class="agenda-details-copy">
-                        ${bodyHtml}
-                        ${link && linkText ? `<a class="agenda-link" href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer">${escapeHtml(linkText)} <span class="icon-arrow-external" aria-hidden="true"></span></a>` : ""}
-                      </div>`
-                          : ""
-                      }
-                      ${
-                        image
-                          ? `<figure class="agenda-media">${responsivePictureHtml(image, {
-                              alt: item.title || "",
-                              sizes: "(max-width: 700px) 90vw, 360px",
-                              widths: RESPONSIVE_WIDTHS.card,
-                              loading: "lazy",
-                            })}</figure>`
-                          : ""
-                      }
-                    </div>
-                  </div>`
-                  : "";
-                return `
-                <details class="agenda-item${image ? " has-agenda-image" : ""}${hasDetails ? "" : " is-static"}">
-                  <summary class="agenda-summary">
-                    ${buildAgendaDateHtml(item)}
-                    <div class="agenda-body">
-                      <h3>${escapeHtml(item.title)}</h3>
-                    </div>
-                    ${thumb}
-                  </summary>
-                  ${detailsHtml}
-                </details>
-              `;
-              })
-              .join("")
+          ? visibleAgenda.map((item) => buildAgendaItemHtml(item)).join("")
           : `<p class="agenda-empty">Er staan momenteel geen activiteiten gepland.</p>`;
-        setupAgendaAccordion(agendaEl);
-        enhancePhotoExpandTargets(agendaEl);
+
+        if (agendaOverflow && agendaOverflowList && agendaExpandToggle) {
+          if (hasOverflow) {
+            agendaOverflowList.innerHTML = overflowAgenda
+              .map((item) => buildAgendaItemHtml(item, { deferReveal: true }))
+              .join("");
+            agendaOverflow.hidden = false;
+            agendaOverflow.classList.remove("is-expanded");
+            agendaOverflow.inert = true;
+            agendaOverflow.setAttribute("aria-hidden", "true");
+            agendaExpandToggle.hidden = false;
+            agendaExpandToggle.setAttribute("aria-expanded", "false");
+            const label = agendaExpandToggle.querySelector(
+              ".agenda-expand-toggle-label",
+            );
+            if (label) label.textContent = "Meer data";
+          } else {
+            agendaOverflowList.innerHTML = "";
+            agendaOverflow.classList.remove("is-expanded");
+            agendaOverflow.hidden = true;
+            agendaOverflow.inert = false;
+            agendaOverflow.removeAttribute("aria-hidden");
+            agendaExpandToggle.hidden = true;
+            agendaExpandToggle.setAttribute("aria-expanded", "false");
+          }
+          setupAgendaExpandToggle();
+        }
+
+        const planningRoot = qs(".planning") || agendaEl;
+        setupAgendaAccordion(planningRoot);
+        enhancePhotoExpandTargets(planningRoot);
       }
 
       const faqEl = qs(".faq-list");
