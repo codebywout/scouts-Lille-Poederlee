@@ -131,7 +131,7 @@
       });
   }
 
-  const IMAGE_ASSET_VERSION = "20261110-agenda-expand-label";
+  const IMAGE_ASSET_VERSION = "20261110-about-hero-expand";
 
   function formatLidgeldLabel(amount) {
     const amountNumber = Number(String(amount || "").replace(",", ".").replace(/[^\d.]/g, ""));
@@ -1861,7 +1861,10 @@
     };
 
     requestAnimationFrame(() => {
-      requestAnimationFrame(run);
+      requestAnimationFrame(() => {
+        run();
+        syncPhotoExpandAvailability(item);
+      });
     });
   }
 
@@ -2532,7 +2535,7 @@
   }
 
   const PHOTO_EXPAND_HOSTS =
-    ".news-media--single, .news-carousel-slide, .agenda-media, .branch-photo, .secondhand-item-image";
+    ".news-media--single, .news-carousel-slide, .agenda-media, .branch-photo, .about-hero, .secondhand-item-image";
   const PHOTO_LIGHTBOX_EASE = "cubic-bezier(0.22, 1, 0.36, 1)";
   const PHOTO_LIGHTBOX_MS = 420;
   const PHOTO_LIGHTBOX_RADIUS = 16;
@@ -2540,6 +2543,53 @@
 
   function prefersReducedMotion() {
     return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  }
+
+  // Tak + nieuws: hide expand when the on-page frame is already near lightbox size.
+  const PHOTO_EXPAND_SIZE_CHECK_HOSTS =
+    ".branch-photo, .about-hero, .news-media--single, .news-carousel-slide";
+
+  function isPhotoExpandHostLarge(host) {
+    if (!host?.matches?.(PHOTO_EXPAND_SIZE_CHECK_HOSTS)) return false;
+    const img = host.querySelector("img");
+    if (!img || img.hasAttribute("hidden")) return false;
+    const rect = img.getBoundingClientRect();
+    if (rect.width < 2 || rect.height < 2) return false;
+    const margin = 32;
+    const maxW = Math.max(120, window.innerWidth - margin);
+    const maxH = Math.max(
+      120,
+      (window.visualViewport?.height || window.innerHeight) - margin,
+    );
+    return (
+      rect.width >= maxW * 0.82 ||
+      (rect.width >= maxW * 0.72 && rect.height >= maxH * 0.48)
+    );
+  }
+
+  function syncPhotoExpandAvailability(root = document) {
+    const hosts = root?.matches?.(PHOTO_EXPAND_HOSTS)
+      ? [root]
+      : qsa(PHOTO_EXPAND_HOSTS, root);
+    hosts.forEach((host) => {
+      const button = host.querySelector(":scope > .photo-expand");
+      if (!button) return;
+      const hide = isPhotoExpandHostLarge(host);
+      host.classList.toggle("is-photo-expand-hidden", hide);
+      button.hidden = hide;
+      button.tabIndex = hide ? -1 : 0;
+      button.setAttribute("aria-hidden", hide ? "true" : "false");
+    });
+  }
+
+  let photoExpandSyncBound = false;
+  function ensurePhotoExpandSync() {
+    if (photoExpandSyncBound) return;
+    photoExpandSyncBound = true;
+    window.addEventListener(
+      "resize",
+      debounce(() => syncPhotoExpandAvailability(document), 120),
+    );
   }
 
   function createPhotoExpandButton() {
@@ -2556,6 +2606,7 @@
     button.addEventListener("click", (event) => {
       stop(event);
       const host = button.closest(PHOTO_EXPAND_HOSTS);
+      if (host && isPhotoExpandHostLarge(host)) return;
       const img = host?.querySelector("img");
       if (img) openPhotoLightbox(img, button);
     });
@@ -2571,6 +2622,10 @@
       host.dataset.photoExpandReady = "true";
       host.appendChild(createPhotoExpandButton());
     });
+    ensurePhotoExpandSync();
+    // Layout may still be settling (accordion open, responsive picture).
+    syncPhotoExpandAvailability(root);
+    requestAnimationFrame(() => syncPhotoExpandAvailability(root));
   }
 
   let photoLightbox = null;
@@ -2753,20 +2808,98 @@
     lb.nextBtn.tabIndex = visible ? 0 : -1;
   }
 
+  function readCachedNaturalSize(src) {
+    if (!src) return null;
+    const probe = new Image();
+    probe.src = src;
+    if (probe.complete && probe.naturalWidth > 0 && probe.naturalHeight > 0) {
+      return {
+        width: probe.naturalWidth,
+        height: probe.naturalHeight,
+      };
+    }
+    return null;
+  }
+
+  function resolveLightboxNaturalSize(sourceImg) {
+    const fullSrc = sourceImg.getAttribute("data-full-src") || "";
+    const cachedFull = readCachedNaturalSize(fullSrc);
+    if (cachedFull) return cachedFull;
+    return {
+      width: sourceImg.naturalWidth || sourceImg.width || 1,
+      height: sourceImg.naturalHeight || sourceImg.height || 1,
+    };
+  }
+
+  function applyLightboxLockedSize(naturalWidth, naturalHeight, { animate = false } = {}) {
+    if (!photoLightboxState?.open) return null;
+    const lb = ensurePhotoLightbox();
+    const lockedSize = measureContainSize(naturalWidth, naturalHeight, {
+      fromRect: photoLightboxState.first,
+    });
+    const prev = photoLightboxState.lockedSize;
+    const grew =
+      !prev ||
+      lockedSize.width > prev.width + 4 ||
+      lockedSize.height > prev.height + 4;
+    photoLightboxState.lockedSize = lockedSize;
+    const target = getLightboxTargetRect(lockedSize);
+    photoLightboxState.target = target;
+    // Avoid fighting the open/step FLIP while busy; size is still stored.
+    if (grew && !photoLightboxState.busy) {
+      const reduce = prefersReducedMotion();
+      lb.image.style.transition =
+        animate && !reduce ? lightboxRectTransition() : "none";
+      placeLightboxImageRect(lb.image, target, {
+        radius: PHOTO_LIGHTBOX_RADIUS,
+        shadow: PHOTO_LIGHTBOX_SHADOW,
+        animate: animate && !reduce,
+      });
+    }
+    return { lockedSize, target, grew };
+  }
+
   function upgradeLightboxFullSrc(sourceImg) {
     const lb = ensurePhotoLightbox();
     const fullSrc = sourceImg.getAttribute("data-full-src") || "";
     const previewSrc = sourceImg.currentSrc || sourceImg.src || fullSrc;
-    if (!fullSrc || fullSrc === previewSrc) return;
+    if (!fullSrc || fullSrc === previewSrc) {
+      // Still remeasure — cover crops often need a larger contain frame.
+      applyLightboxLockedSize(
+        sourceImg.naturalWidth || sourceImg.width || 1,
+        sourceImg.naturalHeight || sourceImg.height || 1,
+        { animate: true },
+      );
+      return;
+    }
     const hi = new Image();
     hi.decoding = "async";
+    const commitFull = () => {
+      if (!photoLightboxState?.open) return;
+      if (photoLightboxState.sourceImg !== sourceImg) return;
+      applyLightboxLockedSize(hi.naturalWidth, hi.naturalHeight, {
+        animate: true,
+      });
+    };
     hi.onload = () => {
       if (!photoLightboxState?.open) return;
       if (photoLightboxState.sourceImg !== sourceImg) return;
-      if (lb.image.getAttribute("src") === fullSrc) return;
+      if (lb.image.getAttribute("src") === fullSrc) {
+        commitFull();
+        return;
+      }
+      const onReady = () => {
+        lb.image.removeEventListener("load", onReady);
+        lb.image.removeEventListener("error", onReady);
+        commitFull();
+      };
+      lb.image.addEventListener("load", onReady);
+      lb.image.addEventListener("error", onReady);
       lb.image.src = fullSrc;
+      if (lb.image.complete) onReady();
     };
     hi.src = fullSrc;
+    if (hi.complete && hi.naturalWidth) hi.onload();
   }
 
   function bindLightboxToSource(sourceImg, { keepTrigger = false } = {}) {
@@ -2778,11 +2911,12 @@
     }
     if (host) host.classList.add("is-photo-lightbox-source");
 
-    const flipRadius = getFlipRadiusPx(sourceImg, getPhotoContentRect(sourceImg));
-    const lockedSize = measureContainSize(
-      sourceImg.naturalWidth || sourceImg.width || 1,
-      sourceImg.naturalHeight || sourceImg.height || 1,
-    );
+    const first = getPhotoContentRect(sourceImg);
+    const flipRadius = getFlipRadiusPx(sourceImg, first);
+    const natural = resolveLightboxNaturalSize(sourceImg);
+    const lockedSize = measureContainSize(natural.width, natural.height, {
+      fromRect: first,
+    });
     const target = getLightboxTargetRect(lockedSize);
     const fullSrc = sourceImg.getAttribute("data-full-src") || "";
     const previewSrc = sourceImg.currentSrc || sourceImg.src || fullSrc;
@@ -2792,7 +2926,7 @@
     photoLightboxState.flipRadius = flipRadius;
     photoLightboxState.lockedSize = lockedSize;
     photoLightboxState.target = target;
-    photoLightboxState.first = getPhotoContentRect(sourceImg);
+    photoLightboxState.first = first;
     if (!keepTrigger) {
       photoLightboxState.trigger =
         host?.querySelector(".photo-expand") || photoLightboxState.trigger;
@@ -2970,7 +3104,7 @@
     return photoLightbox?.root.classList.contains("has-nav") ? 76 : 0;
   }
 
-  function measureContainSize(naturalWidth, naturalHeight) {
+  function measureContainSize(naturalWidth, naturalHeight, { fromRect = null } = {}) {
     const margin = 32;
     const chrome = getPhotoLightboxChromeReserve();
     const maxW = Math.max(120, window.innerWidth - margin);
@@ -2980,10 +3114,28 @@
     );
     const nw = Math.max(1, naturalWidth || maxW);
     const nh = Math.max(1, naturalHeight || maxH);
-    const scale = Math.min(maxW / nw, maxH / nh, 1);
+    const aspect = nw / nh;
+    // Prefer true pixels, but never stay tiny next to a large on-page crop box:
+    // fill the usable lightbox viewport with the photo's aspect ratio.
+    let scale = Math.min(maxW / nw, maxH / nh, 1);
+    let width = nw * scale;
+    let height = nh * scale;
+
+    if (fromRect && fromRect.width > 2 && fromRect.height > 2) {
+      const enlarge = Math.min(width / fromRect.width, height / fromRect.height);
+      if (enlarge < 1.18) {
+        width = maxW;
+        height = width / aspect;
+        if (height > maxH) {
+          height = maxH;
+          width = height * aspect;
+        }
+      }
+    }
+
     return {
-      width: Math.max(1, nw * scale),
-      height: Math.max(1, nh * scale),
+      width: Math.max(1, width),
+      height: Math.max(1, height),
     };
   }
 
@@ -3124,8 +3276,9 @@
 
   function openPhotoLightbox(sourceImg, trigger) {
     if (!sourceImg || photoLightboxState?.busy) return;
-    const lb = ensurePhotoLightbox();
     const host = sourceImg.closest(PHOTO_EXPAND_HOSTS);
+    if (host && isPhotoExpandHostLarge(host)) return;
+    const lb = ensurePhotoLightbox();
 
     lockPhotoLightboxScroll();
 
@@ -3145,10 +3298,10 @@
     setPhotoLightboxNavVisible(
       Boolean(carouselApi && carouselApi.getCount() > 1),
     );
-    const lockedSize = measureContainSize(
-      sourceImg.naturalWidth || first.width,
-      sourceImg.naturalHeight || first.height,
-    );
+    const natural = resolveLightboxNaturalSize(sourceImg);
+    const lockedSize = measureContainSize(natural.width, natural.height, {
+      fromRect: first,
+    });
     const target = getLightboxTargetRect(lockedSize);
 
     photoLightboxState = {
@@ -4760,18 +4913,51 @@
       }
 
       const aboutHero = qs(".about-hero");
-      if (aboutHero && data.photos.aboutHero) {
-        // PHP may already set the hero background for first paint.
-        if (aboutHero.getAttribute("data-about-hero-boot") !== "1") {
-          const aboutParts = splitResponsiveAsset(data.photos.aboutHero);
-          if (aboutParts) {
-            const q = aboutParts.query;
-            const webp = withAssetQuery(`${aboutParts.stem}-w1600.webp`, q);
-            const jpg = withAssetQuery(`${aboutParts.stem}-w1600.jpg`, q);
-            aboutHero.style.backgroundImage = `image-set(url("${webp}") type("image/webp"), url("${jpg}") type("image/jpeg")), url("${jpg}")`;
-          } else {
-            aboutHero.style.backgroundImage = `url("${data.photos.aboutHero}")`;
+      if (aboutHero) {
+        const aboutFull =
+          typeof data.photos?.aboutHero === "string"
+            ? data.photos.aboutHero.trim()
+            : "";
+        if (!aboutFull) {
+          aboutHero.querySelector(":scope > picture, :scope > img")?.remove();
+          aboutHero.querySelector(":scope > .photo-expand")?.remove();
+          delete aboutHero.dataset.photoExpandReady;
+          aboutHero.classList.remove("is-photo-expand-hidden");
+          aboutHero.style.backgroundImage = "";
+        } else {
+          const aboutParts = splitResponsiveAsset(aboutFull);
+          const existingMedia = aboutHero.querySelector(
+            ":scope > picture, :scope > img",
+          );
+          const currentParts = splitResponsiveAsset(
+            existingMedia?.matches?.("img")
+              ? existingMedia.getAttribute("src") || ""
+              : existingMedia?.querySelector?.("img")?.getAttribute("src") ||
+                  "",
+          );
+          const sameStem =
+            aboutParts &&
+            currentParts &&
+            aboutParts.stem === currentParts.stem;
+          if (!sameStem) {
+            existingMedia?.remove();
+            aboutHero.querySelector(":scope > .photo-expand")?.remove();
+            delete aboutHero.dataset.photoExpandReady;
+            const overlay = aboutHero.querySelector(".about-hero-overlay");
+            const html = responsivePictureHtml(aboutFull, {
+              alt: "Scouts Lille-Poederlee",
+              className: "about-hero-photo",
+              sizes: "(max-width: 800px) 100vw, 1200px",
+              widths: RESPONSIVE_WIDTHS.branch,
+              loading: "eager",
+              fetchpriority: "high",
+            });
+            if (overlay) overlay.insertAdjacentHTML("beforebegin", html);
+            else aboutHero.insertAdjacentHTML("afterbegin", html);
           }
+          // Prefer the real <img> for expand; drop CSS background once mounted.
+          aboutHero.style.backgroundImage = "none";
+          enhancePhotoExpandTargets(aboutHero);
         }
       }
 

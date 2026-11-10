@@ -1279,15 +1279,51 @@ h2.alert-dialog-title {
 .news-carousel-slide,
 .agenda-media,
 .branch-photo,
+.about-hero,
 .secondhand-item-image {
     position: relative;
 }
 
-/* Keep frame/button visible; only dim the source pixels under the FLIP clone. */
+.about-hero > picture,
+.about-hero > img.about-hero-photo {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+}
+
+.about-hero > picture img,
+.about-hero > img.about-hero-photo {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+}
+
+.about-hero-overlay {
+    z-index: 1;
+}
+
+.about-hero::after {
+    z-index: 2;
+}
+
+.about-hero > .photo-expand {
+    z-index: 3;
+}
+
+/* Keep frame visible; dim source pixels under the FLIP clone and hide expand. */
 .is-photo-lightbox-source > img,
 .is-photo-lightbox-source picture img,
 .is-photo-lightbox-source .responsive-full-link img {
     opacity: 0;
+}
+
+.is-photo-lightbox-source > .photo-expand {
+    display: none !important;
 }
 
 .photo-expand {
@@ -1545,6 +1581,11 @@ h2.alert-dialog-title {
 
 /* No overflow/padding lock — that reflows the page (e.g. Belangrijke data jumps).
    Scrolling is blocked in JS while the lightbox is open. */
+
+/* Hidden when JS decides the on-page photo is already large enough. */
+.is-photo-expand-hidden > .photo-expand {
+    display: none !important;
+}
 
 @media (prefers-reduced-motion: reduce) {
     .photo-expand,
