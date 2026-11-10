@@ -223,20 +223,20 @@ try {
         expect(str_contains($booted, 'scouts-page-bg-boot'), 'subpage boot injects CSS vars');
         expect(str_contains($booted, 'data-bg-boot="1"'), 'subpage boot marks data-bg-boot');
         expect(
-            str_contains($booted, 'bg-registration') || str_contains($booted, '--scouts-custom-bg-800'),
+            str_contains($booted, 'bg-registration') || str_contains($booted, '--scouts-custom-bg-1600'),
             'subpage boot references custom background'
         );
         expect(!str_contains($booted, 'domein2-w1600'), 'subpage boot replaces domein2 preload');
         expect(str_contains($booted, 'bg-registration-w1600'), 'subpage preload points at custom w1600');
-        expect(str_contains($booted, 'bg-registration-w800'), 'subpage preload includes custom w800');
-        expect(str_contains($booted, 'media="(max-width: 768px)"'), 'subpage mobile preload is media-scoped');
-        expect(str_contains($booted, 'media="(min-width: 769px)"'), 'subpage desktop preload is media-scoped');
+        expect(str_contains($booted, 'bg-registration-w2400'), 'subpage preload includes custom w2400');
+        expect(str_contains($booted, 'max-width: 768px'), 'subpage mobile preload is media-scoped');
+        expect(str_contains($booted, 'min-resolution: 1.5dppx'), 'subpage hires preload is media-scoped');
         $assetV = scouts_asset_version();
         expect(str_contains($booted, 'v=' . $assetV), 'subpage boot CSS/preload use asset version');
-        preg_match('/href="([^"]*bg-registration-w800[^"]*)"/', $booted, $preloadHref);
-        preg_match('/url\("([^"]*bg-registration-w800[^"]*)"\)/', $booted, $cssUrl);
-        expect(($preloadHref[1] ?? '') !== '', 'subpage w800 preload href present');
-        expect(($cssUrl[1] ?? '') !== '', 'subpage w800 CSS url present');
+        preg_match('/href="([^"]*bg-registration-w1600[^"]*)"/', $booted, $preloadHref);
+        preg_match('/url\("([^"]*bg-registration-w1600[^"]*)"\)/', $booted, $cssUrl);
+        expect(($preloadHref[1] ?? '') !== '', 'subpage w1600 preload href present');
+        expect(($cssUrl[1] ?? '') !== '', 'subpage w1600 CSS url present');
         $preloadDecoded = html_entity_decode($preloadHref[1] ?? '', ENT_QUOTES | ENT_HTML5, 'UTF-8');
         $cssDecoded = html_entity_decode($cssUrl[1] ?? '', ENT_QUOTES | ENT_HTML5, 'UTF-8');
         expect(
@@ -248,16 +248,16 @@ try {
     }
 
     // Media-scoped default domein preloads (helper used when no custom bg).
-    if (is_file(SCOUTS_ROOT . '/assets/images/domein2-w800.webp')) {
+    if (is_file(SCOUTS_ROOT . '/assets/images/domein2-w1600.webp')) {
         $defaultLinks = scouts_html_page_bg_preload_links(
             SCOUTS_ROOT . '/assets/images/domein2',
             '/assets/images/domein2',
             ''
         );
-        expect(str_contains($defaultLinks, 'domein2-w800'), 'default preload helper includes w800');
         expect(str_contains($defaultLinks, 'domein2-w1600'), 'default preload helper includes w1600');
-        expect(str_contains($defaultLinks, 'media="(max-width: 768px)"'), 'default helper mobile media');
-        expect(str_contains($defaultLinks, 'media="(min-width: 769px)"'), 'default helper desktop media');
+        expect(str_contains($defaultLinks, 'domein2-w2400'), 'default preload helper includes w2400');
+        expect(str_contains($defaultLinks, 'max-width: 768px'), 'default helper mobile media');
+        expect(str_contains($defaultLinks, 'min-resolution: 1.5dppx'), 'default helper hires media');
     } else {
         expect(true, 'default preload helper skipped (no domein2 fixture)');
     }
