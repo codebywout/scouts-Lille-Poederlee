@@ -1352,6 +1352,12 @@ body.home-page .hero {
         height: auto;
     }
 
+    .news-item.has-news-image.is-open .news-details-inner .news-media--single {
+        width: fit-content;
+        max-width: 100%;
+        justify-self: center;
+    }
+
     .news-item.has-news-image.is-open .news-details-inner .news-details-copy {
         order: 1;
         min-height: 0;
@@ -1366,9 +1372,10 @@ body.home-page .hero {
     }
 
     .news-media--single {
-        width: 100%;
-        max-width: none;
+        width: fit-content;
+        max-width: 100%;
         border-radius: 14px;
+        margin-inline: auto;
     }
 
 
@@ -3298,6 +3305,13 @@ html {
         max-width: none;
     }
 
+    .news-item.has-news-image.is-open .news-details-inner .news-media--single {
+        width: fit-content;
+        max-width: 100%;
+        justify-self: center;
+        margin-inline: auto;
+    }
+
     .news-item.has-news-image.is-open .news-details-inner .news-media {
         order: -1;
     }
@@ -3438,7 +3452,7 @@ html {
     white-space: nowrap;
 }
 
-/* Single news photo: full image, natural ratio, capped size. */
+/* Single news photo: shrink-wrap the image — no letterbox / beige fill. */
 .news-media {
     margin: 0;
     width: 100%;
@@ -3447,19 +3461,19 @@ html {
 
 .news-media--single {
     overflow: hidden;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    display: block;
+    width: fit-content;
+    max-width: 100%;
     border: 1px solid rgba(78, 43, 26, 0.1);
     border-radius: 16px;
-    background: #f4ebe2;
+    background: transparent;
     box-shadow: 0 8px 22px rgba(28, 18, 12, 0.07);
 }
 
 .news-media--single .responsive-full-link,
 .news-media--single picture {
     display: block;
-    width: auto;
+    width: fit-content;
     max-width: 100%;
     height: auto;
 }
@@ -3470,11 +3484,27 @@ html {
     height: auto;
     max-width: 100%;
     max-height: min(52vh, 360px);
-    margin: 0 auto;
-    object-fit: contain;
-    object-position: center;
+    margin: 0;
     user-select: none;
     -webkit-user-drag: none;
+}
+
+.news-item.has-news-image.is-open .news-details-inner .news-media--single {
+    width: fit-content;
+    max-width: 100%;
+}
+
+@media (min-width: 769px) {
+    .news-item.has-news-image.is-open .news-details-inner .news-media--single {
+        justify-self: end;
+    }
+}
+
+@media (max-width: 768px) {
+    .news-item.has-news-image.is-open .news-details-inner .news-media--single {
+        justify-self: center;
+        margin-inline: auto;
+    }
 }
 
 /* Multi-photo Jobr-inspired deck: same height, varied width/shape/rotation. */

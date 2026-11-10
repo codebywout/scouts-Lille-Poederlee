@@ -1195,8 +1195,8 @@
         height: 92px;
         transform-origin: 50% 100%;
         --peeker-hidden-x: 8px;
-        --peeker-hidden-y: 58px;
-        --peeker-hidden-r: 6deg;
+        --peeker-hidden-y: 50px;
+        --peeker-hidden-r: 3deg;
         --peeker-head-x: 4px;
         --peeker-head-y: 28px;
         --peeker-head-r: 2deg;

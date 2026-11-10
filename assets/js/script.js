@@ -131,7 +131,7 @@
       });
   }
 
-  const IMAGE_ASSET_VERSION = "20261110-tak-peeker-sheet5";
+  const IMAGE_ASSET_VERSION = "20261110-photo-lightbox19";
 
   function formatLidgeldLabel(amount) {
     const amountNumber = Number(String(amount || "").replace(",", ".").replace(/[^\d.]/g, ""));
@@ -1769,7 +1769,7 @@
   function isAccordionInteractiveTarget(target) {
     return Boolean(
       target?.closest?.(
-        "a[href], button, input, textarea, select, label, [data-news-share], .news-media, .agenda-media, [data-news-carousel]",
+        "a[href], button, input, textarea, select, label, [data-news-share], .news-media, .agenda-media, [data-news-carousel], .photo-expand",
       ),
     );
   }
@@ -2351,7 +2351,11 @@
       }
 
       // Tap / click advances to the next photo (Jobr-like deck feel).
-      if (!wasDrag && event.type === "pointerup") {
+      if (
+        !wasDrag &&
+        event.type === "pointerup" &&
+        !event.target?.closest?.(".photo-expand")
+      ) {
         goTo(index + 1);
       }
     };
@@ -2369,6 +2373,15 @@
       stopAutoplay() {},
       goTo,
       syncFrame,
+      getIndex: () => index,
+      getCount: () => slides.length,
+      getSlideImage(slideIndex) {
+        const slide =
+          slides[
+            ((slideIndex % slides.length) + slides.length) % slides.length
+          ];
+        return slide?.querySelector("img") || null;
+      },
     };
     syncFrame();
     goTo(0, { animate: false });
@@ -2376,6 +2389,801 @@
 
   function initNewsCarousels(container = document) {
     qsa("[data-news-carousel]", container).forEach(setupNewsCarousel);
+  }
+
+  const PHOTO_EXPAND_HOSTS =
+    ".news-media--single, .news-carousel-slide, .agenda-media, .branch-photo, .secondhand-item-image";
+  const PHOTO_LIGHTBOX_EASE = "cubic-bezier(0.22, 1, 0.36, 1)";
+  const PHOTO_LIGHTBOX_MS = 420;
+  const PHOTO_LIGHTBOX_RADIUS = 16;
+  const PHOTO_LIGHTBOX_SHADOW = "0 24px 60px rgba(0, 0, 0, 0.35)";
+
+  function prefersReducedMotion() {
+    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  }
+
+  function createPhotoExpandButton() {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "photo-expand";
+    button.setAttribute("aria-label", "Foto vergroten");
+    button.innerHTML = '<span class="icon-expand" aria-hidden="true"></span>';
+    const stop = (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+    };
+    button.addEventListener("pointerdown", stop);
+    button.addEventListener("click", (event) => {
+      stop(event);
+      const host = button.closest(PHOTO_EXPAND_HOSTS);
+      const img = host?.querySelector("img");
+      if (img) openPhotoLightbox(img, button);
+    });
+    return button;
+  }
+
+  function enhancePhotoExpandTargets(root = document) {
+    qsa(PHOTO_EXPAND_HOSTS, root).forEach((host) => {
+      if (host.dataset.photoExpandReady === "true") return;
+      if (host.closest(".news-thumb, .agenda-thumb")) return;
+      const img = host.querySelector("img");
+      if (!img) return;
+      host.dataset.photoExpandReady = "true";
+      host.appendChild(createPhotoExpandButton());
+    });
+  }
+
+  let photoLightbox = null;
+  let photoLightboxState = null;
+  let photoLightboxScrollY = 0;
+
+  function ensurePhotoLightbox() {
+    if (photoLightbox) return photoLightbox;
+
+    const root = document.createElement("div");
+    root.className = "photo-lightbox";
+    root.setAttribute("role", "dialog");
+    root.setAttribute("aria-modal", "true");
+    root.setAttribute("aria-label", "Vergrote foto");
+    root.hidden = true;
+
+    const backdrop = document.createElement("button");
+    backdrop.type = "button";
+    backdrop.className = "photo-lightbox-backdrop";
+    backdrop.setAttribute("aria-label", "Sluiten");
+
+    const closeBtn = document.createElement("button");
+    closeBtn.type = "button";
+    closeBtn.className = "photo-lightbox-close";
+    closeBtn.setAttribute("aria-label", "Sluiten");
+    closeBtn.innerHTML = '<span class="icon-close" aria-hidden="true"></span>';
+
+    const stage = document.createElement("div");
+    stage.className = "photo-lightbox-stage";
+
+    const image = document.createElement("img");
+    image.className = "photo-lightbox-image";
+    image.alt = "";
+    image.decoding = "async";
+    image.draggable = false;
+    image.tabIndex = -1;
+
+    const chrome = document.createElement("div");
+    chrome.className = "photo-lightbox-chrome";
+    chrome.hidden = true;
+
+    const prevBtn = document.createElement("button");
+    prevBtn.type = "button";
+    prevBtn.className = "photo-lightbox-nav photo-lightbox-prev";
+    prevBtn.setAttribute("aria-label", "Vorige foto");
+    prevBtn.innerHTML =
+      '<span class="icon-arrow-left" aria-hidden="true"></span>';
+
+    const status = document.createElement("p");
+    status.className = "photo-lightbox-status";
+    status.setAttribute("aria-live", "polite");
+    status.innerHTML =
+      '<span data-lightbox-current>01</span><span class="photo-lightbox-status-sep" aria-hidden="true">/</span><span data-lightbox-total>01</span>';
+
+    const nextBtn = document.createElement("button");
+    nextBtn.type = "button";
+    nextBtn.className = "photo-lightbox-nav photo-lightbox-next";
+    nextBtn.setAttribute("aria-label", "Volgende foto");
+    nextBtn.innerHTML =
+      '<span class="icon-arrow-right" aria-hidden="true"></span>';
+
+    chrome.append(prevBtn, status, nextBtn);
+    stage.appendChild(image);
+    root.append(backdrop, closeBtn, chrome, stage);
+    document.body.appendChild(root);
+
+    backdrop.addEventListener("click", () => closePhotoLightbox());
+    closeBtn.addEventListener("click", () => closePhotoLightbox());
+    prevBtn.addEventListener("click", (event) => {
+      event.stopPropagation();
+      stepPhotoLightbox(-1);
+    });
+    nextBtn.addEventListener("click", (event) => {
+      event.stopPropagation();
+      stepPhotoLightbox(1);
+    });
+    image.addEventListener("click", (event) => event.stopPropagation());
+    bindPhotoLightboxSwipe(root);
+
+    photoLightbox = {
+      root,
+      backdrop,
+      closeBtn,
+      chrome,
+      prevBtn,
+      nextBtn,
+      status,
+      stage,
+      image,
+    };
+    return photoLightbox;
+  }
+
+  function bindPhotoLightboxSwipe(root) {
+    let pointerId = null;
+    let startX = 0;
+    let startY = 0;
+    let axis = null;
+
+    root.addEventListener("pointerdown", (event) => {
+      if (event.button !== undefined && event.button !== 0) return;
+      if (event.target.closest("button")) return;
+      if (!photoLightboxState?.open || !photoLightboxState.carouselApi) return;
+      if (photoLightboxState.carouselApi.getCount() < 2) return;
+      pointerId = event.pointerId;
+      startX = event.clientX;
+      startY = event.clientY;
+      axis = null;
+    });
+
+    root.addEventListener("pointermove", (event) => {
+      if (pointerId === null || event.pointerId !== pointerId) return;
+      const dx = event.clientX - startX;
+      const dy = event.clientY - startY;
+      if (axis === null) {
+        if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
+        axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+      }
+      if (axis === "x") {
+        event.preventDefault();
+      }
+    });
+
+    const endSwipe = (event) => {
+      if (pointerId === null || event.pointerId !== pointerId) return;
+      const dx = event.clientX - startX;
+      const dy = event.clientY - startY;
+      const wasAxis = axis;
+      pointerId = null;
+      axis = null;
+      if (wasAxis !== "x") return;
+      if (Math.abs(dx) < 48 || Math.abs(dx) < Math.abs(dy)) return;
+      stepPhotoLightbox(dx < 0 ? 1 : -1);
+    };
+
+    root.addEventListener("pointerup", endSwipe);
+    root.addEventListener("pointercancel", endSwipe);
+    root.addEventListener("pointerleave", (event) => {
+      if (pointerId !== null && event.pointerId === pointerId) endSwipe(event);
+    });
+  }
+
+  function hidePhotoLightboxChrome() {
+    const lb = ensurePhotoLightbox();
+    setPhotoLightboxNavVisible(false);
+    lb.closeBtn.classList.add("is-hiding");
+  }
+
+  function resetPhotoLightboxCloseButton() {
+    const lb = ensurePhotoLightbox();
+    lb.closeBtn.classList.remove("is-hiding");
+  }
+
+  function getLightboxCarouselApi(host) {
+    const carousel = host?.closest?.("[data-news-carousel]");
+    return carousel?._newsCarousel || null;
+  }
+
+  function updatePhotoLightboxStatus() {
+    const lb = ensurePhotoLightbox();
+    const api = photoLightboxState?.carouselApi;
+    const currentEl = lb.status.querySelector("[data-lightbox-current]");
+    const totalEl = lb.status.querySelector("[data-lightbox-total]");
+    if (!api || !currentEl || !totalEl) return;
+    const total = api.getCount();
+    const current = api.getIndex() + 1;
+    currentEl.textContent = padTwoDigits(current);
+    totalEl.textContent = padTwoDigits(total);
+    lb.status.setAttribute(
+      "aria-label",
+      `Foto ${current} van ${total}`,
+    );
+  }
+
+  function setPhotoLightboxNavVisible(visible) {
+    const lb = ensurePhotoLightbox();
+    lb.root.classList.toggle("has-nav", Boolean(visible));
+    lb.chrome.hidden = !visible;
+    lb.prevBtn.tabIndex = visible ? 0 : -1;
+    lb.nextBtn.tabIndex = visible ? 0 : -1;
+  }
+
+  function upgradeLightboxFullSrc(sourceImg) {
+    const lb = ensurePhotoLightbox();
+    const fullSrc = sourceImg.getAttribute("data-full-src") || "";
+    const previewSrc = sourceImg.currentSrc || sourceImg.src || fullSrc;
+    if (!fullSrc || fullSrc === previewSrc) return;
+    const hi = new Image();
+    hi.decoding = "async";
+    hi.onload = () => {
+      if (!photoLightboxState?.open) return;
+      if (photoLightboxState.sourceImg !== sourceImg) return;
+      if (lb.image.getAttribute("src") === fullSrc) return;
+      lb.image.src = fullSrc;
+    };
+    hi.src = fullSrc;
+  }
+
+  function bindLightboxToSource(sourceImg, { keepTrigger = false } = {}) {
+    const lb = ensurePhotoLightbox();
+    const host = sourceImg.closest(PHOTO_EXPAND_HOSTS);
+    const prevHost = photoLightboxState?.host;
+    if (prevHost && prevHost !== host) {
+      prevHost.classList.remove("is-photo-lightbox-source");
+    }
+    if (host) host.classList.add("is-photo-lightbox-source");
+
+    const flipRadius = getFlipRadiusPx(sourceImg, getPhotoContentRect(sourceImg));
+    const lockedSize = measureContainSize(
+      sourceImg.naturalWidth || sourceImg.width || 1,
+      sourceImg.naturalHeight || sourceImg.height || 1,
+    );
+    const target = getLightboxTargetRect(lockedSize);
+    const fullSrc = sourceImg.getAttribute("data-full-src") || "";
+    const previewSrc = sourceImg.currentSrc || sourceImg.src || fullSrc;
+
+    photoLightboxState.sourceImg = sourceImg;
+    photoLightboxState.host = host;
+    photoLightboxState.flipRadius = flipRadius;
+    photoLightboxState.lockedSize = lockedSize;
+    photoLightboxState.target = target;
+    photoLightboxState.first = getPhotoContentRect(sourceImg);
+    if (!keepTrigger) {
+      photoLightboxState.trigger =
+        host?.querySelector(".photo-expand") || photoLightboxState.trigger;
+    }
+
+    lb.image.alt = sourceImg.getAttribute("alt") || "";
+    return { previewSrc, target, host };
+  }
+
+  function stepPhotoLightbox(direction) {
+    if (!photoLightboxState?.open || photoLightboxState.busy) return;
+    const api = photoLightboxState.carouselApi;
+    if (!api || api.getCount() < 2) return;
+
+    const nextIndex = api.getIndex() + direction;
+    api.goTo(nextIndex);
+
+    const img = api.getSlideImage(api.getIndex());
+    if (!img) return;
+
+    photoLightboxState.busy = true;
+    const lb = ensurePhotoLightbox();
+    const reduce = prefersReducedMotion();
+
+    // Wait one frame so the carousel active slide has painted.
+    requestAnimationFrame(() => {
+      if (!photoLightboxState?.open) return;
+      const { previewSrc, target } = bindLightboxToSource(img);
+      updatePhotoLightboxStatus();
+      lb.image.style.transition = reduce
+        ? "none"
+        : [
+            `opacity 0.18s ease`,
+            lightboxRectTransition(),
+          ].join(", ");
+      lb.image.style.opacity = "0.35";
+      placeLightboxImageRect(lb.image, target, {
+        radius: PHOTO_LIGHTBOX_RADIUS,
+        shadow: PHOTO_LIGHTBOX_SHADOW,
+        animate: !reduce,
+      });
+
+      const show = () => {
+        if (!photoLightboxState?.open) return;
+        if (lb.image.getAttribute("src") !== previewSrc) {
+          lb.image.src = previewSrc;
+        }
+        lb.image.style.opacity = "1";
+        upgradeLightboxFullSrc(img);
+        photoLightboxState.busy = false;
+      };
+
+      if (lb.image.getAttribute("src") === previewSrc) {
+        show();
+      } else {
+        lb.image.addEventListener("load", show, { once: true });
+        lb.image.addEventListener("error", show, { once: true });
+        lb.image.src = previewSrc;
+        if (lb.image.complete) show();
+      }
+    });
+  }
+
+  function onPhotoLightboxScrollGuard(event) {
+    // Block background scroll without overflow:hidden (avoids layout reflow).
+    event.preventDefault();
+  }
+
+  function lockPhotoLightboxScroll() {
+    photoLightboxScrollY = window.scrollY || window.pageYOffset || 0;
+    document.documentElement.classList.add("photo-lightbox-open");
+    document.addEventListener("wheel", onPhotoLightboxScrollGuard, {
+      passive: false,
+    });
+    document.addEventListener("touchmove", onPhotoLightboxScrollGuard, {
+      passive: false,
+    });
+  }
+
+  function unlockPhotoLightboxScroll() {
+    document.documentElement.classList.remove("photo-lightbox-open");
+    document.removeEventListener("wheel", onPhotoLightboxScrollGuard);
+    document.removeEventListener("touchmove", onPhotoLightboxScrollGuard);
+    const y = photoLightboxScrollY || 0;
+    if (Math.abs((window.scrollY || 0) - y) > 1) {
+      const doc = document.documentElement;
+      const prevBehavior = doc.style.scrollBehavior;
+      doc.style.scrollBehavior = "auto";
+      window.scrollTo(0, y);
+      doc.style.scrollBehavior = prevBehavior;
+    }
+  }
+
+  /** Visible content box — contain letterboxes; cover fills the frame. */
+  function getPhotoContentRect(img) {
+    const rect = img.getBoundingClientRect();
+    const nw = img.naturalWidth || 0;
+    const nh = img.naturalHeight || 0;
+    if (!nw || !nh || rect.width < 2 || rect.height < 2) {
+      return {
+        left: rect.left,
+        top: rect.top,
+        width: rect.width,
+        height: rect.height,
+      };
+    }
+    const fit = getComputedStyle(img).objectFit;
+    if (fit === "contain") {
+      const scale = Math.min(rect.width / nw, rect.height / nh);
+      const width = nw * scale;
+      const height = nh * scale;
+      return {
+        left: rect.left + (rect.width - width) / 2,
+        top: rect.top + (rect.height - height) / 2,
+        width,
+        height,
+      };
+    }
+    return {
+      left: rect.left,
+      top: rect.top,
+      width: rect.width,
+      height: rect.height,
+    };
+  }
+
+  function getSourceRadiusPx(sourceImg) {
+    let el = sourceImg.closest(PHOTO_EXPAND_HOSTS) || sourceImg;
+    for (let i = 0; i < 4 && el; i += 1) {
+      const val = parseFloat(getComputedStyle(el).borderTopLeftRadius);
+      if (Number.isFinite(val) && val > 0) return val;
+      el = el.parentElement;
+    }
+    return PHOTO_LIGHTBOX_RADIUS;
+  }
+
+  /**
+   * Radius for the FLIP clone. Letterboxed contain photos (carousel) sit inside a
+   * rounded frame with square photo corners — using the frame radius causes a
+   * corner pop when handing back to the source.
+   */
+  function getFlipRadiusPx(sourceImg, contentRect) {
+    const host = sourceImg.closest(PHOTO_EXPAND_HOSTS) || sourceImg;
+    const hostRect = host.getBoundingClientRect();
+    const hostRadius = getSourceRadiusPx(sourceImg);
+    const fit = getComputedStyle(sourceImg).objectFit;
+    if (fit === "contain") {
+      const fillX = contentRect.width / Math.max(1, hostRect.width);
+      const fillY = contentRect.height / Math.max(1, hostRect.height);
+      if (fillX < 0.98 || fillY < 0.98) return 0;
+    }
+    return hostRadius;
+  }
+
+  function clearPhotoLightboxImageStyles(image) {
+    image.style.transition = "none";
+    image.style.transform = "none";
+    image.style.position = "";
+    image.style.left = "";
+    image.style.top = "";
+    image.style.right = "";
+    image.style.bottom = "";
+    image.style.width = "";
+    image.style.height = "";
+    image.style.maxWidth = "";
+    image.style.maxHeight = "";
+    image.style.margin = "";
+    image.style.borderRadius = "";
+    image.style.boxShadow = "";
+    image.style.opacity = "";
+    image.style.zIndex = "";
+  }
+
+  function getPhotoLightboxChromeReserve() {
+    return photoLightbox?.root.classList.contains("has-nav") ? 76 : 0;
+  }
+
+  function measureContainSize(naturalWidth, naturalHeight) {
+    const margin = 32;
+    const chrome = getPhotoLightboxChromeReserve();
+    const maxW = Math.max(120, window.innerWidth - margin);
+    const maxH = Math.max(
+      120,
+      (window.visualViewport?.height || window.innerHeight) - margin - chrome,
+    );
+    const nw = Math.max(1, naturalWidth || maxW);
+    const nh = Math.max(1, naturalHeight || maxH);
+    const scale = Math.min(maxW / nw, maxH / nh, 1);
+    return {
+      width: Math.max(1, nw * scale),
+      height: Math.max(1, nh * scale),
+    };
+  }
+
+  function getLightboxTargetRect(size) {
+    const vv = window.visualViewport;
+    const vw = vv?.width ?? window.innerWidth;
+    const vh = vv?.height ?? window.innerHeight;
+    const ox = vv?.offsetLeft ?? 0;
+    const oy = vv?.offsetTop ?? 0;
+    const chrome = getPhotoLightboxChromeReserve();
+    const usableH = Math.max(size.height, vh - chrome);
+    return {
+      left: ox + (vw - size.width) / 2,
+      top: oy + (usableH - size.height) / 2,
+      width: size.width,
+      height: size.height,
+    };
+  }
+
+  /** Geometry FLIP via fixed left/top/width/height — no transform scale drift. */
+  function placeLightboxImageRect(
+    image,
+    rect,
+    { radius = 0, shadow = "none", animate = false } = {},
+  ) {
+    image.style.position = "fixed";
+    image.style.left = `${rect.left}px`;
+    image.style.top = `${rect.top}px`;
+    image.style.right = "auto";
+    image.style.bottom = "auto";
+    image.style.width = `${rect.width}px`;
+    image.style.height = `${rect.height}px`;
+    image.style.maxWidth = "none";
+    image.style.maxHeight = "none";
+    image.style.margin = "0";
+    image.style.transform = "none";
+    image.style.zIndex = "1";
+    image.style.borderRadius = `${radius}px`;
+    image.style.boxShadow = shadow;
+    if (!animate) image.style.transition = "none";
+  }
+
+  function lightboxRectTransition() {
+    return [
+      `left ${PHOTO_LIGHTBOX_MS}ms ${PHOTO_LIGHTBOX_EASE}`,
+      `top ${PHOTO_LIGHTBOX_MS}ms ${PHOTO_LIGHTBOX_EASE}`,
+      `width ${PHOTO_LIGHTBOX_MS}ms ${PHOTO_LIGHTBOX_EASE}`,
+      `height ${PHOTO_LIGHTBOX_MS}ms ${PHOTO_LIGHTBOX_EASE}`,
+      `border-radius ${PHOTO_LIGHTBOX_MS}ms ${PHOTO_LIGHTBOX_EASE}`,
+      `box-shadow ${PHOTO_LIGHTBOX_MS}ms ease`,
+    ].join(", ");
+  }
+
+  const PHOTO_LIGHTBOX_GEOMETRY_PROPS = new Set([
+    "left",
+    "top",
+    "width",
+    "height",
+  ]);
+
+  function freezeLightboxCarousel(freeze) {
+    const host = photoLightboxState?.host;
+    const carousel = host?.closest?.("[data-news-carousel]");
+    if (!carousel) return;
+    qsa(".news-carousel-slide", carousel).forEach((slide) => {
+      if (freeze) {
+        slide.style.transition = "none";
+      } else {
+        slide.style.transition = "";
+      }
+    });
+  }
+
+  function handoffLightboxToSource(lb, sourceImg, host) {
+    lb.image.style.transition = "none";
+    if (sourceImg?.isConnected) {
+      const exact = getPhotoContentRect(sourceImg);
+      if (exact.width >= 2 && exact.height >= 2) {
+        placeLightboxImageRect(lb.image, exact, {
+          radius: getFlipRadiusPx(sourceImg, exact),
+          shadow: "none",
+        });
+        void lb.image.offsetWidth;
+      }
+    }
+    if (host) host.classList.remove("is-photo-lightbox-source");
+    lb.image.style.opacity = "0";
+  }
+
+  function onPhotoLightboxKeydown(event) {
+    if (!photoLightboxState?.open) return;
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closePhotoLightbox();
+      return;
+    }
+    if (event.key === "ArrowLeft") {
+      event.preventDefault();
+      stepPhotoLightbox(-1);
+      return;
+    }
+    if (event.key === "ArrowRight") {
+      event.preventDefault();
+      stepPhotoLightbox(1);
+      return;
+    }
+    if (
+      event.key === " " ||
+      event.key === "PageUp" ||
+      event.key === "PageDown" ||
+      event.key === "Home" ||
+      event.key === "End" ||
+      event.key === "ArrowUp" ||
+      event.key === "ArrowDown"
+    ) {
+      event.preventDefault();
+      return;
+    }
+    if (event.key === "Tab") {
+      const { closeBtn, prevBtn, nextBtn, image } = ensurePhotoLightbox();
+      const focusables = [
+        closeBtn,
+        !prevBtn.hidden ? prevBtn : null,
+        !nextBtn.hidden ? nextBtn : null,
+        image,
+      ].filter(Boolean);
+      if (!focusables.length) return;
+      event.preventDefault();
+      const current = document.activeElement;
+      const index = focusables.indexOf(current);
+      const next =
+        event.shiftKey
+          ? focusables[(index - 1 + focusables.length) % focusables.length]
+          : focusables[(index + 1) % focusables.length];
+      next.focus({ preventScroll: true });
+    }
+  }
+
+  function openPhotoLightbox(sourceImg, trigger) {
+    if (!sourceImg || photoLightboxState?.busy) return;
+    const lb = ensurePhotoLightbox();
+    const host = sourceImg.closest(PHOTO_EXPAND_HOSTS);
+
+    lockPhotoLightboxScroll();
+
+    const first = getPhotoContentRect(sourceImg);
+    if (first.width < 2 || first.height < 2) {
+      unlockPhotoLightboxScroll();
+      return;
+    }
+
+    const reduce = prefersReducedMotion();
+    const fullSrc = sourceImg.getAttribute("data-full-src") || "";
+    const previewSrc = sourceImg.currentSrc || sourceImg.src || fullSrc;
+    const alt = sourceImg.getAttribute("alt") || "";
+    const flipRadius = getFlipRadiusPx(sourceImg, first);
+    const carouselApi = getLightboxCarouselApi(host);
+    // Reserve bottom chrome before measuring the centered target size.
+    setPhotoLightboxNavVisible(
+      Boolean(carouselApi && carouselApi.getCount() > 1),
+    );
+    const lockedSize = measureContainSize(
+      sourceImg.naturalWidth || first.width,
+      sourceImg.naturalHeight || first.height,
+    );
+    const target = getLightboxTargetRect(lockedSize);
+
+    photoLightboxState = {
+      open: true,
+      busy: true,
+      sourceImg,
+      host,
+      trigger: trigger || document.activeElement,
+      first,
+      flipRadius,
+      lockedSize,
+      target,
+      carouselApi,
+    };
+    if (carouselApi && carouselApi.getCount() > 1) {
+      updatePhotoLightboxStatus();
+    }
+    freezeLightboxCarousel(true);
+
+    lb.image.alt = alt;
+    lb.image.src = previewSrc;
+    lb.image.style.opacity = "1";
+
+    lb.root.hidden = false;
+    lb.root.classList.add("is-open");
+    document.addEventListener("keydown", onPhotoLightboxKeydown);
+
+    const playOpen = () => {
+      if (host) host.classList.add("is-photo-lightbox-source");
+
+      if (reduce) {
+        placeLightboxImageRect(lb.image, target, {
+          radius: PHOTO_LIGHTBOX_RADIUS,
+          shadow: PHOTO_LIGHTBOX_SHADOW,
+        });
+        photoLightboxState.busy = false;
+        lb.closeBtn.focus({ preventScroll: true });
+        return;
+      }
+
+      // Start exactly on the source box, then animate to the centered target.
+      placeLightboxImageRect(lb.image, first, {
+        radius: flipRadius,
+        shadow: "none",
+      });
+      void lb.image.offsetWidth;
+      requestAnimationFrame(() => {
+        lb.image.style.transition = lightboxRectTransition();
+        placeLightboxImageRect(lb.image, target, {
+          radius: PHOTO_LIGHTBOX_RADIUS,
+          shadow: PHOTO_LIGHTBOX_SHADOW,
+          animate: true,
+        });
+      });
+
+      const pending = new Set(PHOTO_LIGHTBOX_GEOMETRY_PROPS);
+      const finish = (event) => {
+        if (event && event.target !== lb.image) return;
+        if (event?.propertyName) {
+          if (!PHOTO_LIGHTBOX_GEOMETRY_PROPS.has(event.propertyName)) return;
+          pending.delete(event.propertyName);
+          if (pending.size > 0) return;
+        }
+        lb.image.removeEventListener("transitionend", finish);
+        if (photoLightboxState) photoLightboxState.busy = false;
+        lb.closeBtn.focus({ preventScroll: true });
+      };
+      lb.image.addEventListener("transitionend", finish);
+      window.setTimeout(() => finish({ target: lb.image }), PHOTO_LIGHTBOX_MS + 80);
+    };
+
+    if (lb.image.complete && lb.image.naturalWidth) {
+      playOpen();
+    } else {
+      lb.image.addEventListener("load", playOpen, { once: true });
+      lb.image.addEventListener("error", playOpen, { once: true });
+    }
+
+    upgradeLightboxFullSrc(sourceImg);
+  }
+
+  function closePhotoLightbox() {
+    if (!photoLightboxState?.open) return;
+    const lb = ensurePhotoLightbox();
+    const { sourceImg, host, trigger, flipRadius } = photoLightboxState;
+    const reduce = prefersReducedMotion();
+    photoLightboxState.busy = true;
+    photoLightboxState.open = false;
+    freezeLightboxCarousel(true);
+
+    // Remeasure immediately before animating — stale rects cause the end jump.
+    const first =
+      sourceImg?.isConnected
+        ? getPhotoContentRect(sourceImg)
+        : photoLightboxState.first;
+    const closeRadius =
+      sourceImg?.isConnected && first
+        ? getFlipRadiusPx(sourceImg, first)
+        : flipRadius || 0;
+
+    const finishClose = () => {
+      handoffLightboxToSource(lb, sourceImg, host);
+      freezeLightboxCarousel(false);
+      requestAnimationFrame(() => {
+        lb.root.classList.remove("is-open", "is-closing", "has-nav");
+        lb.root.hidden = true;
+        clearPhotoLightboxImageStyles(lb.image);
+        resetPhotoLightboxCloseButton();
+        lb.image.removeAttribute("src");
+        lb.image.alt = "";
+        unlockPhotoLightboxScroll();
+        document.removeEventListener("keydown", onPhotoLightboxKeydown);
+        photoLightboxState = null;
+        if (trigger?.focus) {
+          try {
+            trigger.focus({ preventScroll: true });
+          } catch (_) {
+            /* ignore */
+          }
+        }
+      });
+    };
+
+    // Hide chrome + close immediately — don't let them ride the shrink animation.
+    hidePhotoLightboxChrome();
+
+    if (reduce || !first || first.width < 2) {
+      finishClose();
+      return;
+    }
+
+    lb.root.classList.add("is-closing");
+    const current = {
+      left: parseFloat(lb.image.style.left) || lb.image.getBoundingClientRect().left,
+      top: parseFloat(lb.image.style.top) || lb.image.getBoundingClientRect().top,
+      width: parseFloat(lb.image.style.width) || lb.image.getBoundingClientRect().width,
+      height: parseFloat(lb.image.style.height) || lb.image.getBoundingClientRect().height,
+    };
+    placeLightboxImageRect(lb.image, current, {
+      radius: PHOTO_LIGHTBOX_RADIUS,
+      shadow: PHOTO_LIGHTBOX_SHADOW,
+    });
+    void lb.image.offsetWidth;
+    // Animate only geometry; snap radius/shadow so they don't finish out of sync.
+    lb.image.style.transition = [
+      `left ${PHOTO_LIGHTBOX_MS}ms ${PHOTO_LIGHTBOX_EASE}`,
+      `top ${PHOTO_LIGHTBOX_MS}ms ${PHOTO_LIGHTBOX_EASE}`,
+      `width ${PHOTO_LIGHTBOX_MS}ms ${PHOTO_LIGHTBOX_EASE}`,
+      `height ${PHOTO_LIGHTBOX_MS}ms ${PHOTO_LIGHTBOX_EASE}`,
+    ].join(", ");
+    lb.image.style.borderRadius = `${closeRadius}px`;
+    lb.image.style.boxShadow = "none";
+    placeLightboxImageRect(lb.image, first, {
+      radius: closeRadius,
+      shadow: "none",
+      animate: true,
+    });
+
+    const pending = new Set(PHOTO_LIGHTBOX_GEOMETRY_PROPS);
+    const onEnd = (event) => {
+      if (event && event.target !== lb.image) return;
+      if (event?.propertyName) {
+        if (!PHOTO_LIGHTBOX_GEOMETRY_PROPS.has(event.propertyName)) return;
+        pending.delete(event.propertyName);
+        if (pending.size > 0) return;
+      }
+      lb.image.removeEventListener("transitionend", onEnd);
+      finishClose();
+    };
+    lb.image.addEventListener("transitionend", onEnd);
+    window.setTimeout(() => onEnd({ target: lb.image }), PHOTO_LIGHTBOX_MS + 80);
+  }
+
+  function initPhotoLightbox() {
+    enhancePhotoExpandTargets(document);
   }
 
   function buildNewsItemHtml(item, index = 0) {
@@ -3615,6 +4423,7 @@
           setupNewsAccordion(newsEl);
           initNewsCarousels(newsEl);
           setupNewsShareLinks(newsEl);
+          enhancePhotoExpandTargets(newsEl);
         };
 
         const ensureNewsPaginationHost = () => {
@@ -3794,6 +4603,7 @@
               .join("")
           : `<p class="agenda-empty">Er staan momenteel geen activiteiten gepland.</p>`;
         setupAgendaAccordion(agendaEl);
+        enhancePhotoExpandTargets(agendaEl);
       }
 
       const faqEl = qs(".faq-list");
@@ -3909,8 +4719,10 @@
           )
           .join("");
         setupSecondhandScroll();
+        enhancePhotoExpandTargets(secondhandScroll);
       }
 
+      enhancePhotoExpandTargets(document);
       initRevealAnimations();
     },
   };
@@ -4120,6 +4932,7 @@
     initRevealAnimations();
     initBranchPeeker();
     setupSecondhandScroll();
+    initPhotoLightbox();
 
     window.addEventListener("hashchange", openNewsFromHash);
 
