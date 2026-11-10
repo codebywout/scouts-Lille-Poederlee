@@ -131,7 +131,7 @@
       });
   }
 
-  const IMAGE_ASSET_VERSION = "20261110-about-hero-expand";
+  const IMAGE_ASSET_VERSION = "20261110-assets-sync";
 
   function formatLidgeldLabel(amount) {
     const amountNumber = Number(String(amount || "").replace(",", ".").replace(/[^\d.]/g, ""));
@@ -361,8 +361,10 @@
     const custom = String(backgrounds[slot] || "").trim();
     if (!custom) {
       document.body.classList.remove("scouts-has-custom-bg");
-      document.body.style.removeProperty("--scouts-custom-bg-800");
       document.body.style.removeProperty("--scouts-custom-bg-1600");
+      document.body.style.removeProperty("--scouts-custom-bg-2400");
+      document.body.style.removeProperty("--scouts-custom-bg-1200");
+      document.body.style.removeProperty("--scouts-custom-bg-800");
       return;
     }
 
@@ -376,12 +378,12 @@
     }
 
     document.body.style.setProperty(
-      "--scouts-custom-bg-800",
-      buildBackgroundImageSet(parts.stem, 800, parts.query),
-    );
-    document.body.style.setProperty(
       "--scouts-custom-bg-1600",
       buildBackgroundImageSet(parts.stem, 1600, parts.query),
+    );
+    document.body.style.setProperty(
+      "--scouts-custom-bg-2400",
+      buildBackgroundImageSet(parts.stem, 2400, parts.query),
     );
     document.body.classList.add("scouts-has-custom-bg");
   }

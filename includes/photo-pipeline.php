@@ -1026,31 +1026,35 @@ function scouts_photo_best_variant_link(string $fsStem, string $webStem, int $wi
 }
 
 /**
- * Media-scoped preloads matching pages.css (w800 ≤768px, w1600 ≥769px).
- * Avoids mobile downloading w1600 while CSS paints w800.
+ * Media-scoped preloads matching pages.css:
+ * w1600 for phone + desktop 1x, w2400 for retina/wide.
  */
 function scouts_html_page_bg_preload_links(string $fsStem, string $webStem, string $query = ''): string
 {
-    $mobile = scouts_photo_best_variant_link($fsStem, $webStem, 800, $query);
-    $desktop = scouts_photo_best_variant_link($fsStem, $webStem, 1600, $query);
-    if ($mobile === null && $desktop === null) {
+    $standard = scouts_photo_best_variant_link($fsStem, $webStem, 1600, $query)
+        ?? scouts_photo_best_variant_link($fsStem, $webStem, 1200, $query)
+        ?? scouts_photo_best_variant_link($fsStem, $webStem, 800, $query);
+    $hires = scouts_photo_best_variant_link($fsStem, $webStem, 2400, $query)
+        ?? $standard;
+
+    if ($standard === null && $hires === null) {
         return '';
     }
 
     $links = [];
-    if ($mobile !== null) {
+    if ($standard !== null) {
         $links[] = '<link rel="preload" as="image" type="'
-            . $mobile['type']
+            . $standard['type']
             . '" href="'
-            . htmlspecialchars($mobile['href'], ENT_QUOTES | ENT_HTML5, 'UTF-8')
-            . '" media="(max-width: 768px)" fetchpriority="high">';
+            . htmlspecialchars($standard['href'], ENT_QUOTES | ENT_HTML5, 'UTF-8')
+            . '" media="(max-width: 1399px) and (max-resolution: 1.49dppx), (max-width: 768px)" fetchpriority="high">';
     }
-    if ($desktop !== null) {
+    if ($hires !== null) {
         $links[] = '<link rel="preload" as="image" type="'
-            . $desktop['type']
+            . $hires['type']
             . '" href="'
-            . htmlspecialchars($desktop['href'], ENT_QUOTES | ENT_HTML5, 'UTF-8')
-            . '" media="(min-width: 769px)" fetchpriority="high">';
+            . htmlspecialchars($hires['href'], ENT_QUOTES | ENT_HTML5, 'UTF-8')
+            . '" media="(min-width: 1400px), (min-width: 769px) and (min-resolution: 1.5dppx)" fetchpriority="high">';
     }
 
     return implode("\n    ", $links);
@@ -1077,21 +1081,22 @@ function scouts_html_boot_page_background(string $html, string $pageId): string
         $resolved = scouts_photo_resolve_responsive_stem($custom);
         if ($resolved !== null) {
             $cacheQuery = scouts_photo_html_cache_query($resolved['query']);
-            $set800 = scouts_photo_css_image_set(
-                $resolved['fs'],
-                $resolved['web'],
-                800,
-                $cacheQuery
-            );
             $set1600 = scouts_photo_css_image_set(
                 $resolved['fs'],
                 $resolved['web'],
                 1600,
                 $cacheQuery
             );
+            $set2400 = scouts_photo_css_image_set(
+                $resolved['fs'],
+                $resolved['web'],
+                2400,
+                $cacheQuery
+            );
 
             $style = '<style id="scouts-page-bg-boot">'
-                . ':root{--scouts-custom-bg-800:' . $set800 . ';--scouts-custom-bg-1600:' . $set1600 . ';}'
+                . ':root{--scouts-custom-bg-1600:' . $set1600
+                . ';--scouts-custom-bg-2400:' . $set2400 . ';}'
                 . '</style>';
 
             if (!str_contains($html, 'id="scouts-page-bg-boot"')) {
@@ -1131,7 +1136,7 @@ function scouts_html_boot_page_background(string $html, string $pageId): string
         $html,
         $preloadMatch
     )) {
-        // No custom bg: still fix static w1600-only preload so mobile gets w800.
+        // No custom bg: still fix static preloads to match pages.css tiers.
         $hrefPath = parse_url($preloadMatch[1], PHP_URL_PATH) ?: $preloadMatch[1];
         $hrefPath = preg_replace('#^(\.\./)+#', '', str_replace('\\', '/', $hrefPath)) ?? $hrefPath;
         $hrefPath = ltrim($hrefPath, '/');
