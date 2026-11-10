@@ -299,6 +299,20 @@ function scouts_page_share_meta(string $page): array
     ];
 }
 
+/**
+ * Stable favicon links for Google Search / browsers.
+ * Keep these URLs unversioned — Google requires a stable favicon URL.
+ */
+function scouts_render_favicon_link_tags(): string
+{
+    return <<<HTML
+    <link rel="icon" href="/favicon.ico" sizes="any">
+    <link rel="icon" type="image/png" sizes="48x48" href="/assets/images/favicon-48.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="/assets/images/favicon-192.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/assets/images/favicon-180.png">
+HTML;
+}
+
 function scouts_render_share_meta_tags(string $page): string
 {
     $meta = scouts_page_share_meta($page);

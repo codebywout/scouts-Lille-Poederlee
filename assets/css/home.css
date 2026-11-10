@@ -1181,8 +1181,8 @@ body.home-page .hero {
     .home-page .news .section-top {
         align-items: start;
         flex-direction: column;
-        gap: 10px;
-        margin-bottom: 22px;
+        gap: 8px;
+        margin-bottom: 16px;
     }
 
     .home-page .planning .section-top > div > p,
@@ -1200,12 +1200,12 @@ body.home-page .hero {
 
     .agenda,
     .news-list {
-        gap: 8px;
+        gap: 6px;
     }
 
     .agenda-item,
     .news-item {
-        padding: 12px;
+        padding: 11px 12px;
         border-radius: 16px;
     }
 
@@ -1703,7 +1703,7 @@ body.home-page .hero {
 
     .agenda-item,
     .news-item {
-        padding: 11px;
+        padding: 10px 11px;
         border-radius: 14px;
     }
 
@@ -3097,8 +3097,24 @@ html {
 /*
  * Mobile news layout — must come AFTER base .news-summary:has(.news-thumb)
  * so empty thumb columns do not squeeze titles on small screens.
+ * Spacing overrides also live here: base .news-list / .section-top below
+ * would otherwise win over earlier @media blocks in this file.
  */
 @media (max-width: 768px) {
+    .home-page .planning .section-top,
+    .home-page .news .section-top {
+        margin-bottom: 16px;
+        gap: 8px;
+    }
+
+    .news-list {
+        gap: 6px;
+    }
+
+    .news-item {
+        padding: 11px 12px;
+    }
+
     .news-summary {
         align-items: center;
         gap: 10px 12px;
@@ -3179,6 +3195,15 @@ html {
 }
 
 @media (max-width: 480px) {
+    .home-page .planning .section-top,
+    .home-page .news .section-top {
+        margin-bottom: 14px;
+    }
+
+    .news-list {
+        gap: 6px;
+    }
+
     .agenda-summary:has(.agenda-thumb) {
         grid-template-columns: auto minmax(0, 1fr) 56px;
     }
@@ -3216,7 +3241,7 @@ html {
     }
 
     .news-item {
-        padding: 12px 12px 11px;
+        padding: 10px 11px;
     }
 
     .news-copy h3 {
