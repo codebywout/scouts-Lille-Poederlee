@@ -131,7 +131,7 @@
       });
   }
 
-  const IMAGE_ASSET_VERSION = "20261109-save-scroll-pad";
+  const IMAGE_ASSET_VERSION = "20261110-agenda-expand-label";
 
   function formatLidgeldLabel(amount) {
     const amountNumber = Number(String(amount || "").replace(",", ".").replace(/[^\d.]/g, ""));
@@ -1769,7 +1769,7 @@
   function isAccordionInteractiveTarget(target) {
     return Boolean(
       target?.closest?.(
-        "a[href], button, input, textarea, select, label, [data-news-share], .news-media, .agenda-media, [data-news-carousel]",
+        "a[href], button, input, textarea, select, label, [data-news-share], .news-media, .agenda-media, [data-news-carousel], .photo-expand",
       ),
     );
   }
@@ -1915,6 +1915,145 @@
     });
   }
 
+  function buildAgendaItemHtml(item, { deferReveal = false } = {}) {
+    const image = typeof item.image === "string" ? item.image.trim() : "";
+    const link =
+      typeof item.link === "string" &&
+      /^(https?:\/\/|mailto:)/i.test(item.link.trim())
+        ? item.link.trim()
+        : "";
+    const linkText =
+      typeof item.linkText === "string" ? item.linkText.trim() : "";
+    const thumb = image
+      ? `<span class="agenda-thumb" aria-hidden="true">${thumbImageHtml(image)}</span>`
+      : "";
+    const text = typeof item.text === "string" ? item.text.trim() : "";
+    const hasCopy = Boolean(text || (link && linkText));
+    const hasDetails = Boolean(hasCopy || image);
+    const bodyHtml = formatNewsBodyHtml(text);
+    const detailsHtml = hasDetails
+      ? `
+                  <div class="agenda-details">
+                    <div class="agenda-details-inner${hasCopy ? "" : " is-media-only"}">
+                      ${
+                        hasCopy
+                          ? `<div class="agenda-details-copy">
+                        ${bodyHtml}
+                        ${link && linkText ? `<a class="agenda-link" href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer">${escapeHtml(linkText)} <span class="icon-arrow-external" aria-hidden="true"></span></a>` : ""}
+                      </div>`
+                          : ""
+                      }
+                      ${
+                        image
+                          ? `<figure class="agenda-media">${responsivePictureHtml(image, {
+                              alt: item.title || "",
+                              sizes: "(max-width: 700px) 90vw, 360px",
+                              widths: RESPONSIVE_WIDTHS.card,
+                              loading: "lazy",
+                            })}</figure>`
+                          : ""
+                      }
+                    </div>
+                  </div>`
+      : "";
+    const revealAttr = deferReveal ? ' data-reveal-ready="true"' : "";
+    return `
+                <details class="agenda-item${image ? " has-agenda-image" : ""}${hasDetails ? "" : " is-static"}"${revealAttr}>
+                  <summary class="agenda-summary">
+                    ${buildAgendaDateHtml(item)}
+                    <div class="agenda-body">
+                      <h3>${escapeHtml(item.title)}</h3>
+                    </div>
+                    ${thumb}
+                  </summary>
+                  ${detailsHtml}
+                </details>
+              `;
+  }
+
+  function setAgendaExpandState(expanded) {
+    const overflow = qs("#agenda-overflow");
+    const toggle = qs(".agenda-expand-toggle");
+    if (!overflow || !toggle || toggle.hidden) return;
+
+    const label = toggle.querySelector(".agenda-expand-toggle-label");
+    const reduceMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    const anchorTop = toggle.getBoundingClientRect().top;
+    const alreadyExpanded = overflow.classList.contains("is-expanded");
+
+    toggle.setAttribute("aria-expanded", expanded ? "true" : "false");
+    if (label) {
+      label.textContent = expanded ? "Minder data" : "Meer data";
+    }
+
+    if (expanded) {
+      overflow.inert = false;
+      overflow.removeAttribute("aria-hidden");
+      overflow.classList.add("is-expanded");
+      return;
+    }
+
+    if (!alreadyExpanded) {
+      overflow.inert = true;
+      overflow.setAttribute("aria-hidden", "true");
+      return;
+    }
+
+    const settleScroll = () => {
+      const delta = toggle.getBoundingClientRect().top - anchorTop;
+      if (Math.abs(delta) > 1) window.scrollBy(0, delta);
+    };
+
+    const concealOverflow = () => {
+      overflow.inert = true;
+      overflow.setAttribute("aria-hidden", "true");
+    };
+
+    if (reduceMotion) {
+      overflow.classList.remove("is-expanded");
+      concealOverflow();
+      settleScroll();
+      return;
+    }
+
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      overflow.removeEventListener("transitionend", onEnd);
+      window.clearTimeout(fallbackTimer);
+      concealOverflow();
+      settleScroll();
+    };
+
+    const onEnd = (event) => {
+      if (event.target !== overflow) return;
+      if (
+        event.propertyName &&
+        event.propertyName !== "grid-template-rows"
+      ) {
+        return;
+      }
+      finish();
+    };
+
+    overflow.addEventListener("transitionend", onEnd);
+    const fallbackTimer = window.setTimeout(finish, 500);
+    overflow.classList.remove("is-expanded");
+  }
+
+  function setupAgendaExpandToggle() {
+    const toggle = qs(".agenda-expand-toggle");
+    if (!toggle || toggle.dataset.bound === "true") return;
+    toggle.dataset.bound = "true";
+    toggle.addEventListener("click", () => {
+      const expanded = toggle.getAttribute("aria-expanded") === "true";
+      setAgendaExpandState(!expanded);
+    });
+  }
+
   function closeNewsItem(item, { instant = false } = {}) {
     if (item._newsCloseTimer) {
       clearTimeout(item._newsCloseTimer);
@@ -1972,7 +2111,7 @@
   const NEWS_HOME_LIMIT = 3;
   const NEWS_ARCHIVE_PAGE_SIZE = 6;
   const NEWS_IMAGES_MAX = 8;
-  const NEWS_CAROUSEL_INTERVAL_MS = 5000;
+  const HOME_AGENDA_LIMIT = 5;
 
   let newsArchiveItemsCache = [];
   let newsArchiveCurrentPage = 1;
@@ -2105,7 +2244,7 @@
     if (!images.length) return "";
     const altText = title || "Nieuwsfoto";
     if (images.length === 1) {
-      return `<figure class="news-media">${responsivePictureHtml(images[0], {
+      return `<figure class="news-media news-media--single">${responsivePictureHtml(images[0], {
         alt: altText,
         sizes: "(max-width: 800px) 100vw, 42vw",
         widths: RESPONSIVE_WIDTHS.content,
@@ -2117,10 +2256,10 @@
     const slides = images
       .map(
         (src, index) => `
-                      <div class="news-carousel-slide${index === 0 ? " is-active" : ""}" data-slide-index="${index}" role="group" aria-roledescription="slide" aria-label="Foto ${index + 1} van ${total}">
+                      <div class="news-carousel-slide${index === 0 ? " is-active" : ""}" data-slide-index="${index}" data-card-shape="${index % 3}" role="group" aria-roledescription="slide" aria-label="Foto ${index + 1} van ${total}">
                         ${responsivePictureHtml(src, {
                           alt: `${altText} ${index + 1}`,
-                          sizes: "(max-width: 800px) 100vw, 42vw",
+                          sizes: "(max-width: 800px) 92vw, 38vw",
                           widths: RESPONSIVE_WIDTHS.content,
                           loading: index === 0 ? "eager" : "lazy",
                         }).replaceAll("<img", '<img draggable="false"')}
@@ -2135,20 +2274,20 @@
       .join("");
 
     return `
-                      <figure class="news-media news-carousel" data-news-carousel aria-roledescription="carousel" aria-label="Foto's bij ${escapeHtml(altText)}">
-                        <div class="news-carousel-viewport" tabindex="0">
-                          <div class="news-carousel-track">
+                      <figure class="news-media news-carousel news-carousel--stack" data-news-carousel aria-roledescription="carousel" aria-label="Foto's bij ${escapeHtml(altText)}">
+                        <div class="news-carousel-viewport" tabindex="0" aria-description="Swipe of sleep om door de foto's te bladeren">
+                          <div class="news-carousel-stack">
                             ${slides}
                           </div>
-                          <div class="news-carousel-overlay">
-                            <div class="news-carousel-dots" role="tablist" aria-label="Foto's">
-                              ${dots}
-                            </div>
-                            <p class="news-carousel-status" aria-live="polite">
-                              <span data-carousel-current>${padTwoDigits(1)}</span><span class="news-carousel-status-sep" aria-hidden="true">/</span><span data-carousel-total>${padTwoDigits(total)}</span>
-                            </p>
+                        </div>
+                        <div class="news-carousel-chrome" aria-hidden="false">
+                          <div class="news-carousel-dots" role="tablist" aria-label="Foto's">
+                            ${dots}
                           </div>
-                          <div class="news-carousel-progress" aria-hidden="true"><span></span></div>
+                          <p class="news-carousel-hint">Swipe voor meer</p>
+                          <p class="news-carousel-status" aria-live="polite">
+                            <span data-carousel-current>${padTwoDigits(1)}</span><span class="news-carousel-status-sep" aria-hidden="true">/</span><span data-carousel-total>${padTwoDigits(total)}</span>
+                          </p>
                         </div>
                       </figure>`;
   }
@@ -2158,94 +2297,98 @@
     const slides = qsa(".news-carousel-slide", carousel);
     const dots = qsa("[data-carousel-dot]", carousel);
     const dotsWrap = qs(".news-carousel-dots", carousel);
-    const track = qs(".news-carousel-track", carousel);
+    const stack = qs(".news-carousel-stack", carousel);
     const viewport = qs(".news-carousel-viewport", carousel);
     const currentLabel = qs("[data-carousel-current]", carousel);
-    const progress = qs(".news-carousel-progress", carousel);
-    const progressBar = qs(".news-carousel-progress > span", carousel);
-    if (slides.length <= 1 || !track || !viewport) return;
+    if (slides.length <= 1 || !stack || !viewport) return;
 
     carousel.dataset.carouselReady = "true";
     let index = 0;
-    let timer = 0;
     let pointerId = null;
     let startX = 0;
     let startY = 0;
     let deltaX = 0;
     let axis = null;
     let dragging = false;
-    let pausedByUser = false;
+    let didDrag = false;
     const reduceMotion = window.matchMedia(
       "(prefers-reduced-motion: reduce)",
     ).matches;
+    const maxDepth = Math.min(3, slides.length);
+
+    // Same height for every card; width/rotation/radius vary by depth + shape seed.
+    const depthLayout = (depth, shape, dragX = 0) => {
+      const side = shape === 1 ? 1 : shape === 2 ? -1 : depth % 2 === 0 ? 1 : -1;
+      if (depth === 0) {
+        const rot = Math.max(-11, Math.min(11, dragX / 28));
+        const lift = Math.min(12, Math.abs(dragX) * 0.04);
+        return {
+          widthPct: 90,
+          x: dragX,
+          y: -lift,
+          rot,
+          radius: 18 + shape * 2,
+          opacity: 1,
+        };
+      }
+      if (depth === 1) {
+        return {
+          widthPct: 76,
+          x: side * 22,
+          y: 18,
+          rot: side * 7.5,
+          radius: 14 + shape * 6,
+          opacity: 0.98,
+        };
+      }
+      return {
+        widthPct: 68,
+        x: side * -30,
+        y: 34,
+        rot: side * -9,
+        radius: 20 + ((shape + 1) % 3) * 4,
+        opacity: 0.94,
+      };
+    };
 
     const syncFrame = () => {
-      const images = slides
-        .map((slide) => slide.querySelector("img"))
-        .filter((img) => img && img.naturalWidth > 0);
-      if (!images.length) return;
-
-      let best = images[0];
-      let bestArea = best.naturalWidth * best.naturalHeight;
-      images.forEach((img) => {
-        const area = img.naturalWidth * img.naturalHeight;
-        if (area > bestArea) {
-          best = img;
-          bestArea = area;
-        }
-      });
-
-      // Explicit pixel height is more reliable on iPad Safari than
-      // aspect-ratio + max-height (which can crop or ignore the cap).
-      const maxH = Math.min(Math.round(window.innerHeight * 0.7), 420);
       const width = Math.max(viewport.clientWidth || 0, 1);
-      const height = Math.max(
-        160,
-        Math.min(
-          maxH,
-          Math.round(width * (best.naturalHeight / best.naturalWidth)),
-        ),
-      );
-      viewport.style.aspectRatio = "auto";
-      viewport.style.height = `${height}px`;
+      const maxH = Math.min(Math.round(window.innerHeight * 0.48), 340);
+      const height = Math.max(188, Math.min(maxH, Math.round(width * 0.92)));
+      const stackPad = 42;
+      viewport.style.height = `${height + stackPad}px`;
+      stack.style.height = `${height}px`;
     };
 
-    const stopProgress = () => {
-      if (!progress || !progressBar) return;
-      progress.classList.remove("is-running");
-      progressBar.style.animation = "none";
-      // Force reflow so the next animation can restart cleanly.
-      void progressBar.offsetWidth;
-      progressBar.style.animation = "";
-    };
+    const paintStack = ({ animate = true, dragX = 0 } = {}) => {
+      const ease =
+        animate && !reduceMotion && !dragging
+          ? "transform 0.72s cubic-bezier(0.16, 1, 0.3, 1), width 0.72s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.5s ease, border-radius 0.72s ease, box-shadow 0.5s ease"
+          : "none";
 
-    const startProgress = () => {
-      if (!progress || !progressBar || reduceMotion || pausedByUser) {
-        stopProgress();
-        return;
-      }
-      const details = carousel.closest("details.news-item");
-      if (details && !details.classList.contains("is-open")) {
-        stopProgress();
-        return;
-      }
-      progress.style.setProperty(
-        "--carousel-progress-ms",
-        `${NEWS_CAROUSEL_INTERVAL_MS}ms`,
-      );
-      stopProgress();
-      progress.classList.add("is-running");
-    };
-
-    const goTo = (nextIndex, { animate = true } = {}) => {
-      index = ((nextIndex % slides.length) + slides.length) % slides.length;
-      track.style.transition = animate && !reduceMotion ? "" : "none";
-      track.style.transform = `translate3d(-${index * 100}%, 0, 0)`;
       slides.forEach((slide, slideIndex) => {
-        const active = slideIndex === index;
+        const depth =
+          (slideIndex - index + slides.length) % slides.length;
+        const shape = Number(slide.dataset.cardShape) || 0;
+        const active = depth === 0;
+        const visible = depth < maxDepth;
+        const layout = visible
+          ? depthLayout(depth, shape, active ? dragX : 0)
+          : { widthPct: 60, x: 0, y: 48, rot: 0, radius: 16, opacity: 0 };
+
         slide.classList.toggle("is-active", active);
+        slide.classList.toggle("is-stacked", visible && !active);
         slide.setAttribute("aria-hidden", active ? "false" : "true");
+        slide.style.zIndex = String(maxDepth - depth + 1);
+        slide.style.opacity = String(layout.opacity);
+        slide.style.pointerEvents = active ? "auto" : "none";
+        slide.style.transition = ease;
+        slide.style.width = `${layout.widthPct}%`;
+        slide.style.left = `${(100 - layout.widthPct) / 2}%`;
+        slide.style.borderRadius = `${layout.radius}px`;
+        slide.style.transform = `translate3d(${layout.x}px, ${layout.y}px, 0) rotate(${layout.rot}deg)`;
       });
+
       dots.forEach((dot, dotIndex) => {
         const active = dotIndex === index;
         dot.classList.toggle("is-active", active);
@@ -2253,41 +2396,15 @@
         dot.tabIndex = active ? 0 : -1;
       });
       if (currentLabel) currentLabel.textContent = padTwoDigits(index + 1);
-      if (!animate) {
-        requestAnimationFrame(() => {
-          track.style.transition = "";
-        });
-      }
     };
 
-    const stopAutoplay = () => {
-      if (timer) {
-        window.clearInterval(timer);
-        timer = 0;
-      }
-      stopProgress();
-    };
-
-    const startAutoplay = () => {
-      stopAutoplay();
-      if (reduceMotion || slides.length < 2 || pausedByUser) return;
-      const details = carousel.closest("details.news-item");
-      if (details && !details.classList.contains("is-open")) return;
-      startProgress();
-      timer = window.setInterval(() => {
-        goTo(index + 1);
-        startProgress();
-      }, NEWS_CAROUSEL_INTERVAL_MS);
-    };
-
-    const restartAutoplay = () => {
-      stopAutoplay();
-      startAutoplay();
+    const goTo = (nextIndex, { animate = true } = {}) => {
+      index = ((nextIndex % slides.length) + slides.length) % slides.length;
+      paintStack({ animate, dragX: 0 });
     };
 
     const step = (direction) => {
       goTo(index + direction);
-      restartAutoplay();
     };
 
     dots.forEach((dot) => {
@@ -2295,7 +2412,6 @@
         event.preventDefault();
         event.stopPropagation();
         goTo(Number(dot.dataset.carouselDot) || 0);
-        restartAutoplay();
       });
     });
 
@@ -2309,22 +2425,6 @@
     dotsWrap?.addEventListener("keydown", onKeyNav);
     viewport.addEventListener("keydown", onKeyNav);
 
-    const pause = () => {
-      pausedByUser = true;
-      stopAutoplay();
-    };
-    const resume = () => {
-      pausedByUser = false;
-      startAutoplay();
-    };
-
-    carousel.addEventListener("mouseenter", pause);
-    carousel.addEventListener("mouseleave", resume);
-    carousel.addEventListener("focusin", pause);
-    carousel.addEventListener("focusout", (event) => {
-      if (!carousel.contains(event.relatedTarget)) resume();
-    });
-
     viewport.addEventListener("pointerdown", (event) => {
       if (event.button !== undefined && event.button !== 0) return;
       if (event.target.closest("button")) return;
@@ -2334,7 +2434,7 @@
       deltaX = 0;
       axis = null;
       dragging = true;
-      stopAutoplay();
+      didDrag = false;
     });
 
     viewport.addEventListener("pointermove", (event) => {
@@ -2348,45 +2448,56 @@
         if (axis === "y") {
           dragging = false;
           pointerId = null;
-          restartAutoplay();
           return;
         }
         viewport.setPointerCapture?.(pointerId);
         viewport.classList.add("is-dragging");
-        track.style.transition = "none";
+        didDrag = true;
       }
 
       if (axis !== "x") return;
-      deltaX = dx;
       const width = viewport.clientWidth || 1;
-      let drag = deltaX;
-      // Soft rubber-band at the ends.
-      if ((index === 0 && drag > 0) || (index === slides.length - 1 && drag < 0)) {
-        drag *= 0.35;
-      }
-      const offset = -index * 100 + (drag / width) * 100;
-      track.style.transform = `translate3d(${offset}%, 0, 0)`;
+      const maxDrag = Math.min(132, Math.round(width * 0.36));
+      deltaX = Math.max(-maxDrag, Math.min(maxDrag, dx));
+      paintStack({ animate: false, dragX: deltaX });
     });
 
     const endDrag = (event) => {
       if (event.pointerId !== pointerId) return;
       const wasHorizontal = axis === "x";
+      const committedDelta = deltaX;
+      const wasDrag = didDrag;
       viewport.classList.remove("is-dragging");
-      if (dragging && wasHorizontal) {
+      try {
         viewport.releasePointerCapture?.(pointerId);
-        const width = viewport.clientWidth || 1;
-        const threshold = Math.min(56, width * 0.18);
-        if (Math.abs(deltaX) > threshold) {
-          goTo(index + (deltaX < 0 ? 1 : -1));
-        } else {
-          goTo(index);
-        }
+      } catch (_) {
+        /* ignore */
       }
       dragging = false;
       pointerId = null;
       axis = null;
       deltaX = 0;
-      restartAutoplay();
+      didDrag = false;
+
+      if (wasHorizontal) {
+        const width = viewport.clientWidth || 1;
+        const threshold = Math.min(56, width * 0.16);
+        if (Math.abs(committedDelta) > threshold) {
+          goTo(index + (committedDelta < 0 ? 1 : -1));
+          return;
+        }
+        goTo(index);
+        return;
+      }
+
+      // Tap / click advances to the next photo (Jobr-like deck feel).
+      if (
+        !wasDrag &&
+        event.type === "pointerup" &&
+        !event.target?.closest?.(".photo-expand")
+      ) {
+        goTo(index + 1);
+      }
     };
 
     viewport.addEventListener("pointerup", endDrag);
@@ -2395,22 +2506,824 @@
       if (dragging && event.pointerId === pointerId) endDrag(event);
     });
 
-    slides.forEach((slide) => {
-      const img = slide.querySelector("img");
-      if (!img) return;
-      if (img.complete) syncFrame();
-      else img.addEventListener("load", syncFrame, { once: true });
-    });
     window.addEventListener("resize", debounce(syncFrame, 120));
 
-    carousel._newsCarousel = { startAutoplay, stopAutoplay, goTo, syncFrame };
-    goTo(0, { animate: false });
+    carousel._newsCarousel = {
+      startAutoplay() {},
+      stopAutoplay() {},
+      goTo,
+      syncFrame,
+      getIndex: () => index,
+      getCount: () => slides.length,
+      getSlideImage(slideIndex) {
+        const slide =
+          slides[
+            ((slideIndex % slides.length) + slides.length) % slides.length
+          ];
+        return slide?.querySelector("img") || null;
+      },
+    };
     syncFrame();
-    startAutoplay();
+    goTo(0, { animate: false });
   }
 
   function initNewsCarousels(container = document) {
     qsa("[data-news-carousel]", container).forEach(setupNewsCarousel);
+  }
+
+  const PHOTO_EXPAND_HOSTS =
+    ".news-media--single, .news-carousel-slide, .agenda-media, .branch-photo, .secondhand-item-image";
+  const PHOTO_LIGHTBOX_EASE = "cubic-bezier(0.22, 1, 0.36, 1)";
+  const PHOTO_LIGHTBOX_MS = 420;
+  const PHOTO_LIGHTBOX_RADIUS = 16;
+  const PHOTO_LIGHTBOX_SHADOW = "0 24px 60px rgba(0, 0, 0, 0.35)";
+
+  function prefersReducedMotion() {
+    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  }
+
+  function createPhotoExpandButton() {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "photo-expand";
+    button.setAttribute("aria-label", "Foto vergroten");
+    button.innerHTML = '<span class="icon-expand" aria-hidden="true"></span>';
+    const stop = (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+    };
+    button.addEventListener("pointerdown", stop);
+    button.addEventListener("click", (event) => {
+      stop(event);
+      const host = button.closest(PHOTO_EXPAND_HOSTS);
+      const img = host?.querySelector("img");
+      if (img) openPhotoLightbox(img, button);
+    });
+    return button;
+  }
+
+  function enhancePhotoExpandTargets(root = document) {
+    qsa(PHOTO_EXPAND_HOSTS, root).forEach((host) => {
+      if (host.dataset.photoExpandReady === "true") return;
+      if (host.closest(".news-thumb, .agenda-thumb")) return;
+      const img = host.querySelector("img");
+      if (!img) return;
+      host.dataset.photoExpandReady = "true";
+      host.appendChild(createPhotoExpandButton());
+    });
+  }
+
+  let photoLightbox = null;
+  let photoLightboxState = null;
+  let photoLightboxScrollY = 0;
+
+  function ensurePhotoLightbox() {
+    if (photoLightbox) return photoLightbox;
+
+    const root = document.createElement("div");
+    root.className = "photo-lightbox";
+    root.setAttribute("role", "dialog");
+    root.setAttribute("aria-modal", "true");
+    root.setAttribute("aria-label", "Vergrote foto");
+    root.hidden = true;
+
+    const backdrop = document.createElement("button");
+    backdrop.type = "button";
+    backdrop.className = "photo-lightbox-backdrop";
+    backdrop.setAttribute("aria-label", "Sluiten");
+
+    const closeBtn = document.createElement("button");
+    closeBtn.type = "button";
+    closeBtn.className = "photo-lightbox-close";
+    closeBtn.setAttribute("aria-label", "Sluiten");
+    closeBtn.innerHTML = '<span class="icon-close" aria-hidden="true"></span>';
+
+    const stage = document.createElement("div");
+    stage.className = "photo-lightbox-stage";
+
+    const image = document.createElement("img");
+    image.className = "photo-lightbox-image";
+    image.alt = "";
+    image.decoding = "async";
+    image.draggable = false;
+    image.tabIndex = -1;
+
+    const chrome = document.createElement("div");
+    chrome.className = "photo-lightbox-chrome";
+    chrome.hidden = true;
+
+    const prevBtn = document.createElement("button");
+    prevBtn.type = "button";
+    prevBtn.className = "photo-lightbox-nav photo-lightbox-prev";
+    prevBtn.setAttribute("aria-label", "Vorige foto");
+    prevBtn.innerHTML =
+      '<span class="icon-arrow-left" aria-hidden="true"></span>';
+
+    const status = document.createElement("p");
+    status.className = "photo-lightbox-status";
+    status.setAttribute("aria-live", "polite");
+    status.innerHTML =
+      '<span data-lightbox-current>01</span><span class="photo-lightbox-status-sep" aria-hidden="true">/</span><span data-lightbox-total>01</span>';
+
+    const nextBtn = document.createElement("button");
+    nextBtn.type = "button";
+    nextBtn.className = "photo-lightbox-nav photo-lightbox-next";
+    nextBtn.setAttribute("aria-label", "Volgende foto");
+    nextBtn.innerHTML =
+      '<span class="icon-arrow-right" aria-hidden="true"></span>';
+
+    chrome.append(prevBtn, status, nextBtn);
+    stage.appendChild(image);
+    root.append(backdrop, closeBtn, chrome, stage);
+    document.body.appendChild(root);
+
+    backdrop.addEventListener("click", () => closePhotoLightbox());
+    closeBtn.addEventListener("click", () => closePhotoLightbox());
+    prevBtn.addEventListener("click", (event) => {
+      event.stopPropagation();
+      stepPhotoLightbox(-1);
+    });
+    nextBtn.addEventListener("click", (event) => {
+      event.stopPropagation();
+      stepPhotoLightbox(1);
+    });
+    image.addEventListener("click", (event) => event.stopPropagation());
+    bindPhotoLightboxSwipe(root);
+
+    photoLightbox = {
+      root,
+      backdrop,
+      closeBtn,
+      chrome,
+      prevBtn,
+      nextBtn,
+      status,
+      stage,
+      image,
+    };
+    return photoLightbox;
+  }
+
+  function bindPhotoLightboxSwipe(root) {
+    let pointerId = null;
+    let startX = 0;
+    let startY = 0;
+    let axis = null;
+
+    root.addEventListener("pointerdown", (event) => {
+      if (event.button !== undefined && event.button !== 0) return;
+      if (event.target.closest("button")) return;
+      if (!photoLightboxState?.open || !photoLightboxState.carouselApi) return;
+      if (photoLightboxState.carouselApi.getCount() < 2) return;
+      pointerId = event.pointerId;
+      startX = event.clientX;
+      startY = event.clientY;
+      axis = null;
+    });
+
+    root.addEventListener("pointermove", (event) => {
+      if (pointerId === null || event.pointerId !== pointerId) return;
+      const dx = event.clientX - startX;
+      const dy = event.clientY - startY;
+      if (axis === null) {
+        if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
+        axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+      }
+      if (axis === "x") {
+        event.preventDefault();
+      }
+    });
+
+    const endSwipe = (event) => {
+      if (pointerId === null || event.pointerId !== pointerId) return;
+      const dx = event.clientX - startX;
+      const dy = event.clientY - startY;
+      const wasAxis = axis;
+      pointerId = null;
+      axis = null;
+      if (wasAxis !== "x") return;
+      if (Math.abs(dx) < 48 || Math.abs(dx) < Math.abs(dy)) return;
+      stepPhotoLightbox(dx < 0 ? 1 : -1);
+    };
+
+    root.addEventListener("pointerup", endSwipe);
+    root.addEventListener("pointercancel", endSwipe);
+    root.addEventListener("pointerleave", (event) => {
+      if (pointerId !== null && event.pointerId === pointerId) endSwipe(event);
+    });
+  }
+
+  function hidePhotoLightboxChrome() {
+    const lb = ensurePhotoLightbox();
+    setPhotoLightboxNavVisible(false);
+    lb.closeBtn.classList.add("is-hiding");
+  }
+
+  function resetPhotoLightboxCloseButton() {
+    const lb = ensurePhotoLightbox();
+    lb.closeBtn.classList.remove("is-hiding");
+  }
+
+  function getLightboxCarouselApi(host) {
+    const carousel = host?.closest?.("[data-news-carousel]");
+    return carousel?._newsCarousel || null;
+  }
+
+  function updatePhotoLightboxStatus() {
+    const lb = ensurePhotoLightbox();
+    const api = photoLightboxState?.carouselApi;
+    const currentEl = lb.status.querySelector("[data-lightbox-current]");
+    const totalEl = lb.status.querySelector("[data-lightbox-total]");
+    if (!api || !currentEl || !totalEl) return;
+    const total = api.getCount();
+    const current = api.getIndex() + 1;
+    currentEl.textContent = padTwoDigits(current);
+    totalEl.textContent = padTwoDigits(total);
+    lb.status.setAttribute(
+      "aria-label",
+      `Foto ${current} van ${total}`,
+    );
+  }
+
+  function setPhotoLightboxNavVisible(visible) {
+    const lb = ensurePhotoLightbox();
+    lb.root.classList.toggle("has-nav", Boolean(visible));
+    lb.chrome.hidden = !visible;
+    lb.prevBtn.tabIndex = visible ? 0 : -1;
+    lb.nextBtn.tabIndex = visible ? 0 : -1;
+  }
+
+  function upgradeLightboxFullSrc(sourceImg) {
+    const lb = ensurePhotoLightbox();
+    const fullSrc = sourceImg.getAttribute("data-full-src") || "";
+    const previewSrc = sourceImg.currentSrc || sourceImg.src || fullSrc;
+    if (!fullSrc || fullSrc === previewSrc) return;
+    const hi = new Image();
+    hi.decoding = "async";
+    hi.onload = () => {
+      if (!photoLightboxState?.open) return;
+      if (photoLightboxState.sourceImg !== sourceImg) return;
+      if (lb.image.getAttribute("src") === fullSrc) return;
+      lb.image.src = fullSrc;
+    };
+    hi.src = fullSrc;
+  }
+
+  function bindLightboxToSource(sourceImg, { keepTrigger = false } = {}) {
+    const lb = ensurePhotoLightbox();
+    const host = sourceImg.closest(PHOTO_EXPAND_HOSTS);
+    const prevHost = photoLightboxState?.host;
+    if (prevHost && prevHost !== host) {
+      prevHost.classList.remove("is-photo-lightbox-source");
+    }
+    if (host) host.classList.add("is-photo-lightbox-source");
+
+    const flipRadius = getFlipRadiusPx(sourceImg, getPhotoContentRect(sourceImg));
+    const lockedSize = measureContainSize(
+      sourceImg.naturalWidth || sourceImg.width || 1,
+      sourceImg.naturalHeight || sourceImg.height || 1,
+    );
+    const target = getLightboxTargetRect(lockedSize);
+    const fullSrc = sourceImg.getAttribute("data-full-src") || "";
+    const previewSrc = sourceImg.currentSrc || sourceImg.src || fullSrc;
+
+    photoLightboxState.sourceImg = sourceImg;
+    photoLightboxState.host = host;
+    photoLightboxState.flipRadius = flipRadius;
+    photoLightboxState.lockedSize = lockedSize;
+    photoLightboxState.target = target;
+    photoLightboxState.first = getPhotoContentRect(sourceImg);
+    if (!keepTrigger) {
+      photoLightboxState.trigger =
+        host?.querySelector(".photo-expand") || photoLightboxState.trigger;
+    }
+
+    lb.image.alt = sourceImg.getAttribute("alt") || "";
+    return { previewSrc, target, host };
+  }
+
+  function stepPhotoLightbox(direction) {
+    if (!photoLightboxState?.open || photoLightboxState.busy) return;
+    const api = photoLightboxState.carouselApi;
+    if (!api || api.getCount() < 2) return;
+
+    const nextIndex = api.getIndex() + direction;
+    api.goTo(nextIndex);
+
+    const img = api.getSlideImage(api.getIndex());
+    if (!img) return;
+
+    photoLightboxState.busy = true;
+    const lb = ensurePhotoLightbox();
+    const reduce = prefersReducedMotion();
+
+    // Wait one frame so the carousel active slide has painted.
+    requestAnimationFrame(() => {
+      if (!photoLightboxState?.open) return;
+      const { previewSrc, target } = bindLightboxToSource(img);
+      updatePhotoLightboxStatus();
+      lb.image.style.transition = reduce
+        ? "none"
+        : [
+            `opacity 0.18s ease`,
+            lightboxRectTransition(),
+          ].join(", ");
+      lb.image.style.opacity = "0.35";
+      placeLightboxImageRect(lb.image, target, {
+        radius: PHOTO_LIGHTBOX_RADIUS,
+        shadow: PHOTO_LIGHTBOX_SHADOW,
+        animate: !reduce,
+      });
+
+      const show = () => {
+        if (!photoLightboxState?.open) return;
+        if (lb.image.getAttribute("src") !== previewSrc) {
+          lb.image.src = previewSrc;
+        }
+        lb.image.style.opacity = "1";
+        upgradeLightboxFullSrc(img);
+        photoLightboxState.busy = false;
+      };
+
+      if (lb.image.getAttribute("src") === previewSrc) {
+        show();
+      } else {
+        lb.image.addEventListener("load", show, { once: true });
+        lb.image.addEventListener("error", show, { once: true });
+        lb.image.src = previewSrc;
+        if (lb.image.complete) show();
+      }
+    });
+  }
+
+  function onPhotoLightboxScrollGuard(event) {
+    // Block background scroll without overflow:hidden (avoids layout reflow).
+    event.preventDefault();
+  }
+
+  function lockPhotoLightboxScroll() {
+    photoLightboxScrollY = window.scrollY || window.pageYOffset || 0;
+    document.documentElement.classList.add("photo-lightbox-open");
+    document.addEventListener("wheel", onPhotoLightboxScrollGuard, {
+      passive: false,
+    });
+    document.addEventListener("touchmove", onPhotoLightboxScrollGuard, {
+      passive: false,
+    });
+  }
+
+  function unlockPhotoLightboxScroll() {
+    document.documentElement.classList.remove("photo-lightbox-open");
+    document.removeEventListener("wheel", onPhotoLightboxScrollGuard);
+    document.removeEventListener("touchmove", onPhotoLightboxScrollGuard);
+    const y = photoLightboxScrollY || 0;
+    if (Math.abs((window.scrollY || 0) - y) > 1) {
+      const doc = document.documentElement;
+      const prevBehavior = doc.style.scrollBehavior;
+      doc.style.scrollBehavior = "auto";
+      window.scrollTo(0, y);
+      doc.style.scrollBehavior = prevBehavior;
+    }
+  }
+
+  /** Visible content box — contain letterboxes; cover fills the frame. */
+  function getPhotoContentRect(img) {
+    const rect = img.getBoundingClientRect();
+    const nw = img.naturalWidth || 0;
+    const nh = img.naturalHeight || 0;
+    if (!nw || !nh || rect.width < 2 || rect.height < 2) {
+      return {
+        left: rect.left,
+        top: rect.top,
+        width: rect.width,
+        height: rect.height,
+      };
+    }
+    const fit = getComputedStyle(img).objectFit;
+    if (fit === "contain") {
+      const scale = Math.min(rect.width / nw, rect.height / nh);
+      const width = nw * scale;
+      const height = nh * scale;
+      return {
+        left: rect.left + (rect.width - width) / 2,
+        top: rect.top + (rect.height - height) / 2,
+        width,
+        height,
+      };
+    }
+    return {
+      left: rect.left,
+      top: rect.top,
+      width: rect.width,
+      height: rect.height,
+    };
+  }
+
+  function getSourceRadiusPx(sourceImg) {
+    let el = sourceImg.closest(PHOTO_EXPAND_HOSTS) || sourceImg;
+    for (let i = 0; i < 4 && el; i += 1) {
+      const val = parseFloat(getComputedStyle(el).borderTopLeftRadius);
+      if (Number.isFinite(val) && val > 0) return val;
+      el = el.parentElement;
+    }
+    return PHOTO_LIGHTBOX_RADIUS;
+  }
+
+  /**
+   * Radius for the FLIP clone. Letterboxed contain photos (carousel) sit inside a
+   * rounded frame with square photo corners — using the frame radius causes a
+   * corner pop when handing back to the source.
+   */
+  function getFlipRadiusPx(sourceImg, contentRect) {
+    const host = sourceImg.closest(PHOTO_EXPAND_HOSTS) || sourceImg;
+    const hostRect = host.getBoundingClientRect();
+    const hostRadius = getSourceRadiusPx(sourceImg);
+    const fit = getComputedStyle(sourceImg).objectFit;
+    if (fit === "contain") {
+      const fillX = contentRect.width / Math.max(1, hostRect.width);
+      const fillY = contentRect.height / Math.max(1, hostRect.height);
+      if (fillX < 0.98 || fillY < 0.98) return 0;
+    }
+    return hostRadius;
+  }
+
+  function clearPhotoLightboxImageStyles(image) {
+    image.style.transition = "none";
+    image.style.transform = "none";
+    image.style.position = "";
+    image.style.left = "";
+    image.style.top = "";
+    image.style.right = "";
+    image.style.bottom = "";
+    image.style.width = "";
+    image.style.height = "";
+    image.style.maxWidth = "";
+    image.style.maxHeight = "";
+    image.style.margin = "";
+    image.style.borderRadius = "";
+    image.style.boxShadow = "";
+    image.style.opacity = "";
+    image.style.zIndex = "";
+  }
+
+  function getPhotoLightboxChromeReserve() {
+    return photoLightbox?.root.classList.contains("has-nav") ? 76 : 0;
+  }
+
+  function measureContainSize(naturalWidth, naturalHeight) {
+    const margin = 32;
+    const chrome = getPhotoLightboxChromeReserve();
+    const maxW = Math.max(120, window.innerWidth - margin);
+    const maxH = Math.max(
+      120,
+      (window.visualViewport?.height || window.innerHeight) - margin - chrome,
+    );
+    const nw = Math.max(1, naturalWidth || maxW);
+    const nh = Math.max(1, naturalHeight || maxH);
+    const scale = Math.min(maxW / nw, maxH / nh, 1);
+    return {
+      width: Math.max(1, nw * scale),
+      height: Math.max(1, nh * scale),
+    };
+  }
+
+  function getLightboxTargetRect(size) {
+    const vv = window.visualViewport;
+    const vw = vv?.width ?? window.innerWidth;
+    const vh = vv?.height ?? window.innerHeight;
+    const ox = vv?.offsetLeft ?? 0;
+    const oy = vv?.offsetTop ?? 0;
+    const chrome = getPhotoLightboxChromeReserve();
+    const usableH = Math.max(size.height, vh - chrome);
+    return {
+      left: ox + (vw - size.width) / 2,
+      top: oy + (usableH - size.height) / 2,
+      width: size.width,
+      height: size.height,
+    };
+  }
+
+  /** Geometry FLIP via fixed left/top/width/height — no transform scale drift. */
+  function placeLightboxImageRect(
+    image,
+    rect,
+    { radius = 0, shadow = "none", animate = false } = {},
+  ) {
+    image.style.position = "fixed";
+    image.style.left = `${rect.left}px`;
+    image.style.top = `${rect.top}px`;
+    image.style.right = "auto";
+    image.style.bottom = "auto";
+    image.style.width = `${rect.width}px`;
+    image.style.height = `${rect.height}px`;
+    image.style.maxWidth = "none";
+    image.style.maxHeight = "none";
+    image.style.margin = "0";
+    image.style.transform = "none";
+    image.style.zIndex = "1";
+    image.style.borderRadius = `${radius}px`;
+    image.style.boxShadow = shadow;
+    if (!animate) image.style.transition = "none";
+  }
+
+  function lightboxRectTransition() {
+    return [
+      `left ${PHOTO_LIGHTBOX_MS}ms ${PHOTO_LIGHTBOX_EASE}`,
+      `top ${PHOTO_LIGHTBOX_MS}ms ${PHOTO_LIGHTBOX_EASE}`,
+      `width ${PHOTO_LIGHTBOX_MS}ms ${PHOTO_LIGHTBOX_EASE}`,
+      `height ${PHOTO_LIGHTBOX_MS}ms ${PHOTO_LIGHTBOX_EASE}`,
+      `border-radius ${PHOTO_LIGHTBOX_MS}ms ${PHOTO_LIGHTBOX_EASE}`,
+      `box-shadow ${PHOTO_LIGHTBOX_MS}ms ease`,
+    ].join(", ");
+  }
+
+  const PHOTO_LIGHTBOX_GEOMETRY_PROPS = new Set([
+    "left",
+    "top",
+    "width",
+    "height",
+  ]);
+
+  function freezeLightboxCarousel(freeze) {
+    const host = photoLightboxState?.host;
+    const carousel = host?.closest?.("[data-news-carousel]");
+    if (!carousel) return;
+    qsa(".news-carousel-slide", carousel).forEach((slide) => {
+      if (freeze) {
+        slide.style.transition = "none";
+      } else {
+        slide.style.transition = "";
+      }
+    });
+  }
+
+  function handoffLightboxToSource(lb, sourceImg, host) {
+    lb.image.style.transition = "none";
+    if (sourceImg?.isConnected) {
+      const exact = getPhotoContentRect(sourceImg);
+      if (exact.width >= 2 && exact.height >= 2) {
+        placeLightboxImageRect(lb.image, exact, {
+          radius: getFlipRadiusPx(sourceImg, exact),
+          shadow: "none",
+        });
+        void lb.image.offsetWidth;
+      }
+    }
+    if (host) host.classList.remove("is-photo-lightbox-source");
+    lb.image.style.opacity = "0";
+  }
+
+  function onPhotoLightboxKeydown(event) {
+    if (!photoLightboxState?.open) return;
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closePhotoLightbox();
+      return;
+    }
+    if (event.key === "ArrowLeft") {
+      event.preventDefault();
+      stepPhotoLightbox(-1);
+      return;
+    }
+    if (event.key === "ArrowRight") {
+      event.preventDefault();
+      stepPhotoLightbox(1);
+      return;
+    }
+    if (
+      event.key === " " ||
+      event.key === "PageUp" ||
+      event.key === "PageDown" ||
+      event.key === "Home" ||
+      event.key === "End" ||
+      event.key === "ArrowUp" ||
+      event.key === "ArrowDown"
+    ) {
+      event.preventDefault();
+      return;
+    }
+    if (event.key === "Tab") {
+      const { closeBtn, prevBtn, nextBtn, image } = ensurePhotoLightbox();
+      const focusables = [
+        closeBtn,
+        !prevBtn.hidden ? prevBtn : null,
+        !nextBtn.hidden ? nextBtn : null,
+        image,
+      ].filter(Boolean);
+      if (!focusables.length) return;
+      event.preventDefault();
+      const current = document.activeElement;
+      const index = focusables.indexOf(current);
+      const next =
+        event.shiftKey
+          ? focusables[(index - 1 + focusables.length) % focusables.length]
+          : focusables[(index + 1) % focusables.length];
+      next.focus({ preventScroll: true });
+    }
+  }
+
+  function openPhotoLightbox(sourceImg, trigger) {
+    if (!sourceImg || photoLightboxState?.busy) return;
+    const lb = ensurePhotoLightbox();
+    const host = sourceImg.closest(PHOTO_EXPAND_HOSTS);
+
+    lockPhotoLightboxScroll();
+
+    const first = getPhotoContentRect(sourceImg);
+    if (first.width < 2 || first.height < 2) {
+      unlockPhotoLightboxScroll();
+      return;
+    }
+
+    const reduce = prefersReducedMotion();
+    const fullSrc = sourceImg.getAttribute("data-full-src") || "";
+    const previewSrc = sourceImg.currentSrc || sourceImg.src || fullSrc;
+    const alt = sourceImg.getAttribute("alt") || "";
+    const flipRadius = getFlipRadiusPx(sourceImg, first);
+    const carouselApi = getLightboxCarouselApi(host);
+    // Reserve bottom chrome before measuring the centered target size.
+    setPhotoLightboxNavVisible(
+      Boolean(carouselApi && carouselApi.getCount() > 1),
+    );
+    const lockedSize = measureContainSize(
+      sourceImg.naturalWidth || first.width,
+      sourceImg.naturalHeight || first.height,
+    );
+    const target = getLightboxTargetRect(lockedSize);
+
+    photoLightboxState = {
+      open: true,
+      busy: true,
+      sourceImg,
+      host,
+      trigger: trigger || document.activeElement,
+      first,
+      flipRadius,
+      lockedSize,
+      target,
+      carouselApi,
+    };
+    if (carouselApi && carouselApi.getCount() > 1) {
+      updatePhotoLightboxStatus();
+    }
+    freezeLightboxCarousel(true);
+
+    lb.image.alt = alt;
+    lb.image.src = previewSrc;
+    lb.image.style.opacity = "1";
+
+    lb.root.hidden = false;
+    lb.root.classList.add("is-open");
+    document.addEventListener("keydown", onPhotoLightboxKeydown);
+
+    const playOpen = () => {
+      if (host) host.classList.add("is-photo-lightbox-source");
+
+      if (reduce) {
+        placeLightboxImageRect(lb.image, target, {
+          radius: PHOTO_LIGHTBOX_RADIUS,
+          shadow: PHOTO_LIGHTBOX_SHADOW,
+        });
+        photoLightboxState.busy = false;
+        lb.closeBtn.focus({ preventScroll: true });
+        return;
+      }
+
+      // Start exactly on the source box, then animate to the centered target.
+      placeLightboxImageRect(lb.image, first, {
+        radius: flipRadius,
+        shadow: "none",
+      });
+      void lb.image.offsetWidth;
+      requestAnimationFrame(() => {
+        lb.image.style.transition = lightboxRectTransition();
+        placeLightboxImageRect(lb.image, target, {
+          radius: PHOTO_LIGHTBOX_RADIUS,
+          shadow: PHOTO_LIGHTBOX_SHADOW,
+          animate: true,
+        });
+      });
+
+      const pending = new Set(PHOTO_LIGHTBOX_GEOMETRY_PROPS);
+      const finish = (event) => {
+        if (event && event.target !== lb.image) return;
+        if (event?.propertyName) {
+          if (!PHOTO_LIGHTBOX_GEOMETRY_PROPS.has(event.propertyName)) return;
+          pending.delete(event.propertyName);
+          if (pending.size > 0) return;
+        }
+        lb.image.removeEventListener("transitionend", finish);
+        if (photoLightboxState) photoLightboxState.busy = false;
+        lb.closeBtn.focus({ preventScroll: true });
+      };
+      lb.image.addEventListener("transitionend", finish);
+      window.setTimeout(() => finish({ target: lb.image }), PHOTO_LIGHTBOX_MS + 80);
+    };
+
+    if (lb.image.complete && lb.image.naturalWidth) {
+      playOpen();
+    } else {
+      lb.image.addEventListener("load", playOpen, { once: true });
+      lb.image.addEventListener("error", playOpen, { once: true });
+    }
+
+    upgradeLightboxFullSrc(sourceImg);
+  }
+
+  function closePhotoLightbox() {
+    if (!photoLightboxState?.open) return;
+    const lb = ensurePhotoLightbox();
+    const { sourceImg, host, trigger, flipRadius } = photoLightboxState;
+    const reduce = prefersReducedMotion();
+    photoLightboxState.busy = true;
+    photoLightboxState.open = false;
+    freezeLightboxCarousel(true);
+
+    // Remeasure immediately before animating — stale rects cause the end jump.
+    const first =
+      sourceImg?.isConnected
+        ? getPhotoContentRect(sourceImg)
+        : photoLightboxState.first;
+    const closeRadius =
+      sourceImg?.isConnected && first
+        ? getFlipRadiusPx(sourceImg, first)
+        : flipRadius || 0;
+
+    const finishClose = () => {
+      handoffLightboxToSource(lb, sourceImg, host);
+      freezeLightboxCarousel(false);
+      requestAnimationFrame(() => {
+        lb.root.classList.remove("is-open", "is-closing", "has-nav");
+        lb.root.hidden = true;
+        clearPhotoLightboxImageStyles(lb.image);
+        resetPhotoLightboxCloseButton();
+        lb.image.removeAttribute("src");
+        lb.image.alt = "";
+        unlockPhotoLightboxScroll();
+        document.removeEventListener("keydown", onPhotoLightboxKeydown);
+        photoLightboxState = null;
+        if (trigger?.focus) {
+          try {
+            trigger.focus({ preventScroll: true });
+          } catch (_) {
+            /* ignore */
+          }
+        }
+      });
+    };
+
+    // Hide chrome + close immediately — don't let them ride the shrink animation.
+    hidePhotoLightboxChrome();
+
+    if (reduce || !first || first.width < 2) {
+      finishClose();
+      return;
+    }
+
+    lb.root.classList.add("is-closing");
+    const current = {
+      left: parseFloat(lb.image.style.left) || lb.image.getBoundingClientRect().left,
+      top: parseFloat(lb.image.style.top) || lb.image.getBoundingClientRect().top,
+      width: parseFloat(lb.image.style.width) || lb.image.getBoundingClientRect().width,
+      height: parseFloat(lb.image.style.height) || lb.image.getBoundingClientRect().height,
+    };
+    placeLightboxImageRect(lb.image, current, {
+      radius: PHOTO_LIGHTBOX_RADIUS,
+      shadow: PHOTO_LIGHTBOX_SHADOW,
+    });
+    void lb.image.offsetWidth;
+    // Animate only geometry; snap radius/shadow so they don't finish out of sync.
+    lb.image.style.transition = [
+      `left ${PHOTO_LIGHTBOX_MS}ms ${PHOTO_LIGHTBOX_EASE}`,
+      `top ${PHOTO_LIGHTBOX_MS}ms ${PHOTO_LIGHTBOX_EASE}`,
+      `width ${PHOTO_LIGHTBOX_MS}ms ${PHOTO_LIGHTBOX_EASE}`,
+      `height ${PHOTO_LIGHTBOX_MS}ms ${PHOTO_LIGHTBOX_EASE}`,
+    ].join(", ");
+    lb.image.style.borderRadius = `${closeRadius}px`;
+    lb.image.style.boxShadow = "none";
+    placeLightboxImageRect(lb.image, first, {
+      radius: closeRadius,
+      shadow: "none",
+      animate: true,
+    });
+
+    const pending = new Set(PHOTO_LIGHTBOX_GEOMETRY_PROPS);
+    const onEnd = (event) => {
+      if (event && event.target !== lb.image) return;
+      if (event?.propertyName) {
+        if (!PHOTO_LIGHTBOX_GEOMETRY_PROPS.has(event.propertyName)) return;
+        pending.delete(event.propertyName);
+        if (pending.size > 0) return;
+      }
+      lb.image.removeEventListener("transitionend", onEnd);
+      finishClose();
+    };
+    lb.image.addEventListener("transitionend", onEnd);
+    window.setTimeout(() => onEnd({ target: lb.image }), PHOTO_LIGHTBOX_MS + 80);
+  }
+
+  function initPhotoLightbox() {
+    enhancePhotoExpandTargets(document);
   }
 
   function buildNewsItemHtml(item, index = 0) {
@@ -2495,8 +3408,9 @@
        Scroll-reveal animations
        ========================================================== */
 
+  // Reveal the peeker host as one unit (peeker + Kapoenen), other branches alone.
   const revealSelector =
-    ".section-top, .practical-heading, .branch, .news-item, .agenda-item, .faq-item";
+    ".section-top, .practical-heading, .branch-peeker-host, .branch-list > .branch, .news-item, .agenda-item, .faq-item";
   let revealObserver = null;
 
   function initRevealAnimations() {
@@ -2538,6 +3452,414 @@
     }
 
     elements.forEach((element) => revealObserver.observe(element));
+  }
+
+  /* ==========================================================
+       Branch mascot peeker (articulated SVG behind Kapoenen)
+       ========================================================== */
+
+  function initBranchPeeker() {
+    const peeker = qs("[data-branch-peeker]");
+    const host = peeker?.closest(".branch-peeker-host");
+    const branchList = host?.closest(".branch-list");
+    if (!peeker || !host || !branchList) return;
+
+    const reduceMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    if (reduceMotion) {
+      peeker.dataset.pose = "peek";
+      return;
+    }
+
+    const ACTS = [
+      {
+        name: "curious",
+        weight: 2.2,
+        moods: ["", ""],
+        speed: "slow",
+        // Head first, torso follows, one hand settles on the card edge.
+        steps: [
+          { pose: "head", at: 0, g: "" },
+          { pose: "peek", at: 900, g: "wall" },
+          { pose: "lean", at: 2800, g: "wall" },
+          { pose: "hidden", at: 4000, g: "" },
+        ],
+        duration: 4300,
+      },
+      {
+        name: "shy",
+        weight: 2,
+        moods: ["", "surprise", "nervous"],
+        speed: "fast",
+        // Appears, startles, pulls back with hands clasped at the chest.
+        steps: [
+          { pose: "peek", at: 0, mood: "surprise", g: "" },
+          { pose: "head", at: 700, mood: "nervous", g: "clasp" },
+          { pose: "hidden", at: 1400, mood: "nervous", fast: true, g: "clasp" },
+        ],
+        duration: 2000,
+      },
+      {
+        name: "excited",
+        weight: 1.6,
+        moods: [""],
+        speed: "fast",
+        // Pops out with both arms up, then settles into a wave.
+        steps: [
+          { pose: "full", at: 0, g: "cheer" },
+          { pose: "peek", at: 2600, g: "wave" },
+          { pose: "hidden", at: 3400, g: "" },
+        ],
+        duration: 3600,
+      },
+      {
+        name: "naughty",
+        weight: 1.5,
+        moods: ["", "surprise"],
+        speed: "",
+        // On narrow screens "side" is still a top-corner variant via CSS vars.
+        // Eyes + head only, ducks away, then a giggle behind the hand.
+        steps: [
+          { pose: "head", at: 0, g: "" },
+          { pose: "hidden", at: 1100, fast: true, g: "" },
+          { pose: "side", at: 1800, g: "mouth" },
+          { pose: "peek", at: 2800, g: "wall" },
+          { pose: "hidden", at: 4600, g: "" },
+        ],
+        duration: 5000,
+      },
+      {
+        name: "relaxed",
+        weight: 2,
+        moods: [""],
+        speed: "slow",
+        // Leans back on the card edge, hand to the head, then eases away.
+        steps: [
+          { pose: "lean", at: 0, g: "" },
+          { pose: "lean", at: 1800, g: "scratch" },
+          { pose: "peek", at: 4200, g: "wall" },
+          { pose: "hidden", at: 5200, g: "" },
+        ],
+        duration: 5500,
+      },
+      {
+        name: "playful",
+        weight: 1.7,
+        moods: [""],
+        speed: "",
+        // Tilts the head, drums fingers on the edge, shifts position with a wave.
+        steps: [
+          { pose: "peek", at: 0, g: "wall" },
+          { pose: "full", at: 1400, g: "wave" },
+          { pose: "head", at: 2200, g: "" },
+          { pose: "hidden", at: 3000, g: "" },
+        ],
+        duration: 3200,
+      },
+      {
+        name: "cheerful",
+        weight: 1.6,
+        moods: [""],
+        speed: "",
+        steps: [
+          { pose: "full", at: 0, g: "wave" },
+          { pose: "peek", at: 2100, g: "wall" },
+          { pose: "hidden", at: 2800, g: "" },
+        ],
+        duration: 3000,
+      },
+      {
+        name: "idle",
+        weight: 2.1,
+        moods: [""],
+        speed: "slow",
+        steps: [
+          { pose: "head", at: 0, g: "" },
+          { pose: "peek", at: 800, g: "" },
+          { pose: "head", at: 2200, g: "" },
+          { pose: "hidden", at: 3000, g: "" },
+        ],
+        duration: 3200,
+      },
+      {
+        name: "away",
+        weight: 1.8,
+        moods: [""],
+        speed: "",
+        steps: [{ pose: "hidden", at: 0 }],
+        duration: 0,
+        waitOnly: true,
+      },
+    ];
+
+    let busy = false;
+    let inView = false;
+    let lastAct = "";
+    let waitTimer = 0;
+    let actTimers = [];
+    let reactTimer = 0;
+    let lookClearTimer = 0;
+
+    const rand = (min, max) => min + Math.random() * (max - min);
+    const pickWeighted = (items) => {
+      const pool = items.filter((item) => item.name !== lastAct || items.length < 2);
+      const total = pool.reduce((sum, item) => sum + item.weight, 0);
+      let roll = Math.random() * total;
+      for (const item of pool) {
+        roll -= item.weight;
+        if (roll <= 0) return item;
+      }
+      return pool[pool.length - 1];
+    };
+
+    const clearWait = () => {
+      if (waitTimer) {
+        window.clearTimeout(waitTimer);
+        waitTimer = 0;
+      }
+    };
+
+    const clearActTimers = () => {
+      actTimers.forEach((id) => window.clearTimeout(id));
+      actTimers = [];
+    };
+
+    const setPose = (pose, { fast = false, slow = false } = {}) => {
+      peeker.classList.toggle("is-fast", !!fast);
+      peeker.classList.toggle("is-slow", !!slow);
+      peeker.dataset.pose = pose;
+    };
+
+    const setMood = (mood) => {
+      if (mood) peeker.dataset.mood = mood;
+      else delete peeker.dataset.mood;
+    };
+
+    const setAct = (name) => {
+      if (name) peeker.dataset.act = name;
+      else delete peeker.dataset.act;
+    };
+
+    const setLook = (dir) => {
+      if (dir) peeker.dataset.look = dir;
+      else delete peeker.dataset.look;
+    };
+
+    // Arm / head / torso posture (CSS eases between gestures, so nothing snaps).
+    const setGesture = (name) => {
+      if (name) peeker.dataset.g = name;
+      else delete peeker.dataset.g;
+    };
+
+    const clearLimbAnimState = () => {
+      peeker.classList.remove("is-fast", "is-slow", "is-reacting");
+      setAct("");
+      setMood("");
+      setLook("");
+      setGesture("");
+      // Force CSS animation teardown so the next act starts cleanly.
+      void peeker.offsetWidth;
+    };
+
+    const finishAct = () => {
+      clearActTimers();
+      if (reactTimer) {
+        window.clearTimeout(reactTimer);
+        reactTimer = 0;
+      }
+      clearLimbAnimState();
+      setPose("hidden");
+      busy = false;
+      scheduleNext();
+    };
+
+    const runAct = (act) => {
+      if (!inView || document.hidden) {
+        scheduleNext();
+        return;
+      }
+      busy = true;
+      lastAct = act.name;
+      clearActTimers();
+      if (reactTimer) {
+        window.clearTimeout(reactTimer);
+        reactTimer = 0;
+      }
+      peeker.classList.remove("is-reacting");
+      setLook("");
+
+      if (act.waitOnly) {
+        busy = false;
+        clearLimbAnimState();
+        setPose("hidden");
+        const awayWait = rand(5000, 12000);
+        waitTimer = window.setTimeout(() => {
+          waitTimer = 0;
+          scheduleNext();
+        }, awayWait);
+        return;
+      }
+
+      // Act attributes are swapped without a forced reset of the gesture:
+      // the previous posture eases into the new one instead of snapping.
+      setAct(act.name);
+      setMood(act.moods[0] || "");
+      setGesture(act.steps[0] && act.steps[0].g ? act.steps[0].g : "");
+      peeker.classList.toggle("is-slow", act.speed === "slow");
+      peeker.classList.toggle("is-fast", act.speed === "fast");
+
+      act.steps.forEach((step) => {
+        const id = window.setTimeout(() => {
+          setPose(step.pose, {
+            fast: !!step.fast,
+            slow: act.speed === "slow" && !step.fast,
+          });
+          if (step.g !== undefined) setGesture(step.g);
+          if (step.mood !== undefined) setMood(step.mood);
+          else if (act.moods[0] !== undefined) setMood(act.moods[0]);
+        }, step.at);
+        actTimers.push(id);
+      });
+
+      const doneId = window.setTimeout(finishAct, act.duration);
+      actTimers.push(doneId);
+    };
+
+    const scheduleNext = () => {
+      clearWait();
+      if (!inView || busy || document.hidden) return;
+      // Varied pauses: quick return, normal gap, or long absence.
+      const roll = Math.random();
+      let wait;
+      if (roll < 0.18) wait = rand(1200, 2500);
+      else if (roll < 0.7) wait = rand(2800, 6500);
+      else wait = rand(7000, 12000);
+
+      waitTimer = window.setTimeout(() => {
+        waitTimer = 0;
+        if (!inView || busy || document.hidden) return;
+        runAct(pickWeighted(ACTS));
+      }, wait);
+    };
+
+    const playReact = (kind = "wave") => {
+      if (document.hidden) return;
+      if (!inView) setInView(true);
+
+      if (peeker.dataset.pose === "hidden" || !peeker.dataset.pose) {
+        // Soft interrupt: curious peek instead of invisible wave.
+        if (!busy) runAct(ACTS.find((a) => a.name === "curious") || ACTS[0]);
+        return;
+      }
+
+      if (kind === "click") {
+        // Brief excited pulse without cancelling the whole act.
+        peeker.classList.remove("is-reacting");
+        void peeker.offsetWidth;
+        peeker.classList.add("is-reacting");
+        setMood("surprise");
+        if (reactTimer) window.clearTimeout(reactTimer);
+        reactTimer = window.setTimeout(() => {
+          peeker.classList.remove("is-reacting");
+          setMood("");
+          reactTimer = 0;
+        }, 900);
+        return;
+      }
+
+      peeker.classList.remove("is-reacting");
+      void peeker.offsetWidth;
+      peeker.classList.add("is-reacting");
+      if (reactTimer) window.clearTimeout(reactTimer);
+      reactTimer = window.setTimeout(() => {
+        peeker.classList.remove("is-reacting");
+        reactTimer = 0;
+      }, 850);
+    };
+
+    const lookAtBranch = (branch) => {
+      if (peeker.dataset.pose === "hidden") return;
+      const peekerBox = peeker.getBoundingClientRect();
+      const branchBox = branch.getBoundingClientRect();
+      const peekerMid = peekerBox.left + peekerBox.width * 0.5;
+      const branchMid = branchBox.left + branchBox.width * 0.5;
+      const dx = branchMid - peekerMid;
+      let dir = "down";
+      if (dx < -40) dir = "left";
+      else if (dx > 60) dir = "right";
+      setLook(dir);
+      if (lookClearTimer) window.clearTimeout(lookClearTimer);
+      lookClearTimer = window.setTimeout(() => {
+        setLook("");
+        lookClearTimer = 0;
+      }, 1600);
+    };
+
+    const setInView = (next) => {
+      const wasInView = inView;
+      inView = next;
+      if (inView && !wasInView) {
+        clearWait();
+        // First appearance fairly soon, then the controller takes over pacing.
+        waitTimer = window.setTimeout(() => {
+          waitTimer = 0;
+          if (!busy) {
+            const openers = ACTS.filter(
+              (a) => !a.waitOnly && ["curious", "idle", "playful", "cheerful"].includes(a.name),
+            );
+            runAct(pickWeighted(openers));
+          }
+        }, rand(280, 700));
+      } else if (!inView) {
+        clearWait();
+        clearActTimers();
+        if (reactTimer) {
+          window.clearTimeout(reactTimer);
+          reactTimer = 0;
+        }
+        busy = false;
+        clearLimbAnimState();
+        setPose("hidden");
+      }
+    };
+
+    if ("IntersectionObserver" in window) {
+      const observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            setInView(entry.isIntersecting);
+          });
+        },
+        { threshold: [0, 0.05, 0.15], rootMargin: "40px 0px 40px 0px" },
+      );
+      observer.observe(host);
+      const rect = host.getBoundingClientRect();
+      if (rect.bottom > 40 && rect.top < window.innerHeight - 40) {
+        setInView(true);
+      }
+    } else {
+      setInView(true);
+    }
+
+    branchList.querySelectorAll(".branch").forEach((branch) => {
+      branch.addEventListener("pointerenter", () => {
+        // Look only when already visible — never start a peek from under the card on hover.
+        if (peeker.dataset.pose !== "hidden") lookAtBranch(branch);
+      });
+      branch.addEventListener("click", () => {
+        lookAtBranch(branch);
+        playReact("click");
+      });
+    });
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) {
+        clearWait();
+        return;
+      }
+      if (inView && !busy) scheduleNext();
+    });
   }
 
   /* ==========================================================
@@ -3241,6 +4563,7 @@
           setupNewsAccordion(newsEl);
           initNewsCarousels(newsEl);
           setupNewsShareLinks(newsEl);
+          enhancePhotoExpandTargets(newsEl);
         };
 
         const ensureNewsPaginationHost = () => {
@@ -3356,70 +4679,52 @@
         }
       }
 
-      const agendaEl = qs(".agenda");
+      const agendaEl = qs(".planning > .agenda");
+      const agendaOverflow = qs("#agenda-overflow");
+      const agendaOverflowList = qs(
+        "#agenda-overflow .agenda-overflow-list",
+      );
+      const agendaExpandToggle = qs(".agenda-expand-toggle");
       if (agendaEl) {
         const upcomingAgenda = filterUpcomingAgendaItems(data.agenda);
+        const visibleAgenda = upcomingAgenda.slice(0, HOME_AGENDA_LIMIT);
+        const overflowAgenda = upcomingAgenda.slice(HOME_AGENDA_LIMIT);
+        const hasOverflow = overflowAgenda.length > 0;
+
         agendaEl.innerHTML = upcomingAgenda.length
-          ? upcomingAgenda
-              .map((item) => {
-                const image =
-                  typeof item.image === "string" ? item.image.trim() : "";
-                const link =
-                  typeof item.link === "string" &&
-                  /^(https?:\/\/|mailto:)/i.test(item.link.trim())
-                    ? item.link.trim()
-                    : "";
-                const linkText =
-                  typeof item.linkText === "string" ? item.linkText.trim() : "";
-                const thumb = image
-                  ? `<span class="agenda-thumb" aria-hidden="true">${thumbImageHtml(image)}</span>`
-                  : "";
-                const text =
-                  typeof item.text === "string" ? item.text.trim() : "";
-                const hasCopy = Boolean(text || (link && linkText));
-                const hasDetails = Boolean(hasCopy || image);
-                const bodyHtml = formatNewsBodyHtml(text);
-                const detailsHtml = hasDetails
-                  ? `
-                  <div class="agenda-details">
-                    <div class="agenda-details-inner${hasCopy ? "" : " is-media-only"}">
-                      ${
-                        hasCopy
-                          ? `<div class="agenda-details-copy">
-                        ${bodyHtml}
-                        ${link && linkText ? `<a class="agenda-link" href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer">${escapeHtml(linkText)} <span class="icon-arrow-external" aria-hidden="true"></span></a>` : ""}
-                      </div>`
-                          : ""
-                      }
-                      ${
-                        image
-                          ? `<figure class="agenda-media">${responsivePictureHtml(image, {
-                              alt: item.title || "",
-                              sizes: "(max-width: 700px) 90vw, 360px",
-                              widths: RESPONSIVE_WIDTHS.card,
-                              loading: "lazy",
-                            })}</figure>`
-                          : ""
-                      }
-                    </div>
-                  </div>`
-                  : "";
-                return `
-                <details class="agenda-item${image ? " has-agenda-image" : ""}${hasDetails ? "" : " is-static"}">
-                  <summary class="agenda-summary">
-                    ${buildAgendaDateHtml(item)}
-                    <div class="agenda-body">
-                      <h3>${escapeHtml(item.title)}</h3>
-                    </div>
-                    ${thumb}
-                  </summary>
-                  ${detailsHtml}
-                </details>
-              `;
-              })
-              .join("")
+          ? visibleAgenda.map((item) => buildAgendaItemHtml(item)).join("")
           : `<p class="agenda-empty">Er staan momenteel geen activiteiten gepland.</p>`;
-        setupAgendaAccordion(agendaEl);
+
+        if (agendaOverflow && agendaOverflowList && agendaExpandToggle) {
+          if (hasOverflow) {
+            agendaOverflowList.innerHTML = overflowAgenda
+              .map((item) => buildAgendaItemHtml(item, { deferReveal: true }))
+              .join("");
+            agendaOverflow.hidden = false;
+            agendaOverflow.classList.remove("is-expanded");
+            agendaOverflow.inert = true;
+            agendaOverflow.setAttribute("aria-hidden", "true");
+            agendaExpandToggle.hidden = false;
+            agendaExpandToggle.setAttribute("aria-expanded", "false");
+            const label = agendaExpandToggle.querySelector(
+              ".agenda-expand-toggle-label",
+            );
+            if (label) label.textContent = "Meer data";
+          } else {
+            agendaOverflowList.innerHTML = "";
+            agendaOverflow.classList.remove("is-expanded");
+            agendaOverflow.hidden = true;
+            agendaOverflow.inert = false;
+            agendaOverflow.removeAttribute("aria-hidden");
+            agendaExpandToggle.hidden = true;
+            agendaExpandToggle.setAttribute("aria-expanded", "false");
+          }
+          setupAgendaExpandToggle();
+        }
+
+        const planningRoot = qs(".planning") || agendaEl;
+        setupAgendaAccordion(planningRoot);
+        enhancePhotoExpandTargets(planningRoot);
       }
 
       const faqEl = qs(".faq-list");
@@ -3535,8 +4840,10 @@
           )
           .join("");
         setupSecondhandScroll();
+        enhancePhotoExpandTargets(secondhandScroll);
       }
 
+      enhancePhotoExpandTargets(document);
       initRevealAnimations();
     },
   };
@@ -3744,7 +5051,9 @@
     setupFaqAccordion(document);
     setupRegistrationBankInfo();
     initRevealAnimations();
+    initBranchPeeker();
     setupSecondhandScroll();
+    initPhotoLightbox();
 
     window.addEventListener("hashchange", openNewsFromHash);
 

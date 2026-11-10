@@ -1760,11 +1760,11 @@ body.privacy-page {
     }
 
     .news-page .news-archive .news-list {
-        gap: 8px;
+        gap: 6px;
     }
 
     .news-page .news-archive .news-item {
-        padding: 12px;
+        padding: 11px 12px;
         border-radius: 14px;
     }
 

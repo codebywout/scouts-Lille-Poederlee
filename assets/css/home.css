@@ -249,8 +249,8 @@ body.home-page .hero {
 
 .branch:hover,
 .branch:focus-visible {
+    /* Fully opaque — a translucent hover wash would reveal the peeker underneath */
     background: #fff;
-    background: linear-gradient(180deg, rgba(255,255,255,0.95), rgba(255,255,255,0.78));
     border-color: rgba(211, 138, 45, 0.42);
     transform: translateY(-5px);
     box-shadow: 0 20px 34px rgba(46, 26, 18, 0.1);
@@ -359,10 +359,94 @@ body.home-page .hero {
     display: none;
 }
 
+.planning {
+    --agenda-gap: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+}
+
 .agenda {
     display: grid;
-    gap: 10px;
+    gap: var(--agenda-gap);
     border-top: none;
+}
+
+.agenda-overflow {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.agenda-overflow[hidden] {
+    display: none;
+}
+
+.agenda-overflow.is-expanded {
+    grid-template-rows: 1fr;
+}
+
+.agenda-overflow-inner {
+    overflow: hidden;
+    min-height: 0;
+}
+
+.agenda-overflow-list {
+    padding-top: var(--agenda-gap);
+}
+
+.agenda-expand-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 44px;
+    margin: 10px auto 0;
+    padding: 8px 14px;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--scout-orange);
+    cursor: pointer;
+    transition: color 0.2s ease, background 0.2s ease;
+}
+
+.agenda-expand-toggle[hidden] {
+    display: none;
+}
+
+.agenda-expand-toggle:hover,
+.agenda-expand-toggle:focus-visible {
+    color: var(--scout-brown);
+    background: rgba(78, 43, 26, 0.06);
+}
+
+.agenda-expand-toggle:focus-visible {
+    outline: 2px solid rgba(211, 138, 45, 0.55);
+    outline-offset: 2px;
+}
+
+.agenda-expand-toggle-label {
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    line-height: 1;
+}
+
+.agenda-expand-toggle-icon {
+    font-size: 16px !important;
+    width: 1em;
+    height: 1em;
+    transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.agenda-expand-toggle[aria-expanded="true"] .agenda-expand-toggle-icon {
+    transform: rotate(180deg);
+}
+
+.planning > .agenda-expand-toggle {
+    align-self: center;
 }
 
 .agenda-item {
@@ -1125,6 +1209,11 @@ body.home-page .hero {
             0 10px 24px rgba(46,26,18,0.07);
     }
 
+    .branch-peeker-host:has(> .branch:hover) .branch-peeker,
+    .branch-peeker-host:has(> .branch:focus-visible) .branch-peeker {
+        translate: 0 -1px;
+    }
+
     .branch::before {
         display: none;
     }
@@ -1176,8 +1265,8 @@ body.home-page .hero {
     .home-page .news .section-top {
         align-items: start;
         flex-direction: column;
-        gap: 10px;
-        margin-bottom: 22px;
+        gap: 8px;
+        margin-bottom: 16px;
     }
 
     .home-page .planning .section-top > div > p,
@@ -1193,14 +1282,17 @@ body.home-page .hero {
         font-size: 12px;
     }
 
-    .agenda,
+    .planning {
+        --agenda-gap: 6px;
+    }
+
     .news-list {
-        gap: 8px;
+        gap: 6px;
     }
 
     .agenda-item,
     .news-item {
-        padding: 12px;
+        padding: 11px 12px;
         border-radius: 16px;
     }
 
@@ -1347,6 +1439,12 @@ body.home-page .hero {
         height: auto;
     }
 
+    .news-item.has-news-image.is-open .news-details-inner .news-media--single {
+        width: fit-content;
+        max-width: 100%;
+        justify-self: center;
+    }
+
     .news-item.has-news-image.is-open .news-details-inner .news-details-copy {
         order: 1;
         min-height: 0;
@@ -1360,10 +1458,11 @@ body.home-page .hero {
         max-width: none;
     }
 
-    .news-media {
-        width: 100%;
-        max-width: none;
+    .news-media--single {
+        width: fit-content;
+        max-width: 100%;
         border-radius: 14px;
+        margin-inline: auto;
     }
 
 
@@ -1691,7 +1790,7 @@ body.home-page .hero {
 
     .agenda-item,
     .news-item {
-        padding: 11px;
+        padding: 10px 11px;
         border-radius: 14px;
     }
 
@@ -1808,12 +1907,8 @@ body.home-page .hero {
         border-radius: 12px;
     }
 
-    .news-item.has-news-image.is-open .news-details-inner .news-media {
+    .news-item.has-news-image.is-open .news-details-inner .news-media:not(.news-carousel--stack) {
         border-radius: 14px;
-    }
-
-    .news-carousel-overlay {
-        padding: 24px 12px 12px;
     }
 
     .news-carousel-status {
@@ -1988,11 +2083,13 @@ html {
 
 /* Final branch-card layout */
 .branch-list {
+    position: relative;
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
     gap: 16px;
     border-top: 0;
+    overflow: visible;
 }
 
 .branches h2 {
@@ -2000,7 +2097,23 @@ html {
     width: fit-content;
 }
 
+.branch-peeker-host {
+    position: relative;
+    z-index: 1;
+    flex: 0 1 calc((100% - 32px) / 3);
+    min-width: 0;
+    overflow: visible;
+}
+
+.branch-peeker-host > .branch {
+    width: 100%;
+    flex: none;
+    min-height: 268px;
+}
+
 .branch {
+    position: relative;
+    z-index: 1;
     display: flex;
     flex: 0 1 calc((100% - 32px) / 3);
     min-height: 268px;
@@ -2013,6 +2126,609 @@ html {
     background: #fff8f1;
     box-shadow: 0 14px 28px rgba(46, 26, 18, 0.06);
     transition: background 0.25s ease, transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+}
+
+/* Hand-drawn peeker (reference-sheet style): round head, bean body, single-stroke limbs.
+   Posture lives in registered CSS variables that ease between values, so gestures never snap.
+   Loops (wave, cheer, tap) use a phase variable with a fading amplitude, so they start and
+   stop at the current angle instead of jumping. */
+
+@property --a-torso { syntax: "<angle>"; inherits: true; initial-value: 0deg; }
+@property --a-head { syntax: "<angle>"; inherits: true; initial-value: 0deg; }
+@property --g-torso { syntax: "<angle>"; inherits: true; initial-value: 0deg; }
+@property --g-head { syntax: "<angle>"; inherits: true; initial-value: 0deg; }
+@property --look-head { syntax: "<angle>"; inherits: true; initial-value: 0deg; }
+@property --wu { syntax: "<angle>"; inherits: true; initial-value: 0deg; }
+@property --wf { syntax: "<angle>"; inherits: true; initial-value: 0deg; }
+@property --wh { syntax: "<angle>"; inherits: true; initial-value: 0deg; }
+@property --hu { syntax: "<angle>"; inherits: true; initial-value: 0deg; }
+@property --hf { syntax: "<angle>"; inherits: true; initial-value: 0deg; }
+@property --hh { syntax: "<angle>"; inherits: true; initial-value: 0deg; }
+@property --amp-wave { syntax: "<angle>"; inherits: true; initial-value: 0deg; }
+@property --amp-cheer { syntax: "<angle>"; inherits: true; initial-value: 0deg; }
+@property --amp-tap { syntax: "<angle>"; inherits: true; initial-value: 0deg; }
+@property --hop { syntax: "<length>"; inherits: true; initial-value: 0px; }
+@property --gx { syntax: "<length>"; inherits: true; initial-value: 0px; }
+@property --gy { syntax: "<length>"; inherits: true; initial-value: 0px; }
+@property --px { syntax: "<length>"; inherits: true; initial-value: 0px; }
+@property --py { syntax: "<length>"; inherits: true; initial-value: 0px; }
+@property --gaze-amp { syntax: "<length>"; inherits: true; initial-value: 0px; }
+@property --sway-slow { syntax: "<angle>"; inherits: true; initial-value: 0deg; }
+@property --sway-fast { syntax: "<angle>"; inherits: true; initial-value: 0deg; }
+@property --ph-gaze { syntax: "<number>"; inherits: true; initial-value: 0; }
+@property --ph-slow { syntax: "<number>"; inherits: true; initial-value: 0; }
+@property --ph-fast { syntax: "<number>"; inherits: true; initial-value: 0; }
+@property --ph-wave { syntax: "<number>"; inherits: true; initial-value: 0; }
+@property --ph-cheer { syntax: "<number>"; inherits: true; initial-value: 0; }
+@property --ph-tap { syntax: "<number>"; inherits: true; initial-value: 0; }
+.branch-peeker {
+    --peeker-ease: cubic-bezier(0.37, 0.1, 0.2, 1);
+    --peeker-ease-soft: cubic-bezier(0.34, 1.12, 0.5, 1);
+    --peeker-ease-out: cubic-bezier(0.22, 0.9, 0.28, 1);
+    --peeker-ease-in: cubic-bezier(0.55, 0.05, 0.65, 0.3);
+    --g-dur: 0.7s;
+    --sway-slow: 1.4deg;
+    --peeker-limb-ease: cubic-bezier(0.45, 0.05, 0.3, 1);
+
+    /* Registered posture variables ease with staggered delays (follow-through):
+       torso first, head slightly behind, then upper arm, forearm and hand. */
+    --tv:
+        --a-torso var(--g-dur) var(--peeker-ease),
+        --g-torso var(--g-dur) var(--peeker-ease),
+        --a-head var(--g-dur) var(--peeker-ease-soft) 0.05s,
+        --g-head var(--g-dur) var(--peeker-ease-soft) 0.05s,
+        --look-head 0.4s var(--peeker-ease),
+        --wu var(--g-dur) var(--peeker-limb-ease) 0.08s,
+        --wf var(--g-dur) var(--peeker-limb-ease) 0.14s,
+        --wh var(--g-dur) var(--peeker-limb-ease) 0.2s,
+        --hu var(--g-dur) var(--peeker-limb-ease) 0.08s,
+        --hf var(--g-dur) var(--peeker-limb-ease) 0.14s,
+        --hh var(--g-dur) var(--peeker-limb-ease) 0.2s,
+        --amp-wave 0.7s ease,
+        --amp-cheer 0.7s ease,
+        --amp-tap 0.7s ease,
+        --hop 0.5s ease,
+        --gx 0.5s var(--peeker-ease),
+        --gy 0.5s var(--peeker-ease),
+        --px 0.3s var(--peeker-ease),
+        --py 0.3s var(--peeker-ease),
+        --gaze-amp 0.8s ease,
+        --sway-slow 0.8s ease,
+        --sway-fast 0.8s ease;
+
+    --peeker-hidden-x: 86px;
+    --peeker-hidden-y: 32px;
+    --peeker-hidden-r: 12deg;
+    --peeker-head-x: 17px;
+    --peeker-head-y: 2px;
+    --peeker-head-r: 3deg;
+    --peeker-peek-x: -14px;
+    --peeker-peek-y: -8px;
+    --peeker-peek-r: -3deg;
+    --peeker-full-x: -22px;
+    --peeker-full-y: -12px;
+    --peeker-full-r: -4deg;
+    --peeker-lean-x: -4px;
+    --peeker-lean-y: -6px;
+    --peeker-lean-r: 3deg;
+    --peeker-side-x: 12px;
+    --peeker-side-y: 36px;
+    --peeker-side-r: -2deg;
+    position: absolute;
+    top: -10px;
+    left: -78px;
+    z-index: 0;
+    width: 124px;
+    height: 176px;
+    pointer-events: none;
+    transform: translate3d(var(--peeker-hidden-x), var(--peeker-hidden-y), 0) rotate(var(--peeker-hidden-r));
+    transform-origin: 85% 60%;
+    opacity: 0;
+    will-change: transform, opacity;
+    transition:
+        transform 0.62s var(--peeker-ease),
+        opacity 0.28s ease,
+        translate 0.28s ease,
+        var(--tv);
+}
+
+.branch-peeker[data-pose="head"] {
+    transform: translate3d(var(--peeker-head-x), var(--peeker-head-y), 0) rotate(var(--peeker-head-r));
+    transition-duration: 0.78s;
+    transition-timing-function: var(--peeker-ease-out);
+}
+
+.branch-peeker[data-pose="peek"] {
+    transform: translate3d(var(--peeker-peek-x), var(--peeker-peek-y), 0) rotate(var(--peeker-peek-r));
+    transition-duration: 0.6s;
+}
+
+.branch-peeker[data-pose="full"] {
+    transform: translate3d(var(--peeker-full-x), var(--peeker-full-y), 0) rotate(var(--peeker-full-r));
+    transition-duration: 0.48s;
+    transition-timing-function: var(--peeker-ease-out);
+}
+
+.branch-peeker[data-pose="lean"] {
+    transform: translate3d(var(--peeker-lean-x), var(--peeker-lean-y), 0) rotate(var(--peeker-lean-r));
+    transition-duration: 0.95s;
+}
+
+.branch-peeker[data-pose="side"] {
+    transform: translate3d(var(--peeker-side-x), var(--peeker-side-y), 0) rotate(var(--peeker-side-r));
+    transition-duration: 0.55s;
+}
+
+/* Slides back behind the opaque card fully drawn; only hidden once it is out of sight */
+.branch-peeker[data-pose="hidden"] {
+    opacity: 1;
+    visibility: hidden;
+    transition:
+        transform 0.52s var(--peeker-ease-in),
+        opacity 0.22s ease,
+        translate 0.28s ease,
+        visibility 0s linear 0.6s,
+        var(--tv);
+}
+
+.branch-peeker:not([data-pose="hidden"]) {
+    opacity: 1;
+    visibility: visible;
+    transition:
+        transform 0.62s var(--peeker-ease),
+        opacity 0.28s ease,
+        translate 0.28s ease,
+        visibility 0s linear 0s,
+        var(--tv);
+}
+
+.branch-peeker-host:has(> .branch:is(:hover, :focus-visible)) .branch-peeker {
+    translate: 0 -5px;
+}
+
+.branch-peeker.is-fast {
+    --g-dur: 0.34s;
+    transition-duration: 0.3s;
+    transition-timing-function: var(--peeker-ease-in);
+}
+
+.branch-peeker.is-slow {
+    --g-dur: 1s;
+    transition-duration: 1.12s;
+}
+
+.branch-peeker-svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    filter: drop-shadow(0 5px 8px rgba(30, 58, 95, 0.1));
+}
+
+/* —— Rig pivots (viewBox 0 0 140 200); every part reads its angle from a variable —— */
+.branch-peeker .peeker-body,
+.branch-peeker .peeker-torso,
+.branch-peeker .peeker-head,
+.branch-peeker .peeker-head-sway,
+.branch-peeker .peeker-gaze,
+.branch-peeker .peeker-eye,
+.branch-peeker .peeker-brow,
+.branch-peeker .peeker-sparks,
+.branch-peeker .peeker-upper-arm,
+.branch-peeker .peeker-forearm,
+.branch-peeker .peeker-hand {
+    transform-box: view-box;
+}
+
+/* Lean around the feet so the character keeps its weight on the ground.
+   Hop (cheer) lifts the torso; breathing scales the body group. */
+.branch-peeker .peeker-body {
+    transform-origin: 70px 172px;
+}
+
+.branch-peeker .peeker-torso {
+    transform-origin: 70px 172px;
+    transform: translateY(calc(var(--hop) * -0.5 * (1 - cos(var(--ph-cheer) * 1rad))))
+        rotate(calc(var(--a-torso) + var(--g-torso)));
+}
+
+.branch-peeker .peeker-head {
+    transform-origin: 70px 66px;
+    transform: rotate(calc(var(--a-head) + var(--g-head) + var(--look-head)));
+}
+
+.branch-peeker .peeker-head-sway {
+    transform-origin: 70px 66px;
+    transform: rotate(
+        calc(0.5deg + var(--sway-slow) * sin(var(--ph-slow) * 1rad) + var(--sway-fast) * sin(var(--ph-fast) * 1rad))
+    );
+}
+
+/* Eyes: gaze wander (all vars ease, no animation on the same property) */
+.branch-peeker .peeker-gaze {
+    transform: translate(
+        calc(var(--gx) + var(--gaze-amp) * sin(var(--ph-gaze) * 1rad)),
+        calc(var(--gy) + var(--gaze-amp) * 0.25 * sin(var(--ph-gaze) * 2rad))
+    );
+}
+
+.branch-peeker .peeker-pupil {
+    transform-box: view-box;
+    transform: translate(var(--px), var(--py));
+}
+
+.branch-peeker .peeker-eye-left {
+    transform-origin: 60px 45px;
+}
+
+.branch-peeker .peeker-eye-right {
+    transform-origin: 80px 45px;
+}
+
+/* Free arm: each segment reads its own variable; wave/cheer loops ride on the phase variables */
+.branch-peeker .peeker-arm-wave .peeker-upper-arm {
+    transform-origin: 51px 82px;
+    transform: rotate(var(--wu));
+}
+
+.branch-peeker .peeker-arm-wave .peeker-forearm {
+    transform-origin: 41px 106px;
+    transform: rotate(
+        calc(
+            var(--wf) + var(--amp-wave) * sin(var(--ph-wave) * 1rad) + var(--amp-cheer) *
+                sin(var(--ph-cheer) * 1rad)
+        )
+    );
+}
+
+.branch-peeker .peeker-arm-wave .peeker-hand {
+    transform-origin: 41px 125px;
+    transform: rotate(calc(var(--wh) + var(--amp-wave) * 0.9 * sin(var(--ph-wave) * 1rad - 0.9rad)));
+}
+
+/* Wall arm */
+.branch-peeker .peeker-arm-hold .peeker-upper-arm {
+    transform-origin: 89px 82px;
+    transform: rotate(var(--hu));
+}
+
+.branch-peeker .peeker-arm-hold .peeker-forearm {
+    transform-origin: 99px 106px;
+    transform: rotate(calc(var(--hf) - var(--amp-cheer) * sin(var(--ph-cheer) * 1rad)));
+}
+
+.branch-peeker .peeker-arm-hold .peeker-hand {
+    transform-origin: 99px 125px;
+    transform: rotate(calc(var(--hh) + var(--amp-tap) * sin(var(--ph-tap) * 1rad)));
+}
+/* —— Face —— */
+.branch-peeker .peeker-brow,
+.branch-peeker .peeker-sparks {
+    opacity: 0;
+    transition: opacity 0.2s ease, transform 0.22s var(--peeker-ease);
+}
+
+.branch-peeker .peeker-brow-left {
+    transform-origin: 59px 33px;
+}
+
+.branch-peeker .peeker-brow-right {
+    transform-origin: 81px 32px;
+}
+
+.branch-peeker .peeker-sparks {
+    transform-origin: 70px 44px;
+}
+
+.branch-peeker .peeker-mouth-o,
+.branch-peeker .peeker-mouth-flat {
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.branch-peeker .peeker-mouth-smile {
+    opacity: 1;
+    transition: opacity 0.2s ease;
+}
+
+.branch-peeker[data-mood="surprise"] .peeker-mouth-smile,
+.branch-peeker[data-mood="nervous"] .peeker-mouth-smile {
+    opacity: 0;
+}
+
+.branch-peeker[data-mood="surprise"] .peeker-mouth-o {
+    opacity: 1;
+}
+
+.branch-peeker[data-mood="nervous"] .peeker-mouth-flat {
+    opacity: 1;
+}
+
+.branch-peeker[data-mood="surprise"] .peeker-brow,
+.branch-peeker[data-mood="surprise"] .peeker-sparks,
+.branch-peeker[data-mood="nervous"] .peeker-brow {
+    opacity: 1;
+}
+
+.branch-peeker[data-mood="surprise"] .peeker-brow {
+    transform: translateY(-2.5px);
+}
+
+.branch-peeker[data-mood="nervous"] .peeker-brow-left {
+    transform: rotate(9deg) translateY(1px);
+}
+
+.branch-peeker[data-mood="nervous"] .peeker-brow-right {
+    transform: rotate(-9deg) translateY(1px);
+}
+
+/* —— Always-on life (each loop owns its own element or its own variable) —— */
+.branch-peeker .peeker-body {
+    animation: peeker-breathe 4.6s ease-in-out infinite;
+}
+
+.branch-peeker .peeker-eye {
+    animation: peeker-blink 5.6s ease-in-out infinite;
+}
+
+.branch-peeker .peeker-eye-right {
+    animation-delay: 0.02s;
+}
+
+/* Phase clocks: amplitudes ease in/out through registered variables, so loops start and stop smoothly */
+.branch-peeker {
+    animation:
+        peeker-ph-wave 1.1s linear infinite,
+        peeker-ph-cheer 0.8s linear infinite,
+        peeker-ph-tap 0.55s linear infinite,
+        peeker-ph-gaze 3.4s linear infinite,
+        peeker-ph-slow 7.2s linear infinite,
+        peeker-ph-fast 1.3s linear infinite;
+}
+
+/* Hidden: freeze (not reset) every loop so nothing jumps while the figure slides away */
+.branch-peeker[data-pose="hidden"],
+.branch-peeker[data-pose="hidden"] * {
+    animation-play-state: paused;
+}
+
+/* —— Gestures: arm / head / torso postures (set per step by the controller) —— */
+.branch-peeker[data-g="wave"] {
+    --wu: 118deg;
+    --wf: 48deg;
+    --wh: 6deg;
+    --g-head: 5deg;
+    --g-torso: -1.5deg;
+    --amp-wave: 15deg;
+}
+
+.branch-peeker[data-g="cheer"] {
+    --wu: 122deg;
+    --wf: 50deg;
+    --hu: -122deg;
+    --hf: -50deg;
+    --g-head: -3deg;
+    --amp-cheer: 8deg;
+    --hop: 4px;
+}
+
+.branch-peeker[data-g="clasp"] {
+    --wu: -18deg;
+    --wf: -112deg;
+    --wh: 8deg;
+    --hu: 18deg;
+    --hf: 112deg;
+    --hh: -8deg;
+    --g-head: 4deg;
+    --g-torso: 1deg;
+}
+
+.branch-peeker[data-g="mouth"] {
+    --wu: -78deg;
+    --wf: -119deg;
+    --g-head: 6deg;
+}
+
+.branch-peeker[data-g="wall"] {
+    --hu: -8deg;
+    --hf: -6deg;
+    --hh: -8deg;
+    --wu: 3deg;
+}
+
+.branch-peeker[data-g="scratch"] {
+    --wu: 140deg;
+    --wf: 60deg;
+    --wh: 10deg;
+    --g-head: -4deg;
+}
+
+/* Click reaction: a short wave on top of whatever gesture is active */
+.branch-peeker.is-reacting {
+    --wu: 118deg;
+    --wf: 48deg;
+    --wh: 6deg;
+    --g-head: 5deg;
+    --amp-wave: 15deg;
+}
+
+.branch-peeker[data-g="cheer"] .peeker-sparks {
+    opacity: 1;
+}
+
+/* Playful tap: fingers drum on the card edge */
+.branch-peeker[data-act="playful"][data-g="wall"] {
+    --amp-tap: 8deg;
+}
+
+/* —— Acts: default lean/tilt, eye wandering, head sway rhythm —— */
+.branch-peeker[data-act="curious"] {
+    --a-torso: -3deg;
+    --a-head: -7deg;
+    --sway-slow: 5deg;
+    --gaze-amp: 1.9px;
+}
+
+.branch-peeker[data-act="shy"] {
+    --a-torso: 0.5deg;
+    --a-head: 6deg;
+    --sway-slow: 0deg;
+    --sway-fast: 1.2deg;
+    --gx: 0.8px;
+    --gy: 1.2px;
+}
+
+.branch-peeker[data-act="excited"] {
+    --a-torso: -1deg;
+    --a-head: -2deg;
+    --sway-slow: 0deg;
+    --sway-fast: 3deg;
+}
+
+.branch-peeker[data-act="naughty"] {
+    --a-torso: 2deg;
+    --a-head: 7deg;
+    --sway-slow: 3deg;
+    --gaze-amp: 2.2px;
+}
+
+.branch-peeker[data-act="relaxed"] {
+    --a-torso: 4deg;
+    --a-head: 6deg;
+    --sway-slow: 2deg;
+    --gy: 0.8px;
+}
+
+.branch-peeker[data-act="playful"] {
+    --a-torso: -2deg;
+    --a-head: -9deg;
+    --sway-slow: 0deg;
+    --sway-fast: 3.5deg;
+}
+
+.branch-peeker[data-act="cheerful"] {
+    --a-torso: -1deg;
+    --a-head: 4deg;
+    --sway-slow: 0deg;
+    --sway-fast: 3deg;
+}
+
+.branch-peeker[data-act="idle"] {
+    --a-torso: 0.5deg;
+    --a-head: -3deg;
+    --gaze-amp: 1.3px;
+}
+
+/* Hover look: eyes + head follow the hovered card (only while visible) */
+.branch-peeker[data-look="left"] {
+    --look-head: 5deg;
+    --px: -1.7px;
+    --py: 0.2px;
+}
+
+.branch-peeker[data-look="right"] {
+    --look-head: -6deg;
+    --px: 1.9px;
+    --py: 0.2px;
+}
+
+.branch-peeker[data-look="down"] {
+    --px: 0px;
+    --py: 1.5px;
+}
+
+@keyframes peeker-ph-wave {
+    from {
+        --ph-wave: 0;
+    }
+    to {
+        --ph-wave: 6.28319;
+    }
+}
+
+@keyframes peeker-ph-cheer {
+    from {
+        --ph-cheer: 0;
+    }
+    to {
+        --ph-cheer: 6.28319;
+    }
+}
+
+@keyframes peeker-ph-tap {
+    from {
+        --ph-tap: 0;
+    }
+    to {
+        --ph-tap: 6.28319;
+    }
+}
+
+@keyframes peeker-ph-gaze {
+    from {
+        --ph-gaze: 0;
+    }
+    to {
+        --ph-gaze: 6.28319;
+    }
+}
+
+@keyframes peeker-ph-slow {
+    from {
+        --ph-slow: 0;
+    }
+    to {
+        --ph-slow: 6.28319;
+    }
+}
+
+@keyframes peeker-ph-fast {
+    from {
+        --ph-fast: 0;
+    }
+    to {
+        --ph-fast: 6.28319;
+    }
+}
+
+@keyframes peeker-breathe {
+    0%,
+    100% {
+        transform: translateY(0) scale(1, 1);
+    }
+    50% {
+        transform: translateY(-1px) scale(1.012, 0.988);
+    }
+}
+
+@keyframes peeker-blink {
+    0%,
+    42%,
+    48%,
+    78%,
+    84%,
+    100% {
+        transform: scaleY(1);
+    }
+    44%,
+    46%,
+    80%,
+    82% {
+        transform: scaleY(0.08);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .branch-peeker,
+    .branch-peeker * {
+        animation: none !important;
+        transition: none !important;
+    }
+
+    .branch-peeker {
+        transform: translate3d(0, -2px, 0) rotate(-6deg);
+        opacity: 1;
+    }
 }
 
 .branch-bg-picture,
@@ -2468,8 +3184,24 @@ html {
 /*
  * Mobile news layout — must come AFTER base .news-summary:has(.news-thumb)
  * so empty thumb columns do not squeeze titles on small screens.
+ * Spacing overrides also live here: base .news-list / .section-top below
+ * would otherwise win over earlier @media blocks in this file.
  */
 @media (max-width: 768px) {
+    .home-page .planning .section-top,
+    .home-page .news .section-top {
+        margin-bottom: 16px;
+        gap: 8px;
+    }
+
+    .news-list {
+        gap: 6px;
+    }
+
+    .news-item {
+        padding: 11px 12px;
+    }
+
     .news-summary {
         align-items: center;
         gap: 10px 12px;
@@ -2550,6 +3282,15 @@ html {
 }
 
 @media (max-width: 480px) {
+    .home-page .planning .section-top,
+    .home-page .news .section-top {
+        margin-bottom: 14px;
+    }
+
+    .news-list {
+        gap: 6px;
+    }
+
     .agenda-summary:has(.agenda-thumb) {
         grid-template-columns: auto minmax(0, 1fr) 56px;
     }
@@ -2587,7 +3328,7 @@ html {
     }
 
     .news-item {
-        padding: 12px 12px 11px;
+        padding: 10px 11px;
     }
 
     .news-copy h3 {
@@ -2635,10 +3376,15 @@ html {
     min-width: 0;
 }
 
+.news-item.has-news-image.is-open .news-details {
+    overflow: visible;
+}
+
 .news-item.has-news-image.is-open .news-details-inner {
     grid-template-columns: minmax(0, 1.05fr) minmax(200px, 0.95fr);
     align-items: start;
     gap: 16px;
+    overflow: visible;
 }
 
 .news-item.has-news-image.is-open .news-details-inner .news-details-copy {
@@ -2650,6 +3396,10 @@ html {
     grid-row: 1;
     align-self: start;
     width: 100%;
+}
+
+.news-item.has-news-image.is-open .news-details-inner .news-carousel--stack {
+    margin-bottom: 6px;
 }
 
 /* Stack open news copy + media on phones; must follow desktop 2-col rules above. */
@@ -2665,6 +3415,13 @@ html {
         grid-row: auto;
         width: 100%;
         max-width: none;
+    }
+
+    .news-item.has-news-image.is-open .news-details-inner .news-media--single {
+        width: fit-content;
+        max-width: 100%;
+        justify-self: center;
+        margin-inline: auto;
     }
 
     .news-item.has-news-image.is-open .news-details-inner .news-media {
@@ -2807,94 +3564,89 @@ html {
     white-space: nowrap;
 }
 
+/* Single news photo: shrink-wrap the image — no letterbox / beige fill. */
 .news-media {
     margin: 0;
-    overflow: hidden;
     width: 100%;
-    max-width: 520px;
-    max-height: 70vh;
-    max-height: 420px;
+    max-width: min(100%, 480px);
+}
+
+.news-media--single {
+    overflow: hidden;
+    display: block;
+    width: fit-content;
+    max-width: 100%;
     border: 1px solid rgba(78, 43, 26, 0.1);
     border-radius: 16px;
-    background: #1a1410;
+    background: transparent;
     box-shadow: 0 8px 22px rgba(28, 18, 12, 0.07);
 }
 
-.news-media:not(.news-carousel) {
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    aspect-ratio: auto;
-    height: auto;
-}
-
-.news-media:not(.news-carousel) .responsive-full-link,
-.news-media:not(.news-carousel) picture {
-    position: static;
-    inset: auto;
+.news-media--single .responsive-full-link,
+.news-media--single picture {
     display: block;
-    width: 100%;
+    width: fit-content;
+    max-width: 100%;
     height: auto;
 }
 
-.news-media:not(.news-carousel) img {
-    position: static;
-    inset: auto;
+.news-media--single img {
     display: block;
     width: auto;
     height: auto;
     max-width: 100%;
-    max-height: 70vh;
-    max-height: 420px;
-    margin: 0 auto;
-    object-fit: contain;
-    object-position: center;
+    max-height: min(52vh, 360px);
+    margin: 0;
     user-select: none;
     -webkit-user-drag: none;
 }
 
-/* Carousel slides keep an absolute fit box. */
-.news-carousel .responsive-full-link,
-.news-carousel picture {
-    position: absolute;
-    inset: 0;
-    display: block;
-    width: 100%;
-    height: 100%;
-}
-
-.news-carousel img {
-    position: absolute;
-    inset: 0;
-    display: block;
-    width: auto;
-    height: auto;
+.news-item.has-news-image.is-open .news-details-inner .news-media--single {
+    width: fit-content;
     max-width: 100%;
-    max-height: 100%;
-    margin: auto;
-    object-fit: contain;
-    object-position: center;
-    user-select: none;
-    -webkit-user-drag: none;
+}
+
+@media (min-width: 769px) {
+    .news-item.has-news-image.is-open .news-details-inner .news-media--single {
+        justify-self: end;
+    }
+}
+
+@media (max-width: 768px) {
+    .news-item.has-news-image.is-open .news-details-inner .news-media--single {
+        justify-self: center;
+        margin-inline: auto;
+    }
+}
+
+/* Multi-photo Jobr-inspired deck: same height, varied width/shape/rotation. */
+.news-media.news-carousel--stack {
+    overflow: visible;
+    max-width: 100%;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
 }
 
 .news-carousel {
     position: relative;
-    display: block;
+    display: grid;
+    gap: 10px;
+    width: 100%;
+    max-width: 100%;
     touch-action: pan-y;
 }
 
 .news-carousel-viewport {
     position: relative;
-    overflow: hidden;
+    overflow: visible;
     width: 100%;
-    min-height: 160px;
-    height: 280px; /* JS replaces with exact photo-fit height */
-    max-height: 70vh;
-    max-height: 420px;
-    aspect-ratio: auto;
-    background: #1a1410;
+    max-width: 100%;
+    min-height: 188px;
+    height: 260px;
+    max-height: calc(48vh + 42px);
+    background: transparent;
     cursor: grab;
     touch-action: pan-y pinch-zoom;
     user-select: none;
@@ -2902,7 +3654,8 @@ html {
 }
 
 .news-carousel-viewport:focus-visible {
-    box-shadow: inset 0 0 0 2px rgba(78, 43, 26, 0.45);
+    box-shadow: 0 0 0 2px rgba(78, 43, 26, 0.45);
+    border-radius: 18px;
 }
 
 .news-carousel-viewport.is-dragging,
@@ -2910,22 +3663,37 @@ html {
     cursor: grabbing;
 }
 
-.news-carousel-track {
-    display: flex;
-    align-items: stretch;
+.news-carousel-stack {
+    position: relative;
+    width: 100%;
     height: 100%;
-    transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
-    will-change: transform;
+    overflow: visible;
 }
 
 .news-carousel-slide {
-    position: relative;
-    flex: 0 0 100%;
-    width: 100%;
+    position: absolute;
+    top: 0;
+    left: 5%;
+    width: 90%;
     height: 100%;
     min-width: 0;
     min-height: 0;
     overflow: hidden;
+    border: 1px solid rgba(78, 43, 26, 0.12);
+    border-radius: 18px;
+    background: #efe6db;
+    box-shadow:
+        0 18px 38px rgba(28, 18, 12, 0.14),
+        0 3px 10px rgba(28, 18, 12, 0.06);
+    transform-origin: center center;
+    will-change: transform, width, opacity;
+    backface-visibility: hidden;
+}
+
+.news-carousel-slide.is-stacked {
+    box-shadow:
+        0 10px 24px rgba(28, 18, 12, 0.1),
+        0 2px 6px rgba(28, 18, 12, 0.05);
 }
 
 .news-carousel-slide .responsive-full-link,
@@ -2941,32 +3709,22 @@ html {
     position: absolute;
     inset: 0;
     display: block;
-    width: auto;
-    height: auto;
-    max-width: 100%;
-    max-height: 100%;
-    margin: auto;
+    width: 100%;
+    height: 100%;
+    margin: 0;
     object-fit: contain;
     object-position: center;
     pointer-events: none;
+    background: transparent;
 }
 
-.news-carousel-overlay {
-    position: absolute;
-    inset: auto 0 0;
-    z-index: 2;
+.news-carousel-chrome {
     display: flex;
-    align-items: flex-end;
+    align-items: center;
     justify-content: space-between;
-    gap: 12px;
-    padding: 28px 14px 14px;
-    background: linear-gradient(
-        180deg,
-        rgba(14, 10, 8, 0) 0%,
-        rgba(14, 10, 8, 0.28) 45%,
-        rgba(14, 10, 8, 0.55) 100%
-    );
-    pointer-events: none;
+    gap: 10px;
+    padding: 0 4px;
+    min-width: 0;
 }
 
 .news-carousel-dots {
@@ -2974,7 +3732,6 @@ html {
     flex-wrap: wrap;
     align-items: center;
     gap: 6px;
-    pointer-events: auto;
 }
 
 .news-carousel-dot {
@@ -2983,31 +3740,44 @@ html {
     padding: 0;
     border: 0;
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.38);
+    background: rgba(78, 43, 26, 0.28);
     cursor: pointer;
     transition:
         width 0.28s cubic-bezier(0.22, 1, 0.36, 1),
-        background 0.28s ease,
-        transform 0.28s ease;
+        background 0.28s ease;
 }
 
 .news-carousel-dot.is-active {
-    width: 18px;
-    background: #fff;
+    width: 16px;
+    background: var(--scout-orange, #d38a2d);
 }
 
 .news-carousel-dot:hover {
-    background: rgba(255, 255, 255, 0.7);
+    background: rgba(78, 43, 26, 0.55);
 }
 
 .news-carousel-dot:focus-visible {
-    outline: 2px solid #fff;
+    outline: 2px solid rgba(78, 43, 26, 0.55);
     outline-offset: 3px;
+}
+
+.news-carousel-hint {
+    margin: 0;
+    flex: 1 1 auto;
+    min-width: 0;
+    color: rgba(78, 43, 26, 0.5);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .news-carousel-status {
     margin: 0;
-    color: rgba(255, 255, 255, 0.86);
+    color: rgba(78, 43, 26, 0.72);
     font-size: 11px;
     font-weight: 650;
     letter-spacing: 0.12em;
@@ -3021,56 +3791,33 @@ html {
     opacity: 0.55;
 }
 
-.news-carousel-progress {
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 3;
-    height: 2px;
-    overflow: hidden;
-    background: rgba(255, 255, 255, 0.18);
-    pointer-events: none;
-}
-
-.news-carousel-progress > span {
-    display: block;
-    width: 0;
-    height: 100%;
-    background: rgba(255, 255, 255, 0.92);
-    transform-origin: left center;
-}
-
-.news-carousel-progress.is-running > span {
-    animation: newsCarouselProgress var(--carousel-progress-ms, 5s) linear forwards;
-}
-
-@keyframes newsCarouselProgress {
-    from {
-        width: 0%;
+@media (max-width: 640px) {
+    .news-media--single img {
+        max-height: min(46vh, 300px);
     }
 
-    to {
-        width: 100%;
+    .news-carousel-hint {
+        display: none;
     }
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .news-carousel-track,
+    .news-carousel-slide,
     .news-carousel-dot {
-        transition: none;
-    }
-
-    .news-carousel-progress,
-    .news-carousel-progress.is-running > span {
-        display: none;
-        animation: none;
+        transition: none !important;
     }
 }
 
 @media (prefers-reduced-motion: reduce) {
     .news-summary::after,
     .news-details {
+        transition: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .agenda-overflow,
+    .agenda-expand-toggle-icon {
         transition: none;
     }
 }

@@ -54,7 +54,7 @@ const SCOUTS_MAX_PDF_UPLOAD_BYTES = 20971520;
  * Bump this on every deploy so HTML/CSS/JS URLs change and old caches are skipped.
  * Format: YYYYMMDD-N
  */
-const SCOUTS_ASSET_VERSION = '20261109-save-scroll-pad';
+const SCOUTS_ASSET_VERSION = '20261110-agenda-expand-label';
 /** Microsoft Clarity project ID (public site only; loaded after analytics consent). */
 const SCOUTS_CLARITY_PROJECT_ID = 'z4c8od8ljm';
 const SCOUTS_LOGIN_ATTEMPTS_FILE = SCOUTS_ROOT . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . '.login-attempts.json';
@@ -947,6 +947,23 @@ function scouts_send_html_file(string $absolutePath, ?string $pageId = null): ne
             $html = preg_replace('/<main\b/i', '<main id="main"', $html, 1) ?? $html;
         }
 
+        // Always serve stable root-absolute favicon links (Google Search eligibility).
+        // Inline fallback keeps public pages up if site-chrome.php was not deployed yet.
+        $html = preg_replace(
+            '/\s*<link\b[^>]*rel=(["\'])(?:shortcut\s+)?(?:apple-touch-)?icon(?:-precomposed)?\1[^>]*>\s*/i',
+            "\n",
+            $html
+        ) ?? $html;
+        $faviconTags = function_exists('scouts_render_favicon_link_tags')
+            ? scouts_render_favicon_link_tags()
+            : <<<'HTML'
+    <link rel="icon" href="/favicon.ico" sizes="any">
+    <link rel="icon" type="image/png" sizes="48x48" href="/assets/images/favicon-48.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="/assets/images/favicon-192.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/assets/images/favicon-180.png">
+HTML;
+        $html = preg_replace('/<\/head>/i', $faviconTags . "\n</head>", $html, 1) ?? $html;
+
         if (!str_contains($html, 'property="og:title"')) {
             $shareTags = scouts_render_share_meta_tags($resolvedPage);
             $html = preg_replace('/<\/head>/i', $shareTags . "\n</head>", $html, 1) ?? $html;
@@ -1016,6 +1033,13 @@ function scouts_send_html_file(string $absolutePath, ?string $pageId = null): ne
         }
         $path = $parts['path'];
         $baseName = strtolower(basename($path));
+        // Google Search requires a stable favicon URL (no rotating ?v= cache buster).
+        if (
+            $baseName === 'favicon.ico'
+            || preg_match('#^favicon-\d+\.png$#', $baseName) === 1
+        ) {
+            return $path;
+        }
         if ($baseName === 'style.css') {
             if ($cssBundle === 'public') {
                 unset($query['bundle']);
